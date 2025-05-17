@@ -52,7 +52,7 @@ export default function AddAddressPage({
   onClose,
 }: {
   selectedAddress?: boolean
-  addressId: number
+  addressId: string
   onClose: () => void
 }) {
   const router = useRouter()
