@@ -1,7 +1,6 @@
 import { validateSession } from '@/app/actions/session'
 import { redirect } from 'next/navigation'
 import React from 'react'
-import DashboardNav from './components/Dashboard-nav'
 import DashboardCard from './components/Dashboard-card'
 import { cn } from '@/lib/utils'
 import { BestSellingProducts } from './components/Best-selling-products'
