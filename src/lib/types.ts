@@ -1,13 +1,9 @@
 import type { z } from 'zod'
-import type { CreateProductSchema } from './zod'
-
 export type FormDataResult<T = any> = {
   success: boolean
   message: string
   data?: T
 }
-
-export type Product = z.infer<typeof CreateProductSchema>
 
 export interface CreateFullProductInput {
   id?: string
