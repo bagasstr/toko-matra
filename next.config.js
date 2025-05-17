@@ -4,13 +4,21 @@ const nextConfig = {
     domains: ['localhost'],
   },
   experimental: {
-    serverActions: true,
+    serverActions: {
+      allowedOrigins: ['localhost:3000'],
+    },
+  },
+  // Configure for server-side rendering
+  output: 'standalone',
+  // Set runtime to be server-side for routes that use cookies
+  reactStrictMode: true,
+  // Set dynamic rendering for the app
+  // This is important for routes that use cookies
+  serverRuntimeConfig: {
+    // Runtime config for pages using cookies
+    cookieSecret: process.env.COOKIE_SECRET || 'your-cookie-secret',
   },
   // Disable static optimization for dynamic routes
-  output: 'standalone',
-  // Configure which pages should be static or dynamic
-  pageExtensions: ['js', 'jsx', 'ts', 'tsx'],
-  // Disable static optimization for all pages
   staticPageGenerationTimeout: 120,
   // Enable dynamic imports
   webpack: (config, { isServer }) => {

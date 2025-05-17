@@ -1,6 +1,8 @@
 import React from 'react'
 import { Bell, CheckCircle } from 'lucide-react'
 
+export const dynamic = 'force-dynamic'
+
 const notifications = [
   {
     id: 1,

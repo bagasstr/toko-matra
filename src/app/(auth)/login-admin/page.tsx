@@ -39,7 +39,7 @@ const LoginAdmin = () => {
     const result = await login(formData)
 
     if (result?.success) {
-      redirect('/dashboard')
+      router.push('/dashboard')
     } else {
       router.push('/login-admin') // Navigasi ke halaman utama
     }

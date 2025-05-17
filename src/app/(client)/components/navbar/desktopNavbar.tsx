@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { getCartItems } from '@/app/actions/cartAction'
 import { useQuery } from '@tanstack/react-query'
 
+export const dynamic = 'force-dynamic'
+
 const DesktopNavbar = async () => {
   const { data: cartData } = await getCartItems()
   const items = cartData || []

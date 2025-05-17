@@ -13,6 +13,12 @@ const poppins = Poppins({
   variable: '--font-poppins',
 })
 
+// This enables dynamic rendering for all routes
+export const dynamic = 'force-dynamic'
+
+// This ensures cookies are handled properly
+export const dynamicParams = true
+
 export const metadata: Metadata = {
   title: 'Toko Matrakosala',
   description:

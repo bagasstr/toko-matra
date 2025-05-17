@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/hooks/zustandStore'
 import { updateCartItemQuantity } from '@/app/actions/cartAction'
 
+export const dynamic = 'force-dynamic'
+
 const CartPage = () => {
   const router = useRouter()
   const {

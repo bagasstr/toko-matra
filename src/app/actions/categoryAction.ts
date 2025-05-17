@@ -46,6 +46,10 @@ export async function createCategory(data: CreateCategoryInput) {
 
 export async function getCategoryBySlug(slug: string) {
   try {
+    if (!slug) {
+      return { success: false, error: 'Slug is required' }
+    }
+
     const category = await prisma.category.findUnique({
       where: { slug },
       include: {
@@ -53,10 +57,15 @@ export async function getCategoryBySlug(slug: string) {
         children: true,
       },
     })
+
+    if (!category) {
+      return { success: false, error: 'Category not found' }
+    }
+
     return { success: true, category }
   } catch (error) {
     console.error('Failed to get category by slug:', error)
-    return { success: false, error: 'Gagal mengambil data kategori.' }
+    return { success: false, error: 'Failed to get category' }
   }
 }
 

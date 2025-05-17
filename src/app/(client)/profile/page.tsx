@@ -4,6 +4,8 @@ import AuthSection from '@/components/ui/AuthSection'
 import ProfileClient, { UserProfile } from './ProfileClient'
 import { headers } from 'next/headers'
 
+export const dynamic = 'force-dynamic'
+
 type PageProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
