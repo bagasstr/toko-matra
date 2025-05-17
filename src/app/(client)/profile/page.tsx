@@ -4,12 +4,13 @@ import AuthSection from '@/components/ui/AuthSection'
 import ProfileClient, { UserProfile } from './ProfileClient'
 import { headers } from 'next/headers'
 
-interface PageProps {
-  searchParams: { [key: string]: string | string[] | undefined }
+type PageProps = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
 
 export default async function ProfilePage({ searchParams }: PageProps) {
-  const { user } = searchParams
+  const params = await searchParams
+  const { user } = params
 
   const userSession = await validateSession()
 
