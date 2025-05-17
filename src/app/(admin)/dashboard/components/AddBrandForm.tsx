@@ -1,10 +1,10 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -12,54 +12,60 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { toast } from 'sonner';
-import { createBrand } from '@/app/actions/brandAction';
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { toast } from 'sonner'
+import { createBrand } from '@/app/actions/brandAction'
 
 const formSchema = z.object({
-  nameBrand: z.string().min(2, {
+  name: z.string().min(2, {
     message: 'Nama brand harus minimal 2 karakter.',
   }),
-});
+})
 
 type Brand = {
-  value: number;
-  label: string;
-};
+  value: number
+  label: string
+}
 
 interface AddBrandFormProps {
-  brands: Brand[];
-  onSuccess: () => void;
+  brands: Brand[]
+  onSuccess: () => void
 }
 
 export default function AddBrandForm({ brands, onSuccess }: AddBrandFormProps) {
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false)
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      nameBrand: '',
+      name: '',
     },
-  });
+  })
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    setLoading(true);
+    setLoading(true)
     try {
       const result = await createBrand({
-        nameBrand: values.nameBrand,
-      });
+        name: values.name,
+        logo: '', // Default empty logo
+        slug: values.name
+          .toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .trim()
+          .replace(/\s+/g, '-'),
+      })
       if (result.success) {
-        toast.success('Brand berhasil ditambahkan');
-        form.reset();
-        onSuccess();
+        toast.success('Brand berhasil ditambahkan')
+        form.reset()
+        onSuccess()
       } else {
-        toast.error(result.error || 'Gagal menambah brand');
+        toast.error(result.error || 'Gagal menambah brand')
       }
     } catch (error) {
-      toast.error('Gagal menambah brand');
+      toast.error('Gagal menambah brand')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
@@ -68,7 +74,7 @@ export default function AddBrandForm({ brands, onSuccess }: AddBrandFormProps) {
       <form onSubmit={form.handleSubmit(onSubmit)} className='space-y-4'>
         <FormField
           control={form.control}
-          name='nameBrand'
+          name='name'
           render={({ field }) => (
             <FormItem>
               <FormLabel>Tambah Brand Baru</FormLabel>
@@ -86,5 +92,5 @@ export default function AddBrandForm({ brands, onSuccess }: AddBrandFormProps) {
         />
       </form>
     </Form>
-  );
+  )
 }
