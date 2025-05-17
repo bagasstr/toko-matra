@@ -9,7 +9,7 @@ import { redirect } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 
-const CardAddress = ({ userId, address }: { userId: number; address: any }) => {
+const CardAddress = ({ userId, address }: { userId: string; address: any }) => {
   const [isPanding, startTransition] = useTransition()
   const [disabled, setDisabled] = useState<boolean>(true)
   const [sortedAddress, setSortedAddress] = useState<any[]>(() => {
@@ -18,7 +18,7 @@ const CardAddress = ({ userId, address }: { userId: number; address: any }) => {
     )
     return sorted
   })
-  const [selectAddress, setSelectAddress] = useState<number>(() => {
+  const [selectAddress, setSelectAddress] = useState<string>(() => {
     // Set initial value to the active address if exists
     const active = address.find((item: any) => item.isActive)
 
