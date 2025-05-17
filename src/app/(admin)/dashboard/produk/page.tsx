@@ -6,10 +6,6 @@ import DashboardWrap from '../components/Dashboard-wrapper'
 import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import ProductsTable from '../components/Product-table'
-import Category from '@/app/(client)/components/Category'
-import CategorySelector from '@/app/(client)/components/CategorySelector'
-import AddProductForm from '../components/AddProduct'
-import { createProduct } from '@/app/actions/productAction'
 
 import { redirect } from 'next/navigation'
 
