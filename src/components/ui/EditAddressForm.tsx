@@ -55,7 +55,7 @@ export default function EditAddressForm({
   addressId: string
 }) {
   const router = useRouter()
-  const [userId, setUserId] = useState<number | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
   const [address, setAddress] = useState<any>([])
   const [isLoading, setIsLoading] = useState(true)
   const {
@@ -100,7 +100,7 @@ export default function EditAddressForm({
     const session = async () => {
       const res = await validateSession()
       if (res !== null) {
-        setUserId(res?.id ?? null)
+        setUserId(res?.user?.id ?? null)
       }
     }
     session()
