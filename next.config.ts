@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+
   devIndicators: false,
   experimental: {
     serverActions: {

@@ -16,11 +16,6 @@ import {
   Truck,
 } from 'lucide-react'
 
-export const getSessions = async () => {
-  const user = await validateSession()
-  return user
-}
-
 const page = async () => {
   const user = await validateSession()
   if (!user && user?.user.role !== 'ADMIN') {
