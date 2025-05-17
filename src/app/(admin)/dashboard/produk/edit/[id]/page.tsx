@@ -30,7 +30,6 @@ import {
 } from '@/components/ui/command'
 import { ChevronsUpDown, Check } from 'lucide-react'
 import { toast } from 'sonner'
-import AddCategoryForm from '@/app/(admin)/dashboard/components/AddCategoryForm'
 import { getAllCategories } from '@/app/actions/categoryAction'
 import {
   createProduct,
