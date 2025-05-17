@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { dynamicRoutes } from './app/config'
 
 // middleware.ts
 export async function middleware(request: NextRequest) {
@@ -22,10 +23,35 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  const pathname = request.nextUrl.pathname
+
+  // Check if the route is in our dynamic routes list
+  if (
+    dynamicRoutes.some((route) => {
+      // Convert route pattern to regex
+      const pattern = route.replace(/\[.*?\]/g, '[^/]+')
+      return new RegExp(`^${pattern}$`).test(pathname)
+    })
+  ) {
+    // Add a header to indicate this is a dynamic route
+    const response = NextResponse.next()
+    response.headers.set('x-middleware-cache', 'no-cache')
+    return response
+  }
+
   return NextResponse.next()
 }
 
 // Configure which routes to run middleware on
 export const config = {
-  matcher: ['/dashboard/:path*', '/login-admin'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 }
