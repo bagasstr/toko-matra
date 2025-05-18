@@ -125,25 +125,6 @@ export const useAreaData = create<AreaDataStore>((set) => ({
   },
 }))
 
-function convertDecimalToNumber(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map(convertDecimalToNumber)
-  } else if (obj && typeof obj === 'object') {
-    const newObj = {}
-    for (const key in obj) {
-      if (typeof obj[key] === 'object' && obj[key] !== null) {
-        newObj[key] = convertDecimalToNumber(obj[key])
-      } else if (typeof obj[key]?.toNumber === 'function') {
-        newObj[key] = obj[key].toNumber()
-      } else {
-        newObj[key] = obj[key]
-      }
-    }
-    return newObj
-  }
-  return obj
-}
-
 interface CartItem {
   id: string
   product: {

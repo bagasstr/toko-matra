@@ -1,35 +1,12 @@
-import { Decimal } from '@prisma/client/runtime/library'
-
-// Helper function to convert Decimal to number
-export function convertDecimalToNumber(data: any): any {
-  if (data === null || data === undefined) return data
-
-  // Handle Decimal type
-  if (
-    data instanceof Decimal ||
-    (typeof data === 'object' && data !== null && 'toNumber' in data)
-  ) {
-    return String(data)
-  }
-
-  // Handle arrays
-  if (Array.isArray(data)) {
-    return data.map(convertDecimalToNumber)
-  }
-
-  // Handle objects
-  if (typeof data === 'object' && data !== null) {
-    const result: any = {}
-    for (const key in data) {
-      // Skip prototype properties
-      if (Object.prototype.hasOwnProperty.call(data, key)) {
-        result[key] = convertDecimalToNumber(data[key])
-      }
-    }
-    return result
-  }
-
-  return data
+// Format currency in Indonesian Rupiah
+export function formatCurrency(amount: number | string): string {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numAmount)
 }
 
 export function generateProductId(): string {

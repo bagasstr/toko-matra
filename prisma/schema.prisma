@@ -161,7 +161,7 @@ model Product {
   slug        String      @unique
   description String?
   images      String[] // Array URL gambar
-  price       Decimal     @db.Decimal(10, 2)
+  price       Int
   unit        String // Satuan: kg, m, m2, dll
   stock       Int         @default(0)
   minOrder    Int         @default(0)
@@ -237,7 +237,7 @@ model Order {
   addressId   String
   address     Address     @relation(fields: [addressId], references: [id])
   status      OrderStatus @default(PENDING)
-  totalAmount Decimal     @db.Decimal(10, 2)
+  totalAmount Int
   items       OrderItem[]
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -254,7 +254,7 @@ model OrderItem {
   productId String
   product   Product  @relation(fields: [productId], references: [id])
   quantity  Int
-  price     Decimal  @db.Decimal(10, 2)
+  price     Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -265,7 +265,7 @@ model Payment {
   id            String   @id
   orderId       String
   order         Order    @relation(fields: [orderId], references: [id])
-  amount        Decimal  @db.Decimal(10, 2)
+  amount        Int
   paymentMethod String
   status        String
   createdAt     DateTime @default(now())

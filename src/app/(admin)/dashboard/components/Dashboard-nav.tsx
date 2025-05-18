@@ -165,18 +165,6 @@ const DashboardNav = () => {
                 <SidebarMenuButton
                   variant={'default'}
                   asChild
-                  isActive={pathname === '/dashboard/inventaris'}>
-                  <Link href='/dashboard/inventaris'>
-                    <Warehouse className='h-4 w-4' />
-                    <span>Inventaris</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  variant={'default'}
-                  asChild
                   isActive={pathname === '/dashboard/analitik'}>
                   <Link href='/dashboard/analitik'>
                     <BarChart3 className='h-4 w-4' />

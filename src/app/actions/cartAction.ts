@@ -3,7 +3,6 @@
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import {
-  convertDecimalToNumber,
   generateCartId,
   generateCartItemId,
   generateCustomId,
@@ -76,7 +75,7 @@ export async function addToCart(item: ServerCartItem) {
     return {
       success: true,
       message: 'Item added to cart successfully',
-      data: convertDecimalToNumber(item),
+      data: item,
     }
   } catch (error) {
     console.error('Error adding to cart:', error)
@@ -100,7 +99,7 @@ export async function removeFromCart(itemId: string) {
     return {
       success: true,
       message: 'Item removed from cart successfully',
-      data: convertDecimalToNumber(itemId),
+      data: itemId,
     }
   } catch (error) {
     console.error('Error removing from cart:', error)
@@ -127,7 +126,7 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
     return {
       success: true,
       message: 'Cart item quantity updated successfully',
-      data: convertDecimalToNumber({ itemId, quantity }),
+      data: { itemId, quantity },
     }
   } catch (error) {
     console.error('Error updating cart quantity:', error)
@@ -180,46 +179,66 @@ export async function getCartItems() {
         message: 'No token found',
       }
     }
-    console.log('token 175', token)
 
-    const session = await prisma.session.findUnique({
-      where: {
-        sessionToken: token,
-      },
-      select: {
-        user: {
-          select: {
-            id: true,
+    // Mengurangi log yang tidak perlu
+    // console.log('token 175', token)
+
+    try {
+      const session = await prisma.session.findUnique({
+        where: {
+          sessionToken: token,
+        },
+        select: {
+          user: {
+            select: {
+              id: true,
+            },
           },
         },
-      },
-    })
+      })
 
-    if (!session) {
-      return {
-        success: false,
-        message: 'Invalid session',
+      if (!session) {
+        return {
+          success: false,
+          message: 'Invalid session',
+        }
       }
-    }
-    console.log('session 185', session)
-    const cart = await prisma.cart.findFirst({
-      where: {
-        userId: session.user.id,
-      },
-      include: {
-        items: {
-          include: {
-            product: true,
+
+      // Mengurangi log yang tidak perlu
+      // console.log('session 185', session)
+
+      const cart = await prisma.cart.findFirst({
+        where: {
+          userId: session.user.id,
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-    })
-    console.log('cart 190', cart)
+      })
 
-    return {
-      success: true,
-      message: 'Cart items retrieved successfully',
-      data: convertDecimalToNumber(cart?.items) || [],
+      // Mengurangi log yang tidak perlu
+      // console.log('cart 190', cart)
+
+      return {
+        success: true,
+        message: 'Cart items retrieved successfully',
+        data: cart?.items || [],
+      }
+    } catch (error) {
+      // Tangani error koneksi database secara khusus
+      if (error.message && error.message.includes('too many clients already')) {
+        console.error('Database connection limit reached:', error)
+        return {
+          success: false,
+          message: 'Server sedang sibuk, silakan coba lagi nanti',
+          error: 'Too many database connections',
+        }
+      }
+      throw error // Lempar error lain untuk ditangani di catch luar
     }
   } catch (error) {
     console.error('Error getting cart items:', error)
@@ -260,7 +279,7 @@ export async function validateCartItems(items: ServerCartItem[]) {
     return {
       success: true,
       message: 'Cart items validated successfully',
-      data: convertDecimalToNumber(validatedItems),
+      data: validatedItems,
     }
   } catch (error) {
     console.error('Error validating cart items:', error)

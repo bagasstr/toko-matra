@@ -26,6 +26,7 @@ import {
   getAllCategories,
   deleteCategory,
 } from '@/app/actions/categoryAction'
+import React from 'react'
 
 interface Category {
   id: string
@@ -124,8 +125,8 @@ export default function CategoryPage() {
     const isParent = level === 0
 
     return (
-      <>
-        <TableRow key={category.id}>
+      <React.Fragment key={category.id}>
+        <TableRow>
           <TableCell>{level === 0 ? category.id : ''}</TableCell>
           <TableCell>
             <div
@@ -175,7 +176,7 @@ export default function CategoryPage() {
           category.children?.map((child) =>
             renderCategoryRow(child, level + 1)
           )}
-      </>
+      </React.Fragment>
     )
   }
 

@@ -49,7 +49,6 @@ function findCategoryBySlug(categories, slug) {
 
 function CategoryPage() {
   const params = useParams()
-  const router = useRouter()
 
   // Fetch categories using React Query
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
@@ -163,8 +162,8 @@ function CategoryPage() {
       ) : params.slug.length === 2 ? (
         <Suspense fallback={<div>Loading...</div>}>
           <ProductPage
-            parentCategory={parentCategory}
             products={filteredProducts}
+            parentCategory={parentCategory}
             loading={loading}
           />
         </Suspense>
@@ -347,6 +346,18 @@ function ProductPage({
   )
 }
 
+// Helper function to calculate total product amount based on quantity
+function calculateTotalAmount(
+  quantity: number,
+  minOrder: number,
+  multiOrder: number
+): number {
+  if (quantity <= 0) return 0
+  if (quantity === 1) return minOrder
+
+  return minOrder + multiOrder * (quantity - 1)
+}
+
 function ProductDetailPage({
   product,
   parentCategory,
@@ -358,6 +369,7 @@ function ProductDetailPage({
   loading: boolean
   allProducts: any[]
 }) {
+  const router = useRouter()
   const [quantity, setQuantity] = useState(1)
   const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
@@ -367,15 +379,66 @@ function ProductDetailPage({
     message: string
   } | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-
   const { addToCart: addToCartStore, fetchCart } = useCartStore()
 
-  // Update quantity when product is loaded
-  useEffect(() => {
-    if (product?.minOrder) {
-      setQuantity(product.minOrder)
+  // Calculate actual quantity based on minOrder and multiOrder
+  const calculateActualQuantity = (inputQuantity: number) => {
+    if (inputQuantity <= 0) return 0
+    if (inputQuantity === 1) return product.minOrder
+    return product.minOrder + product.multiOrder * (inputQuantity - 1)
+  }
+
+  const handleBuyNow = async () => {
+    if (!product) return
+
+    try {
+      setIsAddingToCart(true)
+
+      const session = await validateSession()
+      if (!session) {
+        setCartMessage({
+          type: 'error',
+          message: 'Silakan login terlebih dahulu',
+        })
+        return
+      }
+
+      const result = await addToCart({
+        userId: session.user.id,
+        productId: product.id,
+        quantity: calculateActualQuantity(quantity),
+      })
+
+      if (result.success) {
+        addToCartStore({
+          id: product.id,
+          product: {
+            id: product.id,
+            name: product.name,
+            images: product.images,
+            price: product.price,
+            unit: product.unit,
+          },
+          quantity: calculateActualQuantity(quantity),
+        })
+
+        // Navigate to checkout page
+        router.push('/keranjang/pembayaran')
+      } else {
+        setCartMessage({
+          type: 'error',
+          message: 'Gagal menambahkan produk ke keranjang',
+        })
+      }
+    } catch (error) {
+      setCartMessage({
+        type: 'error',
+        message: 'Terjadi kesalahan saat menambahkan ke keranjang',
+      })
+    } finally {
+      setIsAddingToCart(false)
     }
-  }, [product])
+  }
 
   const handleAddToCart = async () => {
     if (!product) return
@@ -396,7 +459,7 @@ function ProductDetailPage({
       const result = await addToCart({
         userId: session.user.id,
         productId: product.id,
-        quantity: quantity,
+        quantity: calculateActualQuantity(quantity),
       })
 
       if (result.success) {
@@ -409,7 +472,7 @@ function ProductDetailPage({
             price: product.price,
             unit: product.unit,
           },
-          quantity: quantity,
+          quantity: calculateActualQuantity(quantity),
         })
 
         await fetchCart()
@@ -473,8 +536,8 @@ function ProductDetailPage({
     <div className=''>
       <div className='flex flex-col lg:flex-row lg:items-start gap-4'>
         {/* Left Column - Product Images */}
-        <div className='space-y-4 flex-2/1 lg:sticky lg:top-24'>
-          <div className='relative aspect-[2/1] w-full overflow-hidden'>
+        <div className='space-y-4 lg:flex-4/1 lg:sticky lg:top-24'>
+          <div className='relative aspect-[3/1] sm:aspect-[4/1] md:aspect-[5/1] lg:aspect-[2/1] w-full overflow-hidden'>
             <Image
               src={product.images[selectedImage] || '/placeholder.png'}
               alt={product.name}
@@ -600,43 +663,83 @@ function ProductDetailPage({
           <div className='lg:border lg:p-4 lg:rounded-lg'>
             <div className='flex flex-col gap-4'>
               <div className='flex flex-col mb-2 gap-y-1.5'>
-                <span className='text-sm font-medium'>Jumlah:</span>
+                {' '}
+                <span className='text-sm font-medium'>Jumlah:</span>{' '}
                 <div className='flex items-center gap-2'>
+                  {' '}
                   <Button
                     variant='outline'
                     size='icon'
                     className='h-8 w-8'
-                    disabled={quantity <= product.minOrder}
-                    onClick={() =>
-                      setQuantity(Math.max(1, quantity - product.multiOrder))
-                    }>
-                    -
-                  </Button>
-                  <span className='w-8 text-center'>{quantity}</span>
+                    disabled={quantity <= 1}
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}>
+                    {' '}
+                    -{' '}
+                  </Button>{' '}
+                  <input
+                    type='number'
+                    value={quantity || ''}
+                    onChange={(e) => {
+                      const value = parseInt(e.target.value)
+                      if (!isNaN(value) && value > 0) {
+                        setQuantity(value)
+                      }
+                    }}
+                    onBlur={(e) => {
+                      const value = parseInt(e.target.value)
+                      if (isNaN(value) || value < 1) {
+                        setQuantity(1)
+                      }
+                    }}
+                    className='w-16 text-center border rounded-md px-2 py-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none'
+                    min='1'
+                  />{' '}
                   <Button
                     variant='outline'
                     size='icon'
                     className='h-8 w-8'
-                    onClick={() => setQuantity(quantity + product.multiOrder)}>
-                    +
-                  </Button>
-                  <span className='text-sm'>X {product.unit}</span>
-                </div>
-              </div>
+                    onClick={() => setQuantity(quantity + 1)}>
+                    {' '}
+                    +{' '}
+                  </Button>{' '}
+                  <span className='text-sm'>X {product.unit}</span>{' '}
+                </div>{' '}
+                <span className='text-xs'>
+                  {' '}
+                  {`*Penjelasan jumlah pembelian:                   1 = ${
+                    product.minOrder
+                  } ${product.unit},                   2 = ${
+                    product.minOrder + product.multiOrder
+                  } ${product.unit},                   3 = ${
+                    product.minOrder + product.multiOrder * 2
+                  } ${product.unit}, dst.`}{' '}
+                </span>{' '}
+              </div>{' '}
               <div className='flex items-center justify-between mb-4'>
-                <span className='text-sm font-medium'>Subtotal:</span>
+                {' '}
+                <span className='text-sm font-medium'>Subtotal:</span>{' '}
                 <span className='text-lg font-semibold text-primary'>
-                  {toRupiah(product.price * quantity, { floatingPoint: 0 })}
-                </span>
+                  {' '}
+                  {toRupiah(product.price * calculateActualQuantity(quantity), {
+                    floatingPoint: 0,
+                  })}{' '}
+                </span>{' '}
               </div>
               <Button
                 variant='outline'
                 className='w-full py-6 px-8'
                 onClick={handleAddToCart}
                 disabled={isAddingToCart}>
-                {isAddingToCart ? 'Menambahkan...' : 'Keranjang'}
+                {' '}
+                {isAddingToCart ? 'Menambahkan...' : 'Keranjang'}{' '}
+              </Button>{' '}
+              <Button
+                className='w-full py-6 px-8'
+                onClick={handleBuyNow}
+                disabled={isAddingToCart}>
+                {' '}
+                {isAddingToCart ? 'Memproses...' : 'Beli Sekarang'}{' '}
               </Button>
-              <Button className='w-full py-6 px-8'>Beli Sekarang</Button>
               <Link
                 href='https://wa.me/6281234567890'
                 className='hidden lg:block'>
@@ -658,9 +761,16 @@ function ProductDetailPage({
             className='flex-1 py-6 px-8'
             onClick={handleAddToCart}
             disabled={isAddingToCart}>
-            {isAddingToCart ? 'Menambahkan...' : 'Keranjang'}
+            {' '}
+            {isAddingToCart ? 'Menambahkan...' : 'Keranjang'}{' '}
+          </Button>{' '}
+          <Button
+            className='flex-1 py-6 px-8'
+            onClick={handleBuyNow}
+            disabled={isAddingToCart}>
+            {' '}
+            {isAddingToCart ? 'Memproses...' : 'Beli Sekarang'}{' '}
           </Button>
-          <Button className='flex-1 py-6 px-8'>Beli Sekarang</Button>
         </div>
       </div>
 

@@ -8,12 +8,21 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { useQuery } from '@tanstack/react-query'
 import { getCartItems } from '@/app/actions/cartAction'
+import { getAllProducts } from '@/app/actions/productAction'
 
 export const dynamic = 'force-dynamic'
 
 const MobileNavbar = async () => {
   const { data: cartData } = await getCartItems()
+  const { products } = await getAllProducts()
+  const stockProduct = products
+    ?.map((product) => product.stock)
+    .reduce((acc, stock) => acc + stock, 0)
+
   const items = cartData || []
+  const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0)
+  console.log(totalQuantity, stockProduct)
+
   return (
     <div className='lg:hidden bg-blue-100'>
       <div className='h-28 w-full rounded-b-4xl absolute top-0 left-0 -z-10' />
@@ -52,8 +61,9 @@ const MobileNavbar = async () => {
                   {items.length > 0 && (
                     <Badge
                       variant='destructive'
-                      className='absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0'>
-                      {items.reduce((acc, item) => acc + item.quantity, 0)}
+                      className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
+                      {totalQuantity > stockProduct ? '99+' : totalQuantity}
+                      {/* {items.length} */}
                     </Badge>
                   )}
                 </Button>

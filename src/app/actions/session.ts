@@ -43,8 +43,6 @@ export const validateSession = async () => {
   if (!sessionToken) {
     return null
   }
-  console.log('sessionToken 106', sessionToken)
-
   const session = await prisma.session.findUnique({
     where: { sessionToken },
     select: {
@@ -64,8 +62,10 @@ export const validateSession = async () => {
       },
     },
   })
-  console.log('session 107', session)
-  return session
+
+  // Convert any Decimal objects to plain JavaScript numbers/strings
+  // by serializing and deserializing the session object
+  return session ? JSON.parse(JSON.stringify(session)) : null
 }
 
 export const destroySession = async () => {
