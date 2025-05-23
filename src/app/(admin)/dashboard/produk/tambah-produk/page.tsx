@@ -139,6 +139,11 @@ export default function Page() {
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([])
   const [isInitialized, setIsInitialized] = React.useState(false)
 
+  const labels = [
+    { value: 'ready_stock', label: 'Ready Stock' },
+    { value: 'suplier', label: 'Suplier' },
+    { value: 'indent', label: 'Indent' },
+  ]
   const form = useForm<CreateProductSchema>({
     resolver: zodResolver(createProductSchema),
     mode: 'onChange',
@@ -149,6 +154,7 @@ export default function Page() {
       description: '',
       images: [],
       price: '',
+      label: '',
       unit: '',
       weight: '',
       dimensions: '',
@@ -276,6 +282,7 @@ export default function Page() {
         dimensions: values.dimensions || undefined,
         isFeatured: values.isFeatured,
         isActive: values.isActive,
+        label: values.label,
         categoryId: values.categoryId,
         brandId: values.brandId,
         stock: Number(values.stock),
@@ -368,6 +375,33 @@ export default function Page() {
                 <FormItem>
                   <FormLabel>Deskripsi</FormLabel>
                   <Textarea {...field} placeholder='Deskripsi produk' />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='label'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Label Produk</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder='Pilih label produk' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {labels.map((label) => (
+                        <SelectItem key={label.value} value={label.value}>
+                          {label.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Pilih label untuk menandai status produk
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}

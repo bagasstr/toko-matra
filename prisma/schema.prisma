@@ -13,23 +13,25 @@ datasource db {
 
 /// Tabel utama untuk user aplikasi
 model User {
-  id            String         @id
-  email         String         @unique
-  emailVerified DateTime?      @map("email_verified")
-  password      String // hashed password
-  role          UserRole       @default(CUSTOMER) // customer | admin
-  typeUser      String // individu | perusahaan | toko
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  profile       Profile?
-  sessions      Session[]
-  address       Address[]
-  product       Product[]
-  cart          Cart[]
-  order         Order[]
-  review        Review[]
-  account       Account[]
-  Notification  Notification[]
+  id               String            @id
+  email            String            @unique
+  emailVerified    DateTime?         @map("email_verified")
+  password         String // hashed password
+  role             UserRole          @default(CUSTOMER) // customer | admin
+  typeUser         String // individu | perusahaan | toko
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  profile          Profile?
+  sessions         Session[]
+  address          Address[]
+  product          Product[]
+  cart             Cart[]
+  order            Order[]
+  review           Review[]
+  account          Account[]
+  Notification     Notification[]
+  proformaInvoices ProformaInvoice[]
+  Invoice          Invoice[]
 
   @@map("users")
 }
@@ -111,7 +113,7 @@ model Address {
   isActive      Boolean  @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
-  user          User     @relation(fields: [userId], references: [id])
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   order         Order[]
 
   @@map("address")
@@ -155,32 +157,35 @@ model Category {
 
 /// Produk utama
 model Product {
-  id          String      @id
-  sku         String      @unique
-  name        String
-  slug        String      @unique
-  description String?
-  images      String[] // Array URL gambar
-  price       Int
-  unit        String // Satuan: kg, m, m2, dll
-  stock       Int         @default(0)
-  minOrder    Int         @default(0)
-  multiOrder  Int         @default(0)
-  weight      Float?
-  dimensions  String?
-  isFeatured  Boolean     @default(false)
-  isActive    Boolean     @default(true)
-  category    Category    @relation(fields: [categoryId], references: [id])
-  categoryId  String
-  cartItems   CartItem[]
-  orderItem   OrderItem[]
-  review      Review[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  brand       Brand?      @relation(fields: [brandId], references: [id])
-  brandId     String?
-  User        User?       @relation(fields: [userId], references: [id])
-  userId      String?
+  id                  String                @id
+  sku                 String                @unique
+  name                String
+  slug                String                @unique
+  description         String?
+  label               String? // ready stock | suplier
+  images              String[] // Array URL gambar
+  price               Int
+  unit                String // Satuan: kg, m, m2, dll
+  stock               Int                   @default(0)
+  minOrder            Int                   @default(0)
+  multiOrder          Int                   @default(0)
+  weight              Float?
+  dimensions          String?
+  isFeatured          Boolean               @default(false)
+  isActive            Boolean               @default(true)
+  category            Category              @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId          String
+  cartItems           CartItem[]
+  orderItem           OrderItem[]
+  review              Review[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  brand               Brand?                @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  brandId             String?
+  User                User?                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId              String?
+  InvoiceItem         InvoiceItem[]
+  ProformaInvoiceItem ProformaInvoiceItem[]
 
   @@index([slug])
   @@index([categoryId])
@@ -193,7 +198,7 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
@@ -201,7 +206,7 @@ model Notification {
 model Cart {
   id        String     @id
   userId    String
-  user      User       @relation(fields: [userId], references: [id])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items     CartItem[]
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
@@ -212,9 +217,9 @@ model Cart {
 model CartItem {
   id        String   @id
   cartId    String
-  cart      Cart     @relation(fields: [cartId], references: [id])
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -233,9 +238,9 @@ enum OrderStatus {
 model Order {
   id          String      @id
   userId      String
-  user        User        @relation(fields: [userId], references: [id])
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   addressId   String
-  address     Address     @relation(fields: [addressId], references: [id])
+  address     Address     @relation(fields: [addressId], references: [id], onDelete: Cascade)
   status      OrderStatus @default(PENDING)
   totalAmount Int
   items       OrderItem[]
@@ -250,9 +255,9 @@ model Order {
 model OrderItem {
   id        String   @id
   orderId   String
-  order     Order    @relation(fields: [orderId], references: [id])
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   price     Int
   createdAt DateTime @default(now())
@@ -262,14 +267,17 @@ model OrderItem {
 }
 
 model Payment {
-  id            String   @id
-  orderId       String
-  order         Order    @relation(fields: [orderId], references: [id])
-  amount        Int
-  paymentMethod String
-  status        String
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                  String   @id
+  orderId             String
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount              Int
+  paymentMethod       String
+  status              String
+  midtransToken       String?  @map("midtrans_token")
+  midtransRedirectUrl String?  @map("midtrans_redirect_url")
+  paymentDetails      Json?    @map("payment_details")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
   @@map("payments")
 }
@@ -277,7 +285,7 @@ model Payment {
 model Shipment {
   id             String   @id
   orderId        String   @unique
-  order          Order    @relation(fields: [orderId], references: [id])
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   trackingNumber String?
   carrier        String?
   status         String
@@ -290,9 +298,9 @@ model Shipment {
 model Review {
   id        String   @id
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   productId String
-  product   Product  @relation(fields: [productId], references: [id])
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   rating    Int
   comment   String?
   createdAt DateTime @default(now())
@@ -355,3 +363,87 @@ enum PaymentStatus {
 // }
 
 // schema.prisma
+
+// Add Invoice model with proper fields
+model Invoice {
+  id               String            @id @default(cuid())
+  invoiceNumber    String            @unique
+  invoiceDate      DateTime
+  customerName     String
+  customerAddress  String
+  customerPhone    String?
+  customerEmail    String?
+  subtotal         Float
+  diskon           Float             @default(0)
+  ppn              Float
+  total            Float
+  notes            String?
+  status           String            @default("DRAFT") // DRAFT, PAID, CANCELLED
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  items            InvoiceItem[]
+  createdBy        String
+  user             User              @relation(fields: [createdBy], references: [id])
+  proformaInvoices ProformaInvoice[] @relation("ProformaToInvoice")
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id        String   @id @default(cuid())
+  invoiceId String
+  invoice   Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Float
+  unit      String
+  total     Float
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("invoice_items")
+}
+
+model ProformaInvoice {
+  id                 String                @id @default(cuid())
+  invoiceNumber      String                @unique
+  invoiceDate        DateTime
+  customerName       String
+  customerAddress    String
+  customerPhone      String?
+  customerEmail      String?
+  subtotal           Float
+  diskon             Float                 @default(0)
+  ppn                Float
+  total              Float
+  notes              String?
+  status             String                @default("DRAFT") // DRAFT, SENT, CONVERTED
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+  items              ProformaInvoiceItem[]
+  createdBy          String
+  user               User                  @relation(fields: [createdBy], references: [id])
+  convertedToInvoice Boolean               @default(false)
+  convertedInvoiceId String?
+  convertedInvoice   Invoice?              @relation("ProformaToInvoice", fields: [convertedInvoiceId], references: [id])
+  downloadedAt       DateTime?
+
+  @@map("proforma_invoices")
+}
+
+model ProformaInvoiceItem {
+  id                String          @id @default(cuid())
+  proformaInvoiceId String
+  proformaInvoice   ProformaInvoice @relation(fields: [proformaInvoiceId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product         @relation(fields: [productId], references: [id])
+  quantity          Int
+  price             Float
+  unit              String
+  total             Float
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@map("proforma_invoice_items")
+}

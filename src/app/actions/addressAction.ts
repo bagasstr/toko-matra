@@ -7,16 +7,16 @@ import { generateCustomId } from '@/lib/helpper'
 import { validateSession } from './session'
 
 // Fungsi untuk menambah alamat baru
-export async function addAddress(userId: string, data: AddressFormValues) {
+export async function addAddress(data: AddressFormValues) {
   try {
-    console.log('addAddress', userId, data)
-
-    // Validasi input
-    if (!userId || !data || Object.values(data).some((val) => !val)) {
+    const session = await validateSession()
+    const userId = session?.user?.id
+    if (!userId) {
+      return { success: false, error: 'User belum login' }
+    }
+    if (!data || Object.values(data).some((val) => !val)) {
       return { success: false, error: 'Data tidak lengkap' }
     }
-
-    console.log('addAddress', userId, data)
 
     // Cek apakah pengguna ada menggunakan transaction untuk konsistensi
     const existsAddr = await prisma.address.findMany({

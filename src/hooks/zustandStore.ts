@@ -7,6 +7,7 @@ import {
 import { getCartItems } from '@/app/actions/cartAction'
 import { validateSession } from '@/app/actions/session'
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 type ModalLoginStore = {
   isOpen: boolean
@@ -133,6 +134,7 @@ interface CartItem {
     images: string[]
     price: number
     unit: string
+    minOrder: number
   }
   quantity: number
 }
@@ -149,70 +151,99 @@ interface CartStore {
   selectAll: () => void
   clearCart: () => void
   fetchCart: () => Promise<void>
+  getCartItems: () => Promise<any>
+  getUniqueProductCount: () => number
+  getTotalItems: () => number
+  getSubtotal: () => number
 }
 
-export const useCartStore = create<CartStore>((set, get) => ({
-  items: [],
-  loading: false,
-  error: null,
-  selectedItems: [],
+export const useCartStore = create<CartStore>()(
+  persist(
+    (set, get) => ({
+      items: [],
+      loading: false,
+      error: null,
+      selectedItems: [],
 
-  addToCart: (item) => {
-    set((state) => ({
-      items: [...state.items, item],
-    }))
-  },
+      addToCart: (item) => {
+        set((state) => ({
+          items: [...state.items, item],
+        }))
+      },
 
-  removeFromCart: (id) => {
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-      selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
-    }))
-  },
+      removeFromCart: (id) => {
+        set((state) => ({
+          items: state.items.filter((item) => item.id !== id),
+          selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
+        }))
+      },
 
-  updateQuantity: (id, quantity) => {
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === id ? { ...item, quantity } : item
-      ),
-    }))
-  },
+      updateQuantity: (id, quantity) => {
+        set((state) => ({
+          items: state.items.map((item) =>
+            item.id === id ? { ...item, quantity } : item
+          ),
+        }))
+      },
 
-  selectItem: (id) => {
-    set((state) => ({
-      selectedItems: state.selectedItems.includes(id)
-        ? state.selectedItems.filter((itemId) => itemId !== id)
-        : [...state.selectedItems, id],
-    }))
-  },
+      selectItem: (id) => {
+        set((state) => ({
+          selectedItems: state.selectedItems.includes(id)
+            ? state.selectedItems.filter((itemId) => itemId !== id)
+            : [...state.selectedItems, id],
+        }))
+      },
 
-  selectAll: () => {
-    set((state) => ({
-      selectedItems:
-        state.selectedItems.length === state.items.length
-          ? []
-          : state.items.map((item) => item.id),
-    }))
-  },
+      selectAll: () => {
+        set((state) => ({
+          selectedItems:
+            state.selectedItems.length === state.items.length
+              ? []
+              : state.items.map((item) => item.id),
+        }))
+      },
 
-  clearCart: () => {
-    set({ items: [], selectedItems: [] })
-  },
+      clearCart: () => {
+        set({ items: [], selectedItems: [] })
+      },
 
-  fetchCart: async () => {
-    set({ loading: true, error: null })
+      fetchCart: async () => {
+        set({ loading: true, error: null })
 
-    try {
-      const result = await getCartItems() // TODO: Replace with actual user ID
-      if (result.success) {
-        set({
-          items: result.data,
-          loading: false,
-        })
-      }
-      console.log('result 232', result)
-    } catch (error) {
-      set({ error: 'Gagal memuat keranjang', loading: false })
+        try {
+          const result = await getCartItems()
+          if (result.success) {
+            set({
+              items: result.data,
+              loading: false,
+            })
+          }
+        } catch (error) {
+          set({ error: 'Gagal memuat keranjang', loading: false })
+        }
+      },
+
+      getCartItems: async () => {
+        return await getCartItems()
+      },
+
+      getUniqueProductCount: () => {
+        return get().items.length
+      },
+
+      getTotalItems: () => {
+        return get().items.reduce((total, item) => total + item.quantity, 0)
+      },
+
+      getSubtotal: () => {
+        return get().items.reduce(
+          (total, item) => total + item.product.price * item.quantity,
+          0
+        )
+      },
+    }),
+    {
+      name: 'cart-storage',
     }
-  },
-}))
+  )
+)

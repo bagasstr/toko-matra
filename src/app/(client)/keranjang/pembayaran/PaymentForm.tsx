@@ -13,18 +13,32 @@ import {
   AlertCircle,
   MapPin,
   Check,
+  X,
+  Printer,
 } from 'lucide-react'
 import { processCheckout } from '../../../actions/checkoutAction'
 import { getUserAddresses } from '../../../actions/addressAction'
 import { useRouter } from 'next/navigation'
+import { generateProformaPDF } from '@/lib/pdfProInvFormatter'
+import { PdfProInvoiceButton } from '../../components/DownloadPdfButton'
+import { createMidtransTransaction } from '@/app/actions/paymentAction'
 
 type PaymentMethod = 'bank_transfer' | 'e_wallet' | 'virtual_account' | 'cod'
 
 interface PaymentFormProps {
   initialCartData: any
+  customerProfile?: {
+    fullName?: string
+    email?: string
+    phoneNumber?: string
+    companyName?: string
+  }
 }
 
-const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
+const PaymentForm = ({
+  initialCartData,
+  customerProfile,
+}: PaymentFormProps) => {
   const router = useRouter()
   const [paymentMethod, setPaymentMethod] =
     useState<PaymentMethod>('bank_transfer')
@@ -33,6 +47,13 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
   const [addresses, setAddresses] = useState<any[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
+  const [paymentInstructions, setPaymentInstructions] = useState<{
+    type: string
+    bank?: string
+    vaNumber?: string
+    amount?: number
+    expiryTime?: string
+  } | null>(null)
 
   const cartItems = initialCartData?.data || []
 
@@ -42,8 +63,7 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
     0
   )
 
-  const shippingCost = 25000
-  const total = subtotal + shippingCost
+  const total = subtotal + subtotal * 0.11
 
   // Fetch user addresses
   useEffect(() => {
@@ -83,6 +103,7 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
     setIsProcessing(true)
 
     try {
+      // First create the order
       const result = await processCheckout({
         addressId: selectedAddressId,
         paymentMethod,
@@ -96,15 +117,86 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
       }
 
       if (typedResult.success && typedResult.data?.order?.id) {
-        // Redirect to order confirmation page
-        router.push(`/orders/${typedResult.data.order.id}?success=true`)
+        const order = typedResult.data.order
+        const selectedAddress = addresses.find(
+          (addr) => addr.id === selectedAddressId
+        )
+
+        // Create Midtrans transaction
+        const midtransResult = await createMidtransTransaction(
+          order.id,
+          total,
+          {
+            firstName:
+              customerProfile?.fullName || selectedAddress?.recipientName || '',
+            email: customerProfile?.email || '',
+            phone:
+              customerProfile?.phoneNumber ||
+              selectedAddress?.phoneNumber ||
+              '',
+          },
+          cartItems.map((item: any) => ({
+            id: item.product.id,
+            price: Number(item.product.price),
+            quantity: item.quantity,
+            name: item.product.name,
+          })),
+          paymentMethod
+        )
+
+        if (midtransResult.success && midtransResult.data) {
+          // Handle different payment methods
+          switch (paymentMethod) {
+            case 'bank_transfer':
+              // Show bank transfer instructions
+              setPaymentInstructions({
+                type: 'bank_transfer',
+                bank: midtransResult.data.bank,
+                vaNumber: midtransResult.data.vaNumber,
+                amount: total,
+                expiryTime: midtransResult.data.expiryTime,
+              })
+              // Redirect to order detail page
+              router.push(`/orders/${order.id}?success=true`)
+              break
+            case 'e_wallet':
+              // Redirect to e-wallet payment page
+              if (midtransResult.data.actions?.[0]?.url) {
+                window.location.href = midtransResult.data.actions[0].url
+              }
+              break
+            case 'virtual_account':
+              // Show virtual account instructions
+              setPaymentInstructions({
+                type: 'virtual_account',
+                bank: midtransResult.data.bank,
+                vaNumber: midtransResult.data.vaNumber,
+                amount: total,
+                expiryTime: midtransResult.data.expiryTime,
+              })
+              // Redirect to order detail page
+              router.push(`/orders/${order.id}?success=true`)
+              break
+            case 'cod':
+              // Handle COD payment
+              setPaymentInstructions({
+                type: 'cod',
+                amount: total,
+              })
+              // Redirect to order detail page
+              router.push(`/orders/${order.id}?success=true`)
+              break
+          }
+        } else {
+          setError('Gagal membuat transaksi pembayaran')
+        }
       } else {
         setError(typedResult.message || 'Gagal memproses pembayaran')
-        setIsProcessing(false)
       }
     } catch (error) {
       console.error('Error during checkout:', error)
       setError('Terjadi kesalahan saat memproses pembayaran')
+    } finally {
       setIsProcessing(false)
     }
   }
@@ -135,15 +227,53 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
       </div>
     )
   }
+  console.log(cartItems)
+
+  const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
+
+  // Siapkan data invoice
+  const invoiceNumber = 'PI-' + Date.now() // Bisa diganti dengan nomor invoice dari backend
+  const invoiceDate = new Date().toLocaleDateString('id-ID')
+  const selectedAddress = addresses.find(
+    (addr) => addr.id === selectedAddressId
+  )
+  const customerName =
+    customerProfile?.fullName || selectedAddress?.recipientName || ''
+  const customerCompany = customerProfile?.companyName || ''
+  const customerEmail = customerProfile?.email || ''
+  const customerPhone = customerProfile?.phoneNumber || ''
+  const customerAddress = selectedAddress
+    ? `${selectedAddress.address}, ${selectedAddress.village}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province} ${selectedAddress.postalCode}`
+    : '-'
+  const customerLabelAddress = selectedAddress
+    ? `${selectedAddress.labelAddress}`
+    : '-'
+  console.log(customerProfile)
+  // Buat HTML invoice
+  const htmlContent = generateProformaPDF(
+    cartItems,
+    total,
+    logoBase64,
+    invoiceNumber,
+    invoiceDate,
+    customerName,
+    customerCompany,
+    customerLabelAddress,
+    customerAddress,
+    customerEmail,
+    customerPhone
+  )
+
+  function setShowPreview(arg0: boolean): void {
+    throw new Error('Function not implemented.')
+  }
 
   return (
     <div className='max-w-5xl mx-auto py-10 px-4'>
-      <div className='flex items-center gap-2 mb-6'>
-        <Link href='/keranjang'>
-          <Button variant='ghost' size='sm'>
-            <ArrowLeft className='w-4 h-4 mr-2' />
-            Kembali ke Keranjang
-          </Button>
+      <div className='flex items-start flex-col gap-6 mb-6'>
+        <Link href='/keranjang' className='flex items-center gap-2'>
+          <ArrowLeft className='w-4 h-4' />
+          Kembali ke Keranjang
         </Link>
         <h1 className='text-2xl font-bold'>Pembayaran</h1>
       </div>
@@ -162,9 +292,6 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
           <div className='rounded-lg border shadow-sm p-6 mb-6'>
             <div className='mb-4'>
               <h3 className='text-lg font-semibold'>Alamat Pengiriman</h3>
-              <p className='text-sm text-gray-500'>
-                Pilih alamat pengiriman untuk pesanan Anda
-              </p>
             </div>
 
             {addresses.length === 0 ? (
@@ -181,6 +308,9 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
               </div>
             ) : (
               <div className='space-y-3'>
+                <p className='text-sm text-gray-500'>
+                  Pilih alamat pengiriman untuk pesanan Anda
+                </p>
                 {addresses.map((address) => (
                   <div
                     key={address.id}
@@ -225,6 +355,8 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
             )}
           </div>
 
+          {/* Detail Pembayaran */}
+
           {/* Order Items */}
           <div className='rounded-lg border shadow-sm p-6'>
             <div className='mb-4'>
@@ -264,23 +396,60 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
               ))}
             </div>
 
-            <div className='mt-6 space-y-2'>
-              <div className='flex justify-between'>
-                <span className='text-gray-600'>Subtotal</span>
-                <span className='font-medium'>
-                  Rp {subtotal.toLocaleString('id-ID')}
-                </span>
+            <div className=' p-6 mb-6 bg-white'>
+              <h3 className='text-lg font-semibold mb-4'>Detail Pembayaran</h3>
+              <div className='mb-2'>
+                <span className='font-medium'>Metode: </span>
+                {paymentMethod === 'bank_transfer' && 'Transfer Bank'}
+                {paymentMethod === 'e_wallet' && 'E-Wallet'}
+                {paymentMethod === 'virtual_account' && 'Virtual Account'}
+                {paymentMethod === 'cod' && 'Bayar di Tempat (COD)'}
               </div>
-              <div className='flex justify-between'>
-                <span className='text-gray-600'>Biaya Pengiriman</span>
-                <span className='font-medium'>
-                  Rp {shippingCost.toLocaleString('id-ID')}
-                </span>
+              <div className='flex flex-col gap-1 mb-2'>
+                <div className='flex justify-between'>
+                  <span className='text-gray-600'>Subtotal</span>
+                  <span className='font-medium'>
+                    Rp {subtotal.toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-gray-600'>PPN (11%)</span>
+                  <span className='font-medium'>
+                    Rp {(subtotal * 0.11).toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className='flex justify-between border-t pt-2 mt-2'>
+                  <span className='font-bold'>Total</span>
+                  <span className='font-bold text-primary text-lg'>
+                    Rp {total.toLocaleString('id-ID')}
+                  </span>
+                </div>
               </div>
-              <div className='flex justify-between border-t pt-2 mt-2'>
-                <span className='font-bold'>Total</span>
-                <span className='font-bold text-primary text-lg'>
-                  Rp {total.toLocaleString('id-ID')}
+              <div className='flex items-center gap-2 mt-4'>
+                <PdfProInvoiceButton
+                  htmlContent={htmlContent}
+                  disabled={!selectedAddressId}
+                  data={{
+                    cartItems: cartItems.map((item) => ({
+                      product: {
+                        id: item.product.id,
+                        price: item.product.price,
+                        unit: item.product.unit,
+                      },
+                      quantity: item.quantity,
+                    })),
+                    customerData: {
+                      name: customerName,
+                      companyName: customerCompany,
+                      address: customerAddress,
+                      phone: customerPhone,
+                      email: customerEmail,
+                    },
+                    notes: '',
+                  }}
+                />
+                <span className='text-xs text-gray-500'>
+                  Unduh Proforma Invoice
                 </span>
               </div>
             </div>
@@ -423,6 +592,160 @@ const PaymentForm = ({ initialCartData }: PaymentFormProps) => {
           </div>
         </div>
       </div>
+
+      {/* Payment Instructions */}
+      {paymentInstructions && (
+        <div className='rounded-lg border shadow-sm p-6 mb-6'>
+          <h2 className='text-lg font-semibold mb-4'>Instruksi Pembayaran</h2>
+
+          <div className='bg-blue-50 p-4 rounded-md'>
+            {paymentInstructions.type === 'bank_transfer' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Silakan transfer ke rekening berikut:
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Bank</span>
+                    <span className='font-semibold'>
+                      {paymentInstructions.bank?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>No. Rekening</span>
+                    <span className='font-semibold'>
+                      {paymentInstructions.vaNumber}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Atas Nama</span>
+                    <span className='font-semibold'>
+                      PT Bahan Bangunan Indonesia
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>Jumlah</span>
+                    <span className='font-semibold text-primary'>
+                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Batas waktu pembayaran:{' '}
+                    {new Date(
+                      paymentInstructions.expiryTime || ''
+                    ).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {paymentInstructions.type === 'virtual_account' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Silakan transfer ke Virtual Account berikut:
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Bank</span>
+                    <span className='font-semibold'>
+                      {paymentInstructions.bank?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>No. Virtual Account</span>
+                    <span className='font-semibold'>
+                      {paymentInstructions.vaNumber}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>Jumlah</span>
+                    <span className='font-semibold text-primary'>
+                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Batas waktu pembayaran:{' '}
+                    {new Date(
+                      paymentInstructions.expiryTime || ''
+                    ).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {paymentInstructions.type === 'e_wallet' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Pembayaran E-Wallet
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Metode</span>
+                    <span className='font-semibold'>
+                      {paymentInstructions.bank?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>Jumlah</span>
+                    <span className='font-semibold text-primary'>
+                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Batas waktu pembayaran:{' '}
+                    {new Date(
+                      paymentInstructions.expiryTime || ''
+                    ).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {paymentInstructions.type === 'cod' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Pembayaran di Tempat (COD)
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>
+                      Total yang harus dibayar
+                    </span>
+                    <span className='font-semibold text-primary'>
+                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Silakan siapkan pembayaran tunai saat barang diterima
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className='mt-4 text-sm text-gray-600'>
+              <p className='mb-2'>Catatan Penting:</p>
+              <ul className='list-disc list-inside space-y-1'>
+                <li>Pastikan jumlah transfer sesuai dengan total pembayaran</li>
+                <li>Simpan bukti pembayaran Anda</li>
+                <li>Pesanan akan diproses setelah pembayaran dikonfirmasi</li>
+                <li>Jika ada kendala, silakan hubungi customer service kami</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

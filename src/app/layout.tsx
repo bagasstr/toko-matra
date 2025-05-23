@@ -71,7 +71,7 @@ export default function RootLayout({
         <QueryClientProvider>
           <ThemesProvider forcedTheme='light'>
             <main>{children}</main>
-            <Toaster />
+            <Toaster position='top-center' offset={100} />
           </ThemesProvider>
           {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </QueryClientProvider>

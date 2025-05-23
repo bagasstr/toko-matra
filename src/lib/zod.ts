@@ -35,7 +35,20 @@ export const createProductSchema = z.object({
   sku: z.string().min(1, 'SKU harus diisi'),
   description: z.string().optional(),
   images: z.array(z.string()),
-  price: z.number().min(1, 'Harga harus diisi'),
+  price: z.string().superRefine((val, ctx) => {
+    if (val === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Harga harus diisi',
+      })
+    }
+    if (isNaN(Number(val))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Harga harus berupa angka',
+      })
+    }
+  }),
   unit: z.string().min(1, 'Satuan harus diisi'),
   weight: z.string().optional(),
   dimensions: z.string().optional(),
@@ -43,7 +56,20 @@ export const createProductSchema = z.object({
   isActive: z.boolean().default(true),
   categoryId: z.string().min(1, 'Kategori harus dipilih'),
   brandId: z.string().optional(),
-  stock: z.number().min(0, 'Stok harus berupa angka'),
+  stock: z.string().superRefine((val, ctx) => {
+    if (val === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Stok harus diisi',
+      })
+    }
+    if (isNaN(Number(val))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Stok harus berupa angka',
+      })
+    }
+  }),
   minOrder: z.string().superRefine((val, ctx) => {
     if (val === '') {
       ctx.addIssue({
@@ -72,6 +98,7 @@ export const createProductSchema = z.object({
       })
     }
   }),
+  label: z.string(),
 })
 
 export type CreateProductSchema = z.infer<typeof createProductSchema>

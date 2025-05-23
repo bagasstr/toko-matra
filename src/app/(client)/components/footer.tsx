@@ -7,7 +7,11 @@ import { usePathname } from 'next/navigation'
 
 const Footer = () => {
   const pathname = usePathname()
-  if (pathname.startsWith('/profile') || pathname.startsWith('/login') || pathname.startsWith('/daftar'))
+  if (
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/daftar')
+  )
     return null
 
   return (
@@ -89,6 +93,15 @@ const Footer = () => {
         </div>
       </div>
       <div className='mt-8 border-t border-gray-700 pt-4 text-center text-xs text-gray-400'>
+        <div className='mb-2 flex flex-wrap justify-center gap-4'>
+          <Link href='/syarat-ketentuan' className='hover:underline'>
+            Syarat & Ketentuan
+          </Link>
+          <span>|</span>
+          <Link href='/kebijakan-privasi' className='hover:underline'>
+            Kebijakan Privasi
+          </Link>
+        </div>
         &copy; {new Date().getFullYear()} TOKO MATRA. All rights reserved.
       </div>
     </footer>

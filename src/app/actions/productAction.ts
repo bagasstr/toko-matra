@@ -21,6 +21,7 @@ export async function createProduct(data: {
   weight?: number
   dimensions?: string
   isFeatured: boolean
+  label: string
   isActive: boolean
   categoryId: string
   brandId?: string
@@ -62,6 +63,7 @@ export async function createProduct(data: {
         slug: uniqueSlug,
         sku: data.sku,
         description: data.description,
+        label: data.label,
         images: data.images,
         price: data.price,
         category: {
@@ -240,6 +242,7 @@ export async function updateProduct(id: string, data: any) {
         slug: data.slug,
         sku: data.sku,
         description: data.description,
+        label: data.label,
         images: data.images,
         price: data.price,
         unit: data.unit,

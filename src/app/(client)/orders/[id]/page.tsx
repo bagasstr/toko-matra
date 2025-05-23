@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { Payment } from '@/types/payment'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,7 +59,7 @@ export default async function OrderPage({
     )
   }
 
-  const payment = order.Payment[0]
+  const payment = order.Payment[0] as Payment
   const shipment = order.Shipment
   const address = order.address
 
@@ -221,25 +222,166 @@ export default async function OrderPage({
       </div>
 
       {/* Payment Instructions */}
-      {order.status === 'PENDING' && (
+      {order.status === 'PENDING' && payment && (
         <div className='rounded-lg border shadow-sm p-6 mb-6'>
           <h2 className='text-lg font-semibold mb-4'>Instruksi Pembayaran</h2>
 
           <div className='bg-blue-50 p-4 rounded-md'>
-            <p className='font-medium text-blue-800 mb-2'>
-              Silakan transfer ke rekening berikut:
-            </p>
-            <p className='mb-1'>Bank BCA</p>
-            <p className='mb-1'>No. Rekening: 1234567890</p>
-            <p className='mb-1'>Atas Nama: PT Bahan Bangunan Indonesia</p>
-            <p className='mb-4'>
-              Jumlah: Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-            </p>
+            {payment.paymentMethod === 'bank_transfer' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Silakan transfer ke rekening berikut:
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Bank</span>
+                    <span className='font-semibold'>
+                      {payment.paymentDetails?.bank?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>No. Rekening</span>
+                    <span className='font-semibold'>
+                      {payment.paymentDetails?.vaNumber}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Atas Nama</span>
+                    <span className='font-semibold'>
+                      PT Bahan Bangunan Indonesia
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>Jumlah</span>
+                    <span className='font-semibold text-primary'>
+                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Batas waktu pembayaran:{' '}
+                    {new Date(
+                      payment.paymentDetails?.expiryTime || ''
+                    ).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </>
+            )}
 
-            <p className='text-sm text-blue-700'>
-              Setelah melakukan pembayaran, pesanan Anda akan diproses dalam
-              waktu 1x24 jam.
-            </p>
+            {payment.paymentMethod === 'virtual_account' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Silakan transfer ke Virtual Account berikut:
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Bank</span>
+                    <span className='font-semibold'>
+                      {payment.paymentDetails?.bank?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>No. Virtual Account</span>
+                    <span className='font-semibold'>
+                      {payment.paymentDetails?.vaNumber}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>Jumlah</span>
+                    <span className='font-semibold text-primary'>
+                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Batas waktu pembayaran:{' '}
+                    {new Date(
+                      payment.paymentDetails?.expiryTime || ''
+                    ).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {payment.paymentMethod === 'e_wallet' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Pembayaran E-Wallet
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <span className='text-gray-600'>Metode</span>
+                    <span className='font-semibold'>
+                      {payment.paymentDetails?.eWalletType?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>Jumlah</span>
+                    <span className='font-semibold text-primary'>
+                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                {payment.midtransRedirectUrl && (
+                  <div className='mt-4'>
+                    <a
+                      href={payment.midtransRedirectUrl}
+                      target='_blank'
+                      rel='noopener noreferrer'
+                      className='inline-block bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors'>
+                      Lanjutkan ke Pembayaran
+                    </a>
+                  </div>
+                )}
+                <div className='bg-yellow-50 p-3 rounded-md mt-4'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Batas waktu pembayaran:{' '}
+                    {new Date(
+                      payment.paymentDetails?.expiryTime || ''
+                    ).toLocaleString('id-ID')}
+                  </p>
+                </div>
+              </>
+            )}
+
+            {payment.paymentMethod === 'cod' && (
+              <>
+                <p className='font-medium text-blue-800 mb-2'>
+                  Pembayaran di Tempat (COD)
+                </p>
+                <div className='bg-white p-4 rounded-md mb-4'>
+                  <div className='flex justify-between items-center'>
+                    <span className='text-gray-600'>
+                      Total yang harus dibayar
+                    </span>
+                    <span className='font-semibold text-primary'>
+                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+                <div className='bg-yellow-50 p-3 rounded-md'>
+                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
+                    <AlertCircle className='w-4 h-4' />
+                    Silakan siapkan pembayaran tunai saat barang diterima
+                  </p>
+                </div>
+              </>
+            )}
+
+            <div className='mt-4 text-sm text-gray-600'>
+              <p className='mb-2'>Catatan Penting:</p>
+              <ul className='list-disc list-inside space-y-1'>
+                <li>Pastikan jumlah transfer sesuai dengan total pembayaran</li>
+                <li>Simpan bukti pembayaran Anda</li>
+                <li>Pesanan akan diproses setelah pembayaran dikonfirmasi</li>
+                <li>Jika ada kendala, silakan hubungi customer service kami</li>
+              </ul>
+            </div>
           </div>
         </div>
       )}

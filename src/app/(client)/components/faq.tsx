@@ -9,19 +9,83 @@ const faqs = [
       'Pilih produk yang diinginkan, klik tombol beli, lalu ikuti proses checkout hingga selesai.',
   },
   {
-    question: 'Apakah produk yang dijual original?',
-    answer:
-      'Ya, semua produk yang kami jual adalah original dan bergaransi resmi.',
-  },
-  {
     question: 'Bagaimana cara pembayaran?',
     answer:
       'Kami menerima pembayaran melalui transfer bank, e-wallet, dan metode pembayaran online lainnya.',
   },
   {
-    question: 'Berapa lama pengiriman barang?',
-    answer:
-      'Pengiriman biasanya memakan waktu 1-3 hari kerja untuk area Jabodetabek dan 2-7 hari kerja untuk luar kota.',
+    question: 'Apa itu sistem Supply on Demand?',
+    answer: (
+      <div>
+        Supply on Demand adalah sistem pemenuhan pesanan berdasarkan stok yang
+        tersedia di gudang kami maupun supplier. Produk bisa berupa:
+        <ul className='list-disc pl-5 mt-2'>
+          <li>Ready stock di gudang kami (khusus area Pulau Jawa)</li>
+          <li>Ready stock dari supplier (dikirim langsung)</li>
+          <li>Indent/pre-order (produk akan diproduksi lebih dulu)</li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    question: 'Apakah pengiriman menjangkau seluruh Indonesia?',
+    answer: (
+      <div>
+        Kami melayani pengiriman ke seluruh Indonesia. Namun, saat ini gudang
+        kami hanya menjangkau Pulau Jawa. Untuk luar Pulau Jawa, pengiriman
+        dilakukan langsung oleh supplier.
+      </div>
+    ),
+  },
+  {
+    question: 'Bagaimana saya tahu produk ready stock atau indent?',
+    answer: (
+      <div>
+        Keterangan stok tersedia di halaman produk. Jika ragu, Anda akan
+        dikonfirmasi kembali oleh tim kami melalui WhatsApp setelah pemesanan.
+      </div>
+    ),
+  },
+  {
+    question: 'Berapa lama waktu pengiriman?',
+    answer: (
+      <div>
+        <ul className='list-disc pl-5'>
+          <li>
+            <b>Jabodetabek:</b> 1-2 hari kerja (ready stock)
+          </li>
+          <li>
+            <b>Luar Jabodetabek (Pulau Jawa):</b> 2-5 hari kerja
+          </li>
+          <li>
+            <b>Luar Pulau Jawa:</b> mengikuti estimasi supplier
+          </li>
+        </ul>
+      </div>
+    ),
+  },
+  {
+    question: 'Apa saja metode pembayaran yang tersedia?',
+    answer: (
+      <div>
+        Kami menerima pembayaran melalui transfer bank, e-wallet, dan payment
+        gateway (Virtual Account, QRIS, dll).
+      </div>
+    ),
+  },
+  {
+    question: 'Apakah bisa COD (Bayar di Tempat)?',
+    answer: <div>Saat ini kami belum mendukung sistem pembayaran COD.</div>,
+  },
+  {
+    question: 'Apakah produk bisa dikembalikan?',
+    answer: (
+      <div>
+        Pengembalian hanya berlaku untuk produk yang rusak saat pengiriman atau
+        tidak sesuai dengan pesanan. Laporan maksimal 2x24 jam setelah barang
+        diterima.
+      </div>
+    ),
   },
 ]
 

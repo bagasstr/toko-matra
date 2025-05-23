@@ -13,3 +13,12 @@ export function formatPrice(price: number): string {
     maximumFractionDigits: 0,
   }).format(price)
 }
+
+export function generateInvoiceNumber(prefix: string) {
+  return `${prefix}-${Date.now()}`
+}
+
+export function formatCurrency(value: number | undefined) {
+  if (typeof value !== 'number' || isNaN(value)) return 'Rp 0,00'
+  return 'Rp ' + value.toLocaleString('id-ID')
+}

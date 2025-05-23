@@ -20,8 +20,8 @@ const MobileNavbar = async () => {
     .reduce((acc, stock) => acc + stock, 0)
 
   const items = cartData || []
+  const uniqueProductCount = items.length
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0)
-  console.log(totalQuantity, stockProduct)
 
   return (
     <div className='lg:hidden bg-blue-100'>
@@ -62,8 +62,7 @@ const MobileNavbar = async () => {
                     <Badge
                       variant='destructive'
                       className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
-                      {totalQuantity > stockProduct ? '99+' : totalQuantity}
-                      {/* {items.length} */}
+                      {uniqueProductCount}
                     </Badge>
                   )}
                 </Button>

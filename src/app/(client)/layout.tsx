@@ -15,6 +15,7 @@ export default async function HomeLayout({
       <Navbar />
       <main className='py-4 mt-16 lg:mt-20'>{children}</main>
       <Footer />
+      <FooterMobile />
     </>
   )
 }

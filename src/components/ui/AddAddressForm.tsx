@@ -127,11 +127,11 @@ export default function AddAddressForm({ addressId }: { addressId: string }) {
 
   const onSubmit = async (data: AddressFormValues) => {
     try {
-      const result = await addAddress(addressId, data)
+      const result = await addAddress(data)
 
       if (result.success) {
         toast.success('Alamat berhasil diperbarui')
-        router.push(`/profile`)
+        router.back()
       } else {
         toast.error(result.error || 'Gagal memperbarui alamat')
       }
