@@ -9,12 +9,14 @@ import { Badge } from '@/components/ui/badge'
 import { useQuery } from '@tanstack/react-query'
 import { getCartItems } from '@/app/actions/cartAction'
 import { getAllProducts } from '@/app/actions/productAction'
+import { getNotifications } from '@/app/actions/notificationAction'
 
 export const dynamic = 'force-dynamic'
 
 const MobileNavbar = async () => {
   const { data: cartData } = await getCartItems()
   const { products } = await getAllProducts()
+  const { notifications } = await getNotifications()
   const stockProduct = products
     ?.map((product) => product.stock)
     .reduce((acc, stock) => acc + stock, 0)
@@ -22,6 +24,8 @@ const MobileNavbar = async () => {
   const items = cartData || []
   const uniqueProductCount = items.length
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0)
+  const unreadNotifications =
+    notifications?.filter((n) => !n.isRead).length || 0
 
   return (
     <div className='lg:hidden bg-blue-100'>
@@ -51,8 +55,15 @@ const MobileNavbar = async () => {
           <div className='flex items-center gap-2'>
             <Link
               href='/notifikasi'
-              className='size-10 flex items-center justify-center'>
+              className='size-10 flex items-center justify-center relative'>
               <Bell size={20} className='text-foreground' />
+              {unreadNotifications > 0 && (
+                <Badge
+                  variant='destructive'
+                  className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
+                  {unreadNotifications > 99 ? '99+' : unreadNotifications}
+                </Badge>
+              )}
             </Link>
             {items ? (
               <Link href='/keranjang'>

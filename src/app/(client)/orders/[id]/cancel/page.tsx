@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import CancelOrderForm from './CancelOrderForm'
+import { validateSession } from '@/app/actions/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,6 +20,8 @@ export default async function CancelOrderPage({
   const orderId = params.id
   const orderResult = await getOrderById(orderId)
   const order = orderResult.success ? orderResult.data : null
+  const session = await validateSession()
+  const userId = session?.user?.profile.id.toLowerCase()
 
   if (!order) {
     return (
@@ -40,7 +43,13 @@ export default async function CancelOrderPage({
           </p>
         </div>
 
-        <Link href='/orders'>
+        <Link
+          href={{
+            pathname: '/profile/pesanan-saya',
+            query: {
+              user: userId,
+            },
+          }}>
           <Button>Lihat Semua Pesanan</Button>
         </Link>
       </div>

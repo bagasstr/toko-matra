@@ -27,7 +27,6 @@ model User {
   product          Product[]
   cart             Cart[]
   order            Order[]
-  review           Review[]
   account          Account[]
   Notification     Notification[]
   proformaInvoices ProformaInvoice[]
@@ -177,7 +176,6 @@ model Product {
   categoryId          String
   cartItems           CartItem[]
   orderItem           OrderItem[]
-  review              Review[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
   brand               Brand?                @relation(fields: [brandId], references: [id], onDelete: Cascade)
@@ -267,17 +265,24 @@ model OrderItem {
 }
 
 model Payment {
-  id                  String   @id
-  orderId             String
-  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  amount              Int
-  paymentMethod       String
-  status              String
-  midtransToken       String?  @map("midtrans_token")
-  midtransRedirectUrl String?  @map("midtrans_redirect_url")
-  paymentDetails      Json?    @map("payment_details")
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                String    @id @default(cuid())
+  orderId           String
+  order             Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount            Int
+  paymentMethod     String // bisa juga enum
+  paymentType       String? // dari Midtrans: credit_card, bank_transfer, gopay, dll
+  transactionId     String? // Midtrans transaction_id
+  transactionTime   DateTime? // Midtrans transaction_time
+  transactionStatus String? // settlement, pending, cancel, etc.
+  fraudStatus       String? // Midtrans fraud_status
+  bank              String? // untuk VA: bca, bni, dll
+  vaNumber          String? // nomor virtual account
+  approvalCode      String? // optional, dari midtrans
+  currency          String?   @default("IDR")
+  status            String // bisa enum seperti PaymentStatus
+  rawResponse       Json? // Simpan payload response Midtrans (opsional tapi berguna)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("payments")
 }
@@ -293,20 +298,6 @@ model Shipment {
   updatedAt      DateTime @updatedAt
 
   @@map("shipments")
-}
-
-model Review {
-  id        String   @id
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
-  rating    Int
-  comment   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@map("reviews")
 }
 
 // untuk role user
@@ -330,41 +321,26 @@ enum PaymentStatus {
   CANCELLED
 }
 
-// model Category {
-//   id           Int       @id @default(autoincrement())
-//   nameCategory String
-//   slug         String
-//   createdAt    DateTime  @default(now())
-//   updatedAt    DateTime  @updatedAt
-//   product      Product[]
+enum PaymentType {
+  credit_card
+  bank_transfer
+  gopay
+  qris
+  echannel
+  convenience_store
+}
 
-//   @@map("category")
-// }
-// model Product {
-//   id          Int      @id @default(autoincrement())
-//   nameProduct String
-//   slug        String
-//   description String
-//   price       Int
-//   imageUrl    String
-//   stock       Int
-//   categoryId  Int
-//   category    Category @relation(fields: [categoryId], references: [id])
+enum TransactionStatus {
+  capture
+  settlement
+  pending
+  deny
+  cancel
+  expire
+  failure
+  refund
+}
 
-//   createdAt DateTime    @default(now())
-//   updatedAt DateTime    @updatedAt
-//   brand     Brand?      @relation(fields: [brandId], references: [id])
-//   brandId   Int?
-//   cartItems CartItem[]
-//   orderItem OrderItem[]
-//   review    Review[]
-
-//   @@map("products")
-// }
-
-// schema.prisma
-
-// Add Invoice model with proper fields
 model Invoice {
   id               String            @id @default(cuid())
   invoiceNumber    String            @unique

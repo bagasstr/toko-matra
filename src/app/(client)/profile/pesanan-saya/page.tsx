@@ -3,12 +3,31 @@ import { Button } from '@/components/ui/button'
 import { AlertCircle, Package, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import AuthSection from '@/components/ui/AuthSection'
+import { validateSession } from '@/app/actions/session'
 
 export const dynamic = 'force-dynamic'
 
-export default async function OrdersPage() {
-  const orderResult = await getUserOrders()
+interface PesananSayaPageProps {
+  searchParams: { user?: string }
+}
+
+export default async function PesananSayaPage({
+  searchParams,
+}: PesananSayaPageProps) {
+  const userId = searchParams.user
+  let orderResult = { success: false, data: [] as any[] }
+  if (userId) {
+    const result = await getUserOrders()
+    orderResult = { success: result.success, data: result.data || [] }
+  }
   const orders = orderResult.success ? orderResult.data : []
+  const userSession = await validateSession()
+  const userIdSession = userSession?.user?.profile.id
+
+  if (userId && userId.toLowerCase() !== userIdSession?.toLowerCase()) {
+    return <AuthSection />
+  }
 
   if (!orderResult.success) {
     return (
@@ -20,7 +39,7 @@ export default async function OrdersPage() {
           <p>Terjadi kesalahan saat memuat data pesanan.</p>
         </div>
 
-        <Link href='/'>
+        <Link href='/produk'>
           <Button>Lihat Produk</Button>
         </Link>
       </div>

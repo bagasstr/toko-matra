@@ -21,7 +21,6 @@ import { getUserAddresses } from '../../../actions/addressAction'
 import { useRouter } from 'next/navigation'
 import { generateProformaPDF } from '@/lib/pdfProInvFormatter'
 import { PdfProInvoiceButton } from '../../components/DownloadPdfButton'
-import { createMidtransTransaction } from '@/app/actions/paymentAction'
 
 type PaymentMethod = 'bank_transfer' | 'e_wallet' | 'virtual_account' | 'cod'
 
@@ -33,10 +32,12 @@ interface PaymentFormProps {
     phoneNumber?: string
     companyName?: string
   }
+  userId?: string
 }
 
 const PaymentForm = ({
   initialCartData,
+  userId,
   customerProfile,
 }: PaymentFormProps) => {
   const router = useRouter()
@@ -103,7 +104,6 @@ const PaymentForm = ({
     setIsProcessing(true)
 
     try {
-      // First create the order
       const result = await processCheckout({
         addressId: selectedAddressId,
         paymentMethod,
@@ -117,86 +117,15 @@ const PaymentForm = ({
       }
 
       if (typedResult.success && typedResult.data?.order?.id) {
-        const order = typedResult.data.order
-        const selectedAddress = addresses.find(
-          (addr) => addr.id === selectedAddressId
-        )
-
-        // Create Midtrans transaction
-        const midtransResult = await createMidtransTransaction(
-          order.id,
-          total,
-          {
-            firstName:
-              customerProfile?.fullName || selectedAddress?.recipientName || '',
-            email: customerProfile?.email || '',
-            phone:
-              customerProfile?.phoneNumber ||
-              selectedAddress?.phoneNumber ||
-              '',
-          },
-          cartItems.map((item: any) => ({
-            id: item.product.id,
-            price: Number(item.product.price),
-            quantity: item.quantity,
-            name: item.product.name,
-          })),
-          paymentMethod
-        )
-
-        if (midtransResult.success && midtransResult.data) {
-          // Handle different payment methods
-          switch (paymentMethod) {
-            case 'bank_transfer':
-              // Show bank transfer instructions
-              setPaymentInstructions({
-                type: 'bank_transfer',
-                bank: midtransResult.data.bank,
-                vaNumber: midtransResult.data.vaNumber,
-                amount: total,
-                expiryTime: midtransResult.data.expiryTime,
-              })
-              // Redirect to order detail page
-              router.push(`/orders/${order.id}?success=true`)
-              break
-            case 'e_wallet':
-              // Redirect to e-wallet payment page
-              if (midtransResult.data.actions?.[0]?.url) {
-                window.location.href = midtransResult.data.actions[0].url
-              }
-              break
-            case 'virtual_account':
-              // Show virtual account instructions
-              setPaymentInstructions({
-                type: 'virtual_account',
-                bank: midtransResult.data.bank,
-                vaNumber: midtransResult.data.vaNumber,
-                amount: total,
-                expiryTime: midtransResult.data.expiryTime,
-              })
-              // Redirect to order detail page
-              router.push(`/orders/${order.id}?success=true`)
-              break
-            case 'cod':
-              // Handle COD payment
-              setPaymentInstructions({
-                type: 'cod',
-                amount: total,
-              })
-              // Redirect to order detail page
-              router.push(`/orders/${order.id}?success=true`)
-              break
-          }
-        } else {
-          setError('Gagal membuat transaksi pembayaran')
-        }
+        // Redirect to order confirmation page
+        router.push(`/orders/${typedResult.data.order.id}?success=true`)
       } else {
         setError(typedResult.message || 'Gagal memproses pembayaran')
+        setIsProcessing(false)
       }
     } catch (error) {
       console.error('Error during checkout:', error)
       setError('Terjadi kesalahan saat memproses pembayaran')
-    } finally {
       setIsProcessing(false)
     }
   }

@@ -10,6 +10,7 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import { Payment } from '@/types/payment'
+import { validateSession } from '@/app/actions/session'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,6 +29,8 @@ export default async function OrderPage({
 }: OrderPageProps) {
   const orderId = params.id
   const isSuccess = searchParams.success === 'true'
+  const session = await validateSession()
+  const userId = session?.user?.profile.id.toLowerCase()
 
   const orderResult = await getOrderById(orderId)
   const order = orderResult.success ? orderResult.data : null
@@ -387,7 +390,13 @@ export default async function OrderPage({
       )}
 
       <div className='flex justify-between'>
-        <Link href='/orders'>
+        <Link
+          href={{
+            pathname: '/profile/pesanan-saya',
+            query: {
+              user: userId,
+            },
+          }}>
           <Button variant='outline'>
             <ArrowLeft className='w-4 h-4 mr-2' />
             Lihat Semua Pesanan

@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation'
 import { ZodError, type z } from 'zod'
 import { createSession, validateSession } from './session'
 import { revalidatePath } from 'next/cache'
+import { createNotification } from './notificationAction'
 
 export const login = async (formData: FormData) => {
   try {
@@ -34,6 +35,14 @@ export const login = async (formData: FormData) => {
       return { error: 'Password salah' }
     }
     await createSession(existsUser.id)
+
+    // Create login notification
+    await createNotification(
+      existsUser.id,
+      'Login Berhasil',
+      'Anda telah berhasil masuk ke akun Anda.',
+      false
+    )
 
     return { success: true }
   } catch (error: any) {

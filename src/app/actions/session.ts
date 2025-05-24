@@ -54,7 +54,6 @@ export const validateSession = async () => {
           emailVerified: true,
           profile: true,
           address: true,
-          review: true,
           cart: true,
           order: true,
           typeUser: true,

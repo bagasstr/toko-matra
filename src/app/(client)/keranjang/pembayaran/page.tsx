@@ -12,6 +12,8 @@ export default async function PaymentPage({
 }) {
   const cartData = await getCartItems()
   const session = await validateSession()
+
+  const userId = session?.user?.profile.id.toLowerCase()
   const customerProfile = session?.user?.profile || null
 
   // Filter cart items based on selected items

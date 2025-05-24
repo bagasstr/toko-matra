@@ -10,6 +10,7 @@ const nextConfig = {
   },
   // Configure for server-side rendering
   output: 'standalone',
+  devIndicators: false,
   // Set runtime to be server-side for routes that use cookies
   reactStrictMode: true,
   // Set dynamic rendering for the app
