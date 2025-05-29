@@ -18,9 +18,9 @@ services:
       - DATABASE_URL="postgresql://postgres:root@localhost:4321/tokomatra?schema=public"
       - EMAIL_PASSWORD="zntvjshkngzrvhqn"
       - EMAIL="servermatrakosala@gmail.com"
-      - NEXT_PUBLIC_MERCHANT_ID="G436497685"
-      - MIDTRANS_CLIENT_KEY="SB-Mid-client-LWGDKLv2zRF-EsEc"
-      - MIDTRANS_SERVER_KEY="SB-Mid-server-jFwS9ISigOhX6FK5MeseUlU0"
+      - NEXT_PUBLIC_MERCHANT_ID=${NEXT_PUBLIC_MERCHANT_ID}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
       - NEXT_PUBLIC_LOGO_BASE64=${NEXT_PUBLIC_LOGO_BASE64}
     depends_on:
       - postgres
