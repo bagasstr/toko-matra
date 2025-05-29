@@ -11,17 +11,17 @@ services:
     ports:
       - '3001:3000'
     environment:
-      - NODE_ENV=production
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=root
-      - POSTGRES_DB=tokomatra
-      - DATABASE_URL="postgresql://postgres:root@localhost:4321/tokomatra?schema=public"
-      - EMAIL_PASSWORD="zntvjshkngzrvhqn"
-      - EMAIL="servermatrakosala@gmail.com"
-      - NEXT_PUBLIC_MERCHANT_ID=${NEXT_PUBLIC_MERCHANT_ID}
-      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
-      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
-      - NEXT_PUBLIC_LOGO_BASE64=${NEXT_PUBLIC_LOGO_BASE64}
+      NODE_ENV: production
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: tokomatra
+      DATABASE_URL: ${DATABASE_URL}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      EMAIL: ${EMAIL}
+      NEXT_PUBLIC_MERCHANT_ID: ${NEXT_PUBLIC_MERCHANT_ID}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY}
+      NEXT_PUBLIC_LOGO_BASE64: ${NEXT_PUBLIC_LOGO_BASE64}
     depends_on:
       - postgres
     volumes:
