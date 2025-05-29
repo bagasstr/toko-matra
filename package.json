@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "npx prisma generate && next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
     "start": "node .next/standalone/server.js",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "ts-node --project tsconfig.seed.json adminSeed.ts && ts-node --project tsconfig.seed.json categorySeed.ts"
   },
   "dependencies": {
     "@develoka/angka-rupiah-js": "^1.0.3",

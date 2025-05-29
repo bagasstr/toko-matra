@@ -141,9 +141,7 @@ const DimensionsInput: React.FC<DimensionsInputProps> = ({
   field,
 }) => {
   const parseDimensions = (value: string) => {
-    const [panjang = '', lebar = '', tinggi = ''] = value
-      .split('x')
-      .map((dim) => dim.replace(' cm', ''))
+    const [panjang = '', lebar = '', tinggi = ''] = value.split('x')
     return { panjang, lebar, tinggi }
   }
 
@@ -158,7 +156,7 @@ const DimensionsInput: React.FC<DimensionsInputProps> = ({
     }
 
     // Format: Panjang cm x Lebar cm x Tinggi cm
-    const dimensionsString = `${updatedDimensions.panjang} cm x ${updatedDimensions.lebar} cm x ${updatedDimensions.tinggi} cm`
+    const dimensionsString = `${updatedDimensions.panjang}x${updatedDimensions.lebar}x${updatedDimensions.tinggi}`
     field.onChange(dimensionsString)
   }
 

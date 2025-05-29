@@ -525,7 +525,7 @@ function ProductDetailPage({
       if (!product) return
 
       const res = await getWishlist()
-      console.log(res)
+      console.log('Wishlist:', res)
       setIsWishlistMarked(res.some((item) => item.productId === product.id))
     }
     fetchWishlist()
@@ -632,6 +632,8 @@ function ProductDetailPage({
       if (result.success) {
         setIsWishlistMarked(!isWishlistMarked)
         router.refresh()
+      } else {
+        toast.error(result.message)
       }
     } catch (error) {
       setIsWishlistMarked(false)

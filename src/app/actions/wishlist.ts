@@ -2,44 +2,56 @@
 
 import { prisma } from '@/lib/prisma'
 import { validateSession } from './session'
+import { generateCustomId } from '@/lib/helpper'
 
 export const toggleWishlist = async (productId: string) => {
-  const session = await validateSession()
-  if (!session?.user) {
-    throw new Error('Unauthorized')
-  }
-  const wishlist = await prisma.wishlist.findUnique({
-    where: {
-      productId,
-    },
-  })
-  if (wishlist) {
-    await prisma.wishlist.delete({
-      where: {
-        id: wishlist.id,
-      },
-    })
-    return {
-      success: true,
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'Silakan login terlebih dahulu',
+      }
     }
-  } else {
-    await prisma.wishlist.create({
-      data: {
-        user: {
-          connect: {
-            id: session.user.id,
-          },
-        },
-        product: {
-          connect: {
-            id: productId,
-          },
-        },
+
+    const existingWishlist = await prisma.wishlist.findFirst({
+      where: {
+        userId: session.user.id,
+        productId: productId,
       },
     })
-  }
-  return {
-    success: true,
+
+    if (existingWishlist) {
+      // Remove from wishlist
+      await prisma.wishlist.delete({
+        where: {
+          id: existingWishlist.id,
+        },
+      })
+      return {
+        success: true,
+        message: 'Produk dihapus dari wishlist',
+      }
+    } else {
+      // Add to wishlist
+      await prisma.wishlist.create({
+        data: {
+          id: generateCustomId('wis'),
+          userId: session.user.id,
+          productId: productId,
+        },
+      })
+      return {
+        success: true,
+        message: 'Produk ditambahkan ke wishlist',
+      }
+    }
+  } catch (error) {
+    console.error('Error toggling wishlist:', error)
+    return {
+      success: false,
+      message: 'Gagal mengelola wishlist',
+    }
   }
 }
 
@@ -61,6 +73,7 @@ export const addToWishlist = async (productId: string) => {
     }
     await prisma.wishlist.create({
       data: {
+        id: generateCustomId('wis'),
         user: {
           connect: {
             id: session.user.id,
@@ -103,16 +116,33 @@ export const removeFromWishlist = async (productId: string) => {
 }
 
 export const getWishlist = async () => {
-  const session = await validateSession()
-  if (!session?.user) {
-    throw new Error('Unauthorized')
-  }
-  const wishlist = await prisma.wishlist.findMany({
-    where: {
-      user: {
-        id: session.user.id,
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return [] // Return empty array instead of throwing error
+    }
+
+    const wishlist = await prisma.wishlist.findMany({
+      where: {
+        userId: session.user.id,
       },
-    },
-  })
-  return wishlist
+      select: {
+        productId: true,
+        id: true,
+        product: {
+          select: {
+            name: true,
+            price: true,
+            images: true,
+            category: true,
+          },
+        },
+      },
+    })
+
+    return wishlist
+  } catch (error) {
+    console.error('Error fetching wishlist:', error)
+    return [] // Return empty array on any error
+  }
 }

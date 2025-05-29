@@ -81,6 +81,7 @@ CREATE TABLE "verification_tokens" (
     "identifier" TEXT NOT NULL,
     "token" TEXT NOT NULL,
     "expires" TIMESTAMP(3) NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "verification_tokens_pkey" PRIMARY KEY ("id")
 );
@@ -355,6 +356,7 @@ CREATE TABLE "wishlists" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
+    "categoryId" TEXT NOT NULL,
 
     CONSTRAINT "wishlists_pkey" PRIMARY KEY ("id")
 );
@@ -406,9 +408,6 @@ CREATE UNIQUE INDEX "invoices_invoiceNumber_key" ON "invoices"("invoiceNumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "proforma_invoices_invoiceNumber_key" ON "proforma_invoices"("invoiceNumber");
-
--- CreateIndex
-CREATE UNIQUE INDEX "wishlists_productId_key" ON "wishlists"("productId");
 
 -- AddForeignKey
 ALTER TABLE "profile" ADD CONSTRAINT "profile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -495,4 +494,7 @@ ALTER TABLE "proforma_invoice_items" ADD CONSTRAINT "proforma_invoice_items_prod
 ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;

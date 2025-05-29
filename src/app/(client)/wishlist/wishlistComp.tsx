@@ -7,27 +7,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import { removeFromWishlist } from '@/app/actions/wishlist'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-
-const wishlist = [
-  {
-    id: 1,
-    name: 'Semen Tiga Roda 50kg',
-    price: 75000,
-    image: '/assets/products/semen-tigaroda.png',
-  },
-  {
-    id: 2,
-    name: 'Bata Merah Press',
-    price: 1200,
-    image: '/assets/products/bata-merah.png',
-  },
-  {
-    id: 3,
-    name: 'Keramik Lantai 40x40',
-    price: 65000,
-    image: '/assets/products/keramik-lantai.png',
-  },
-]
+import Link from 'next/link'
 
 const WishlistComp = ({ wishlist }: { wishlist: any }) => {
   const router = useRouter()
@@ -40,18 +20,20 @@ const WishlistComp = ({ wishlist }: { wishlist: any }) => {
       toast.error(res.message)
     }
   }
+  console.log(wishlist)
   return (
     <div className='p-4'>
       {wishlist.map((item) => (
-        <div
+        <Link
+          href={`/kategori/${item.product.category.slug}/${item.product.slug}`}
           key={item.id}
-          className='flex items-center gap-4 py-3 px-2 bg-white hover:bg-gray-50 transition border-b last:border-b-0'>
+          className='flex items-center gap-4 py-3 px-2 bg-white hover:bg-gray-50 transition border rounded-md'>
           <Image
             src={item.product.images[0]}
             alt={item.product.name}
             width={56}
             height={56}
-            className='rounded object-contain bg-gray-100'
+            className='rounded object-contain'
           />
           <div className='flex-1'>
             <div className='font-medium text-gray-800 text-sm'>
@@ -68,7 +50,7 @@ const WishlistComp = ({ wishlist }: { wishlist: any }) => {
             onClick={() => handleRemoveFromWishlist(item.id)}>
             <RiDeleteBinLine size={20} />
           </Button>
-        </div>
+        </Link>
       ))}
       {wishlist.length === 0 && (
         <div className='text-center text-gray-400 py-8'>
