@@ -130,6 +130,14 @@ const LoginPage = () => {
           <Button type='submit' className='w-full'>
             Login
           </Button>
+          <div className='text-center text-sm text-gray-500 mt-2'>
+            Lupa password?{' '}
+            <Link
+              href='/lupapassword'
+              className='text-blue-600 hover:underline'>
+              Klik disini
+            </Link>
+          </div>
 
           <div className='text-center text-sm text-gray-500 mt-2'>
             Belum punya akun?{' '}

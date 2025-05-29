@@ -14,7 +14,7 @@ import { addToCart } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { useQuery } from '@tanstack/react-query'
 import { validateSession } from '@/app/actions/session'
-import { RiWhatsappLine } from '@remixicon/react'
+import { RiHeartAddLine, RiHeartFill, RiWhatsappLine } from '@remixicon/react'
 import toRupiah from '@develoka/angka-rupiah-js'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -24,9 +24,64 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { toast } from 'sonner'
+import {
+  addToWishlist,
+  getWishlist,
+  toggleWishlist,
+} from '@/app/actions/wishlist'
+
+// Utility function to safely get brand name
+function getBrandName(brand: any): string {
+  if (typeof brand === 'object' && brand !== null) {
+    return brand.name || 'No Brand'
+  }
+  return brand || 'No Brand'
+}
+
+// Utility function to safely get category slug
+function getCategorySlug(category: any): string {
+  if (typeof category === 'object' && category !== null) {
+    return category.slug || 'unknown'
+  }
+  return 'unknown'
+}
+
+type Category = {
+  id: string
+  name: string
+  slug: string
+  children?: Category[]
+  parentId?: string
+}
+
+type Brand = {
+  id: string
+  name: string
+}
+type Product = {
+  id: string
+  name: string
+  slug: string
+  images: string[]
+  price: number
+  brand: Brand
+  category?: {
+    slug: string
+    name: string
+    parentId?: string
+  }
+  isActive: boolean
+  isFeatured?: boolean
+  label?: string | null
+  minOrder?: number
+  multiOrder?: number
+  unit?: string
+  description?: string
+  dimensions?: string
+}
 
 // Helper functions for category handling
-function getAllCategorySlugs(category) {
+function getAllCategorySlugs(category: any): string[] {
   if (!category) return []
   let slugs = [category.slug]
   if (category.children && category.children.length > 0) {
@@ -37,7 +92,7 @@ function getAllCategorySlugs(category) {
   return slugs
 }
 
-function findCategoryBySlug(categories, slug) {
+function findCategoryBySlug(categories: any[], slug: string) {
   for (const cat of categories) {
     if (cat.slug === slug) return cat
     if (cat.children && cat.children.length > 0) {
@@ -85,7 +140,7 @@ function CategoryPage() {
     // If product detail page, return all products
     if (params.slug[2]) return allProducts
 
-    let slugs = []
+    let slugs: string[] = []
     if (params.slug[1]) {
       const parentCat = findCategoryBySlug(categories, params.slug[0])
       const subCat = parentCat?.children?.find(
@@ -99,7 +154,7 @@ function CategoryPage() {
 
     if (slugs.length > 0) {
       return allProducts.filter((product) =>
-        slugs.includes(product.category?.slug)
+        slugs.includes(product.category?.slug || '')
       )
     }
     return allProducts
@@ -110,7 +165,29 @@ function CategoryPage() {
 
   // Find the current product if we're in product detail view
   const currentProduct = params.slug[2]
-    ? filteredProducts?.find((p) => p.slug === params.slug[2])
+    ? filteredProducts?.find((p) => p.slug === params.slug[2]) || null
+    : null
+
+  // Ensure currentProduct is properly structured
+  const safeCurrentProduct = currentProduct
+    ? {
+        ...currentProduct,
+        category: currentProduct.category
+          ? {
+              name: currentProduct.category.name || 'Tidak Dikategorikan',
+              slug: currentProduct.category.slug || '',
+            }
+          : { name: 'Tidak Dikategorikan', slug: '' },
+        images: currentProduct.images || [],
+        brand: getBrandName(currentProduct.brand),
+        price: currentProduct.price || 0,
+        minOrder: currentProduct.minOrder || 1,
+        multiOrder: currentProduct.multiOrder || 1,
+        unit: currentProduct.unit || '',
+        description: currentProduct.description || '',
+        dimensions: currentProduct.dimensions || '',
+        label: currentProduct.label || null,
+      }
     : null
 
   const loading = isLoadingCategories || isLoadingProducts
@@ -121,12 +198,12 @@ function CategoryPage() {
         .filter(
           (p) =>
             p.id !== currentProduct?.id &&
-            p.category?.parentId === currentProduct?.category?.parentId &&
+            p.category?.parentId ===
+              (currentProduct?.category as any)?.parentId &&
             p.isActive
         )
         .slice(0, 6)
     : []
-  console.log(relatedProducts)
 
   return (
     <div className=''>
@@ -168,7 +245,7 @@ function CategoryPage() {
       {params.slug.length === 1 ? (
         <Suspense fallback={<div>Loading...</div>}>
           <SubCategoryPage
-            parentCategory={parentCategory}
+            parentCategory={parentCategory as Category}
             allProducts={allProducts}
             loading={loading}
           />
@@ -177,19 +254,17 @@ function CategoryPage() {
         <Suspense fallback={<div>Loading...</div>}>
           <ProductPage
             products={filteredProducts}
-            parentCategory={parentCategory}
+            parentCategory={parentCategory as Category}
             loading={loading}
           />
         </Suspense>
       ) : (
-        <Suspense fallback={<div>Loading...</div>}>
-          <ProductDetailPage
-            product={currentProduct}
-            parentCategory={parentCategory}
-            loading={loading}
-            allProducts={allProducts}
-          />
-        </Suspense>
+        <ProductDetailPage
+          product={safeCurrentProduct as unknown as Product}
+          parentCategory={parentCategory as Category}
+          loading={loading}
+          allProducts={allProducts}
+        />
       )}
       {relatedProducts.length > 0 && (
         <div className='mt-12'>
@@ -198,7 +273,9 @@ function CategoryPage() {
             {relatedProducts.map((item) => (
               <Link
                 key={item.id}
-                href={`/kategori/${item.category.slug}/${item.slug}`}
+                href={`/kategori/${getCategorySlug(item.category)}/${
+                  item.slug
+                }`}
                 className='block bg-white rounded-lg shadow hover:shadow-md transition overflow-hidden'>
                 <div className='relative w-full aspect-[3/2]'>
                   {item.label && (
@@ -207,7 +284,7 @@ function CategoryPage() {
                     </Badge>
                   )}
                   <Image
-                    src={item.images[0]}
+                    src={item.images[0] || '/placeholder.png'}
                     alt={item.name}
                     fill
                     className='object-contain p-2'
@@ -216,7 +293,7 @@ function CategoryPage() {
                 </div>
                 <div className='p-2'>
                   <div className='text-xs text-gray-500 mb-1'>
-                    {item.brand?.name || 'No Brand'}
+                    {getBrandName(item.brand)}
                   </div>
                   <div className='font-medium text-sm line-clamp-2'>
                     {item.name}
@@ -241,8 +318,8 @@ function SubCategoryPage({
   allProducts,
   loading,
 }: {
-  parentCategory: any
-  allProducts: any[]
+  parentCategory: Category
+  allProducts: Product[]
   loading: boolean
 }) {
   if (loading) {
@@ -280,7 +357,7 @@ function SubCategoryPage({
     return count > 0
   })
 
-  if (subCategoriesWithProducts.length === 0) {
+  if (!subCategoriesWithProducts || subCategoriesWithProducts.length === 0) {
     return (
       <div className='text-center text-gray-400 py-10'>
         Tidak ada produk dalam subkategori ini.
@@ -324,8 +401,8 @@ function ProductPage({
   parentCategory,
   loading,
 }: {
-  products: any[]
-  parentCategory: any
+  products: Product[]
+  parentCategory: Category
   loading: boolean
 }) {
   if (loading) {
@@ -364,12 +441,13 @@ function ProductPage({
       </div>
     )
   }
+  console.log('products', activeProducts)
 
   return (
     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
       {activeProducts.map((product) => (
         <Link
-          href={`/kategori/${parentCategory.slug}/${product.category.slug}/${product.slug}`}
+          href={`/kategori/${parentCategory.slug}/${product.category?.slug}/${product.slug}`}
           key={product.id}
           className='group bg-white rounded-lg shadow-sm hover:shadow-md transition overflow-hidden'>
           <div className='relative w-full h-40'>
@@ -383,7 +461,9 @@ function ProductPage({
             />
           </div>
           <div className='p-4'>
-            <Badge variant='secondary'>{product.brand || 'No Brand'}</Badge>
+            <Badge variant='secondary'>
+              {product.brand.name || 'No Brand'}
+            </Badge>
             <h3 className='font-medium text-gray-900 line-clamp-2 my-2'>
               {product.name}
             </h3>
@@ -413,14 +493,13 @@ function calculateTotalAmount(
 
 function ProductDetailPage({
   product,
-  parentCategory,
   loading,
   allProducts,
 }: {
-  product: any
-  parentCategory: any
+  product: Product | null
+  parentCategory: Category
   loading: boolean
-  allProducts: any[]
+  allProducts: Product[]
 }) {
   const router = useRouter()
   const [quantity, setQuantity] = useState(1)
@@ -429,6 +508,7 @@ function ProductDetailPage({
   const [selectedImage, setSelectedImage] = useState(0)
   const [isReadMore, setIsReadMore] = useState(false)
   const [isInfoOpen, setIsInfoOpen] = useState(false)
+  const [isWishlistMarked, setIsWishlistMarked] = useState(false)
   const [cartMessage, setCartMessage] = useState<{
     type: 'success' | 'error'
     message: string
@@ -436,15 +516,64 @@ function ProductDetailPage({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const { addToCart: addToCartStore, fetchCart } = useCartStore()
 
+  // Wishlist check moved up to ensure consistent hook order
+  useEffect(() => {
+    const fetchWishlist = async () => {
+      if (!product) return
+
+      const res = await getWishlist()
+      console.log(res)
+      setIsWishlistMarked(res.some((item) => item.productId === product.id))
+    }
+    fetchWishlist()
+  }, [product?.id])
+
+  // Validate product data
+  if (loading || !product) {
+    return (
+      <div className='animate-pulse'>
+        <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+          <div className='w-full h-[400px] bg-gray-200 rounded-lg' />
+          <div className='space-y-4'>
+            <div className='h-8 w-3/4 bg-gray-200 rounded' />
+            <div className='h-4 w-1/2 bg-gray-200 rounded' />
+            <div className='h-4 w-full bg-gray-200 rounded' />
+            <div className='h-4 w-full bg-gray-200 rounded' />
+            <div className='h-4 w-2/3 bg-gray-200 rounded' />
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Ensure all required product properties exist
+  const safeProduct = {
+    id: product.id || '',
+    name: product.name || 'Produk Tidak Dikenal',
+    brand: getBrandName(product.brand),
+    label: product.label || null,
+    price: product.price || 0,
+    unit: product.unit || '',
+    minOrder: product.minOrder || 1,
+    multiOrder: product.multiOrder || 1,
+    dimensions: product.dimensions || '',
+    description: product.description || '',
+    images:
+      product.images && product.images.length > 0
+        ? product.images
+        : ['/placeholder.png'],
+    category: product.category || { name: 'Tidak Dikategorikan', slug: '' },
+  }
+
   // Calculate actual quantity based on minOrder and multiOrder
   const calculateActualQuantity = (inputQuantity: number) => {
     if (inputQuantity <= 0) return 0
-    if (inputQuantity === 1) return product.minOrder
-    return product.minOrder + product.multiOrder * (inputQuantity - 1)
+    if (inputQuantity === 1) return safeProduct.minOrder
+    return safeProduct.minOrder + safeProduct.multiOrder * (inputQuantity - 1)
   }
 
   const handleBuyNow = async () => {
-    if (!product) return
+    if (!safeProduct) return
 
     try {
       setIsBuyingNow(true)
@@ -457,20 +586,20 @@ function ProductDetailPage({
 
       const result = await addToCart({
         userId: session.user.id,
-        productId: product.id,
+        productId: safeProduct.id,
         quantity: calculateActualQuantity(quantity),
       })
 
       if (result.success) {
         addToCartStore({
-          id: product.id,
+          id: safeProduct.id,
           product: {
-            id: product.id,
-            name: product.name,
-            images: product.images,
-            price: product.price,
-            minOrder: product.minOrder,
-            unit: product.unit,
+            id: safeProduct.id,
+            name: safeProduct.name,
+            images: safeProduct.images,
+            price: safeProduct.price,
+            minOrder: safeProduct.minOrder,
+            unit: safeProduct.unit,
           },
           quantity: calculateActualQuantity(quantity),
         })
@@ -487,8 +616,23 @@ function ProductDetailPage({
     }
   }
 
+  const handleAddToWishlist = async () => {
+    if (!safeProduct) return
+
+    try {
+      const result = await toggleWishlist(safeProduct.id)
+      if (result.success) {
+        setIsWishlistMarked(!isWishlistMarked)
+        router.refresh()
+      }
+    } catch (error) {
+      setIsWishlistMarked(false)
+      toast.error('Terjadi kesalahan saat menambahkan ke wishlist')
+    }
+  }
+
   const handleAddToCart = async () => {
-    if (!product) return
+    if (!safeProduct) return
 
     try {
       setIsAddingToCart(true)
@@ -501,20 +645,20 @@ function ProductDetailPage({
 
       const result = await addToCart({
         userId: session.user.id,
-        productId: product.id,
+        productId: safeProduct.id,
         quantity: calculateActualQuantity(quantity),
       })
 
       if (result.success) {
         addToCartStore({
-          id: product.id,
+          id: safeProduct.id,
           product: {
-            id: product.id,
-            name: product.name,
-            images: product.images,
-            price: product.price,
-            minOrder: product.minOrder,
-            unit: product.unit,
+            id: safeProduct.id,
+            name: safeProduct.name,
+            images: safeProduct.images,
+            price: safeProduct.price,
+            minOrder: safeProduct.minOrder,
+            unit: safeProduct.unit,
           },
           quantity: calculateActualQuantity(quantity),
         })
@@ -528,23 +672,6 @@ function ProductDetailPage({
     } finally {
       setIsAddingToCart(false)
     }
-  }
-
-  if (loading || !product) {
-    return (
-      <div className='animate-pulse'>
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
-          <div className='w-full h-[400px] bg-gray-200 rounded-lg' />
-          <div className='space-y-4'>
-            <div className='h-8 w-3/4 bg-gray-200 rounded' />
-            <div className='h-4 w-1/2 bg-gray-200 rounded' />
-            <div className='h-4 w-full bg-gray-200 rounded' />
-            <div className='h-4 w-full bg-gray-200 rounded' />
-            <div className='h-4 w-2/3 bg-gray-200 rounded' />
-          </div>
-        </div>
-      </div>
-    )
   }
 
   if (product === null) {
@@ -563,17 +690,17 @@ function ProductDetailPage({
           <div className='space-y-4 lg:sticky lg:top-20'>
             <div className='w-full overflow-hidden'>
               <Image
-                src={product.images[selectedImage] || '/placeholder.png'}
-                alt={product.name}
+                src={safeProduct.images[selectedImage] || '/placeholder.png'}
+                alt={safeProduct.name}
                 width={600}
                 height={400}
                 priority
                 className='object-contain p-4 mx-auto max-w-full max-h-[350px]'
               />
             </div>
-            {product.images.length > 1 && (
+            {safeProduct.images.length > 1 && (
               <div className='grid grid-cols-5 gap-2'>
-                {product.images.map((image: string, index: number) => (
+                {safeProduct.images.map((image: string, index: number) => (
                   <div
                     key={index}
                     onClick={() => setSelectedImage(index)}
@@ -582,7 +709,7 @@ function ProductDetailPage({
                     }`}>
                     <Image
                       src={image}
-                      alt={`${product.name} - ${index + 1}`}
+                      alt={`${safeProduct.name} - ${index + 1}`}
                       width={120}
                       height={80}
                       className='object-contain p-2'
@@ -598,34 +725,46 @@ function ProductDetailPage({
         <div className='space-y-6'>
           <div className=''>
             <div className=''>
-              <p className='text-sm text-gray-500 mb-2'>
-                {product.brand || 'No Brand'}
-              </p>
-              <p className='text-2xl font-semibold mb-2'>{product.name}</p>
-              {product.label && (
+              <p className='text-sm text-gray-500 mb-2'>{safeProduct.brand}</p>
+              <p className='text-2xl font-semibold mb-2'>{safeProduct.name}</p>
+              {safeProduct.label && (
                 <span
                   className={
                     'inline-block rounded-full px-3 py-1 text-xs font-semibold mb-2 ' +
-                    (product.label === 'ready_stock'
+                    (safeProduct.label === 'ready_stock'
                       ? 'bg-green-100 text-green-700'
-                      : product.label === 'suplier'
+                      : safeProduct.label === 'suplier'
                       ? 'bg-yellow-100 text-yellow-700'
-                      : product.label === 'indent'
+                      : safeProduct.label === 'indent'
                       ? 'bg-orange-100 text-orange-700'
                       : 'bg-gray-100 text-gray-700')
                   }>
-                  {product.label === 'ready_stock'
+                  {safeProduct.label === 'ready_stock'
                     ? 'Ready Stock'
-                    : product.label === 'suplier'
+                    : safeProduct.label === 'suplier'
                     ? 'Suplier'
-                    : product.label === 'indent'
+                    : safeProduct.label === 'indent'
                     ? 'Indent'
-                    : product.label}
+                    : safeProduct.label}
                 </span>
               )}
-              <p className='text-primary text-xl font-semibold'>
-                {toRupiah(product.price, { floatingPoint: 0 })}
-              </p>
+              <div className='flex items-center justify-between w-full'>
+                <p className='text-primary text-xl font-semibold'>
+                  {toRupiah(safeProduct.price, { floatingPoint: 0 })}/
+                  {safeProduct.unit}
+                </p>
+                <Button
+                  type='button'
+                  variant='outline'
+                  size='icon'
+                  onClick={handleAddToWishlist}>
+                  {isWishlistMarked ? (
+                    <Heart fill='red' color='red' size={20} />
+                  ) : (
+                    <Heart color='red' size={20} />
+                  )}
+                </Button>
+              </div>
             </div>
 
             {/* Shipping Information Section - Responsive */}
@@ -742,41 +881,43 @@ function ProductDetailPage({
               <h4 className='text-base font-semibold mb-4'>Detail Produk</h4>
               <p className='text-sm grid grid-cols-2'>
                 <span className=''>Satuan</span>
-                <span className='text-muted-foreground'>{product.unit}</span>
+                <span className='text-muted-foreground'>
+                  {safeProduct.unit}
+                </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Minimal Pembelian</span>
                 <span className='text-muted-foreground'>
-                  {product.minOrder} {product.unit}
+                  {safeProduct.minOrder} {safeProduct.unit}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Kelipatan Pembelian</span>
                 <span className='text-muted-foreground'>
-                  {product.multiOrder} {product.unit}
+                  {safeProduct.multiOrder} {safeProduct.unit}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Dimensi</span>
                 <span className='text-muted-foreground'>
-                  {product.dimensions}
+                  {safeProduct.dimensions}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Merek</span>
                 <span className='text-muted-foreground'>
-                  {product.brand || 'No Brand'}
+                  {safeProduct.brand}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Kategori</span>
                 <span className='text-muted-foreground'>
-                  {product.category.name}
+                  {safeProduct.category.name}
                 </span>
               </p>
               <Separator />
@@ -784,7 +925,7 @@ function ProductDetailPage({
             <div className='space-y-2'>
               <h4 className='text-base font-semibold mb-4'>Deskripsi</h4>
               <p className='text-sm text-muted-foreground line-clamp-3'>
-                {product.description}
+                {safeProduct.description}
               </p>
             </div>
             <Button
@@ -844,7 +985,7 @@ function ProductDetailPage({
                     onClick={() => setQuantity(quantity + 1)}>
                     +
                   </Button>
-                  <span className='text-sm ml-1'>X {product.unit}</span>
+                  <span className='text-sm ml-1'>X {safeProduct.unit}</span>
                 </div>
                 {/* Responsive purchase info box */}
                 <div className='mt-2 bg-blue-50 text-blue-800 text-xs p-3 rounded-md'>
@@ -859,7 +1000,7 @@ function ProductDetailPage({
                         <tr className='text-left'>
                           <th className='pr-4 font-semibold'>Jumlah</th>
                           <th className='font-semibold'>
-                            Total {product.unit}
+                            Total {safeProduct.unit}
                           </th>
                         </tr>
                       </thead>
@@ -868,8 +1009,9 @@ function ProductDetailPage({
                           <tr key={n}>
                             <td className='pr-4'>{n}</td>
                             <td>
-                              {product.minOrder + product.multiOrder * (n - 1)}{' '}
-                              {product.unit}
+                              {safeProduct.minOrder +
+                                safeProduct.multiOrder * (n - 1)}{' '}
+                              {safeProduct.unit}
                             </td>
                           </tr>
                         ))}
@@ -878,18 +1020,22 @@ function ProductDetailPage({
                   </div>
                   <p className='text-[11px] text-blue-900'>
                     Setiap penambahan 1 pada jumlah, akan menambah{' '}
-                    {product.multiOrder} {product.unit} dari minimal pembelian.
-                    Misal, jika Anda memilih 6, maka total:{' '}
-                    {product.minOrder + product.multiOrder * 5} {product.unit}.
+                    {safeProduct.multiOrder} {safeProduct.unit} dari minimal
+                    pembelian. Misal, jika Anda memilih 6, maka total:{' '}
+                    {safeProduct.minOrder + safeProduct.multiOrder * 5}{' '}
+                    {safeProduct.unit}.
                   </p>
                 </div>
               </div>
               <div className='flex items-center justify-between py-3 border-t border-b'>
                 <span className='text-sm font-medium'>Subtotal:</span>
                 <span className='text-lg font-semibold text-primary'>
-                  {toRupiah(product.price * calculateActualQuantity(quantity), {
-                    floatingPoint: 0,
-                  })}
+                  {toRupiah(
+                    safeProduct.price * calculateActualQuantity(quantity),
+                    {
+                      floatingPoint: 0,
+                    }
+                  )}
                 </span>
               </div>
 
@@ -993,7 +1139,9 @@ function ProductDetailPage({
                     <thead>
                       <tr className='text-left'>
                         <th className='pr-4 font-semibold'>Jumlah</th>
-                        <th className='font-semibold'>Total {product.unit}</th>
+                        <th className='font-semibold'>
+                          Total {safeProduct.unit}
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1001,8 +1149,9 @@ function ProductDetailPage({
                         <tr key={n}>
                           <td className='pr-4'>{n}</td>
                           <td>
-                            {product.minOrder + product.multiOrder * (n - 1)}{' '}
-                            {product.unit}
+                            {safeProduct.minOrder +
+                              safeProduct.multiOrder * (n - 1)}{' '}
+                            {safeProduct.unit}
                           </td>
                         </tr>
                       ))}
@@ -1011,9 +1160,10 @@ function ProductDetailPage({
                 </div>
                 <p className='text-[11px] text-blue-900'>
                   Setiap penambahan 1 pada jumlah, akan menambah{' '}
-                  {product.multiOrder} {product.unit} dari minimal pembelian.
-                  Misal, jika Anda memilih 6, maka total:{' '}
-                  {product.minOrder + product.multiOrder * 5} {product.unit}.
+                  {safeProduct.multiOrder} {safeProduct.unit} dari minimal
+                  pembelian. Misal, jika Anda memilih 6, maka total:{' '}
+                  {safeProduct.minOrder + safeProduct.multiOrder * 5}{' '}
+                  {safeProduct.unit}.
                 </p>
               </div>
             )}
@@ -1060,17 +1210,21 @@ function ProductDetailPage({
                   +
                 </Button>
                 <span className='text-sm ml-1'>
-                  {product.minOrder + (quantity - 1) * product.multiOrder}{' '}
-                  {product.unit}
+                  {safeProduct.minOrder +
+                    (quantity - 1) * safeProduct.multiOrder}{' '}
+                  {safeProduct.unit}
                 </span>
               </div>
             </div>
             <div className='text-right flex justify-between w-full'>
               <span className='text-sm'>Subtotal:</span>
               <p className='text-base font-semibold text-primary'>
-                {toRupiah(product.price * calculateActualQuantity(quantity), {
-                  floatingPoint: 0,
-                })}
+                {toRupiah(
+                  safeProduct.price * calculateActualQuantity(quantity),
+                  {
+                    floatingPoint: 0,
+                  }
+                )}
               </p>
             </div>
             {/* Button Keranjang dan Beli Sekarang */}
@@ -1153,41 +1307,43 @@ function ProductDetailPage({
               <h4 className='text-base font-semibold mb-4'>Detail Produk</h4>
               <p className='text-sm grid grid-cols-2'>
                 <span className=''>Satuan</span>
-                <span className='text-muted-foreground'>{product.unit}</span>
+                <span className='text-muted-foreground'>
+                  {safeProduct.unit}
+                </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Minimal Pembelian</span>
                 <span className='text-muted-foreground'>
-                  {product.minOrder} {product.unit}
+                  {safeProduct.minOrder} {safeProduct.unit}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Kelipatan Pembelian</span>
                 <span className='text-muted-foreground'>
-                  {product.multiOrder} {product.unit}
+                  {safeProduct.multiOrder} {safeProduct.unit}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Dimensi</span>
                 <span className='text-muted-foreground'>
-                  {product.dimensions}
+                  {safeProduct.dimensions}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Merek</span>
                 <span className='text-muted-foreground'>
-                  {product.brand || 'No Brand'}
+                  {safeProduct.brand}
                 </span>
               </p>
               <Separator />
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Kategori</span>
                 <span className='text-muted-foreground'>
-                  {product.category.name}
+                  {safeProduct.category.name}
                 </span>
               </p>
               <Separator />
@@ -1195,7 +1351,7 @@ function ProductDetailPage({
             <div className='space-y-2'>
               <h4 className='text-base font-semibold mb-4'>Deskripsi</h4>
               <p className='text-sm text-muted-foreground line-clamp-1'>
-                {product.description}
+                {safeProduct.description}
               </p>
             </div>
           </div>

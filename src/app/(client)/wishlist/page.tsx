@@ -1,10 +1,10 @@
 import React from 'react'
-import WishlistList from '@/components/ui/WishlistList'
+import WishlistComp from './wishlistComp'
+import { getWishlist } from '@/app/actions/wishlist'
 
-export const dynamic = 'force-dynamic'
-
-const page = () => {
-  return <WishlistList />
+const page = async () => {
+  const wishlist = await getWishlist()
+  return <WishlistComp wishlist={wishlist} />
 }
 
 export default page

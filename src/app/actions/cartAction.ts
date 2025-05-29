@@ -8,6 +8,7 @@ import {
   generateCustomId,
 } from '@/lib/helpper'
 import { cookies } from 'next/headers'
+import { validateSession } from '@/app/actions/session'
 
 interface ServerCartItem {
   userId: string
@@ -27,13 +28,13 @@ export async function addToCart(item: ServerCartItem) {
     if (!cart) {
       const newCart = await prisma.cart.create({
         data: {
-          id: generateCustomId('CRT'),
+          id: generateCustomId('crt'),
           userId: item.userId,
         },
       })
       await prisma.cartItem.create({
         data: {
-          id: generateCustomId('CRT-ITM'),
+          id: generateCustomId('crt-itm'),
           cartId: newCart.id,
           productId: item.productId,
           quantity: item.quantity,
@@ -62,7 +63,7 @@ export async function addToCart(item: ServerCartItem) {
         // Add new item if it doesn't exist
         await prisma.cartItem.create({
           data: {
-            id: generateCustomId('CRT-ITM'),
+            id: generateCustomId('crt-itm'),
             cartId: cart.id,
             productId: item.productId,
             quantity: item.quantity,
@@ -286,6 +287,71 @@ export async function validateCartItems(items: ServerCartItem[]) {
     return {
       success: false,
       message: 'Failed to validate cart items',
+      error,
+    }
+  }
+}
+
+export async function clearCartAfterOrder(orderId: string) {
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+      }
+    }
+
+    // Find the order to get the items
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    })
+
+    if (!order) {
+      return {
+        success: false,
+        message: 'Order not found',
+      }
+    }
+
+    // Find the user's cart
+    const cart = await prisma.cart.findFirst({
+      where: { userId: session.user.id },
+      include: { items: true },
+    })
+
+    if (!cart) {
+      return {
+        success: false,
+        message: 'Cart not found',
+      }
+    }
+
+    // Remove cart items that match the order items
+    const orderItemProductIds = order.items.map((item) => item.productId)
+
+    await prisma.cartItem.deleteMany({
+      where: {
+        cartId: cart.id,
+        productId: {
+          in: orderItemProductIds,
+        },
+      },
+    })
+
+    revalidatePath('/cart')
+    revalidatePath('/keranjang')
+
+    return {
+      success: true,
+      message: 'Cart items cleared successfully after order',
+    }
+  } catch (error) {
+    console.error('Error clearing cart after order:', error)
+    return {
+      success: false,
+      message: 'Failed to clear cart after order',
       error,
     }
   }

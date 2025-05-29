@@ -18,6 +18,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Protect client routes that require authentication
+  const protectedRoutes = ['/wishlist', '/keranjang', '/notifikasi']
+  if (protectedRoutes.some((route) => pathname.startsWith(route))) {
+    const sessionToken = request.cookies.get('sessionToken')?.value
+
+    // If no session token, redirect to login
+    if (!sessionToken) {
+      const loginUrl = new URL('/login', request.url)
+      loginUrl.searchParams.set('callbackUrl', pathname)
+      return NextResponse.redirect(loginUrl)
+    }
+  }
+
   if (pathname.startsWith('/login-admin')) {
     const sessionToken = request.cookies.get('sessionToken')?.value
     if (sessionToken) {

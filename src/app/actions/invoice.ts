@@ -36,7 +36,7 @@ export async function createInvoiceFromProforma(proformaInvoiceId: string) {
     }
 
     // Generate new invoice number
-    const invoiceNumber = await generateInvoiceNumber('INV')
+    const invoiceNumber = await generateInvoiceNumber('inv')
 
     // Create new invoice
     const invoice = await prisma.invoice.create({

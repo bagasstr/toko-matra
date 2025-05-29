@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
+  FormControl,
 } from '@/components/ui/form'
 import {
   Popover,
@@ -48,6 +49,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
+import { Control, ControllerRenderProps } from 'react-hook-form'
 
 // Komponen upload gambar sederhana
 function ImageUpload({
@@ -126,6 +128,76 @@ function ImageUpload({
         ))}
       </div>
     </div>
+  )
+}
+
+interface DimensionsInputProps {
+  control: Control<any>
+  field: ControllerRenderProps<any, 'dimensions'>
+}
+
+const DimensionsInput: React.FC<DimensionsInputProps> = ({
+  control,
+  field,
+}) => {
+  const parseDimensions = (value: string) => {
+    const [panjang = '', lebar = '', tinggi = ''] = value
+      .split('x')
+      .map((dim) => dim.replace(' cm', ''))
+    return { panjang, lebar, tinggi }
+  }
+
+  const handleDimensionChange = (
+    type: 'panjang' | 'lebar' | 'tinggi',
+    newValue: string
+  ) => {
+    const currentDimensions = parseDimensions(field.value)
+    const updatedDimensions = {
+      ...currentDimensions,
+      [type]: newValue.trim(),
+    }
+
+    // Format: Panjang cm x Lebar cm x Tinggi cm
+    const dimensionsString = `${updatedDimensions.panjang} cm x ${updatedDimensions.lebar} cm x ${updatedDimensions.tinggi} cm`
+    field.onChange(dimensionsString)
+  }
+
+  const { panjang, lebar, tinggi } = parseDimensions(field.value)
+
+  return (
+    <FormItem>
+      <FormLabel>Dimensi (PxLxT)</FormLabel>
+      <div className='flex space-x-2'>
+        <FormControl>
+          <Input
+            value={panjang}
+            onChange={(e) => handleDimensionChange('panjang', e.target.value)}
+            placeholder='Panjang'
+            className='w-1/3'
+          />
+        </FormControl>
+        <FormControl>
+          <Input
+            value={lebar}
+            onChange={(e) => handleDimensionChange('lebar', e.target.value)}
+            placeholder='Lebar'
+            className='w-1/3'
+          />
+        </FormControl>
+        <FormControl>
+          <Input
+            value={tinggi}
+            onChange={(e) => handleDimensionChange('tinggi', e.target.value)}
+            placeholder='Tinggi'
+            className='w-1/3'
+          />
+        </FormControl>
+      </div>
+      <FormDescription>
+        Format: Panjang cm x Lebar cm x Tinggi cm
+      </FormDescription>
+      <FormMessage />
+    </FormItem>
   )
 }
 
@@ -463,14 +535,7 @@ export default function Page() {
                 control={form.control}
                 name='dimensions'
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dimensi (PxLxT)</FormLabel>
-                    <Input {...field} placeholder='10x5x3' />
-                    <FormDescription>
-                      Format: Panjang x Lebar x Tinggi
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
+                  <DimensionsInput control={form.control} field={field} />
                 )}
               />
             </div>

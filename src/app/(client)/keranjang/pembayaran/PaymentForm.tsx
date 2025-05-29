@@ -16,13 +16,24 @@ import {
   X,
   Printer,
 } from 'lucide-react'
-import { processCheckout } from '../../../actions/checkoutAction'
+import {
+  getOrderById,
+  processCheckoutAndCreateOrder,
+} from '@/app/actions/orderAction'
 import { getUserAddresses } from '../../../actions/addressAction'
 import { useRouter } from 'next/navigation'
 import { generateProformaPDF } from '@/lib/pdfProInvFormatter'
 import { PdfProInvoiceButton } from '../../components/DownloadPdfButton'
 
 type PaymentMethod = 'bank_transfer' | 'e_wallet' | 'virtual_account' | 'cod'
+
+interface PaymentInstructions {
+  type: string
+  bank?: string
+  vaNumber?: string
+  amount?: number
+  expiryTime?: string
+}
 
 interface PaymentFormProps {
   initialCartData: any
@@ -32,29 +43,55 @@ interface PaymentFormProps {
     phoneNumber?: string
     companyName?: string
   }
+  cookies?: any
   userId?: string
+}
+
+const supportedBanks = ['bca', 'bni', 'bri', 'mandiri', 'permata', 'cimb']
+
+const isBankSupported = (bank: string): boolean => {
+  return supportedBanks.includes(bank.toLowerCase())
+}
+
+const virtualAccountBanks = ['bca', 'bni', 'bri', 'mandiri', 'permata', 'cimb']
+
+// Define CheckoutFormData type
+interface CheckoutFormData {
+  addressId: string
+  bank: string
+  amount: number
+  paymentMethod: string
+  status: string
+  orderId: string
+  paymentType?: string
+  transactionId?: string
+  transactionTime?: Date
+  transactionStatus?: string
+  fraudStatus?: string
+  vaNumber?: string
+  approvalCode?: string
+  currency?: string
+  rawResponse?: any
+  paidAt?: Date
 }
 
 const PaymentForm = ({
   initialCartData,
-  userId,
+  cookies,
   customerProfile,
 }: PaymentFormProps) => {
   const router = useRouter()
-  const [paymentMethod, setPaymentMethod] =
-    useState<PaymentMethod>('bank_transfer')
   const [notes, setNotes] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [addresses, setAddresses] = useState<any[]>([])
   const [selectedAddressId, setSelectedAddressId] = useState<string>('')
   const [error, setError] = useState<string | null>(null)
-  const [paymentInstructions, setPaymentInstructions] = useState<{
-    type: string
-    bank?: string
-    vaNumber?: string
-    amount?: number
-    expiryTime?: string
-  } | null>(null)
+  const [paymentInstructions, setPaymentInstructions] =
+    useState<PaymentInstructions | null>(null)
+  const [selectedVABank, setSelectedVABank] = useState<string>('')
+  const [order, setOrder] = useState<string>(null)
+  const [result, setResult] = useState<any>(null)
+  // const [dataMidtrans, setDataMidtrans] = useState<any>(null)
 
   const cartItems = initialCartData?.data || []
 
@@ -74,15 +111,12 @@ const PaymentForm = ({
 
         if (addressResult.success && addressResult.data) {
           setAddresses(addressResult.data)
-          // Select primary address by default if available
           const primaryAddress = addressResult.data.find(
             (addr: any) => addr.isPrimary
           )
-          if (primaryAddress) {
-            setSelectedAddressId(primaryAddress.id)
-          } else if (addressResult.data.length > 0) {
-            setSelectedAddressId(addressResult.data[0].id)
-          }
+          setSelectedAddressId(
+            primaryAddress ? primaryAddress.id : addressResult.data[0]?.id || ''
+          )
         }
       } catch (error) {
         console.error('Error fetching addresses:', error)
@@ -101,28 +135,102 @@ const PaymentForm = ({
       return
     }
 
+    if (!selectedVABank) {
+      setError('Silakan pilih bank virtual account')
+      return
+    }
+
     setIsProcessing(true)
 
     try {
-      const result = await processCheckout({
+      // Create order first
+      const orderResult = await processCheckoutAndCreateOrder({
         addressId: selectedAddressId,
-        paymentMethod,
-        notes,
+        bank: selectedVABank,
+        paymentMethod: 'bank_transfer',
+        notes: notes,
       })
 
-      const typedResult = result as {
-        success: boolean
-        message: string
-        data?: any
+      if (!orderResult.success || !orderResult.data) {
+        setError(orderResult.message || 'Gagal memproses pembayaran')
+        setIsProcessing(false)
+        return
       }
 
-      if (typedResult.success && typedResult.data?.order?.id) {
-        // Redirect to order confirmation page
-        router.push(`/orders/${typedResult.data.order.id}?success=true`)
-      } else {
-        setError(typedResult.message || 'Gagal memproses pembayaran')
+      // Get the created order details
+      const result = await getOrderById(orderResult.data.id)
+      if (!result.success || !result.data) {
+        setError('Gagal mendapatkan detail pesanan')
         setIsProcessing(false)
+        return
       }
+
+      console.log(result)
+
+      // Create payment transaction
+      const resultMidtrans = await fetch('http://localhost:3000/api/payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Cookie: `sessionToken=${cookies.sessionToken}`,
+        },
+        body: JSON.stringify({
+          bank: selectedVABank,
+          paymentType: 'bank_transfer',
+          amount: result.data.totalAmount,
+          orderId: result.data.id,
+          customerDetails: {
+            first_name: result.data.user.profile.fullName,
+            email: result.data.user.profile.email,
+            phone: result.data.user.profile.phoneNumber,
+            alamat: result.data.address.address,
+            billing_address: {
+              first_name: result.data.address.recipientName,
+              phone: result.data.user.profile.phoneNumber,
+              address: result.data.address.address,
+              city: result.data.address.city,
+              province: result.data.address.province,
+              postal_code: result.data.address.postalCode,
+              country_code: 'IDN',
+            },
+            shipping_address: {
+              first_name: result.data.address.recipientName,
+              phone: result.data.user.profile.phoneNumber,
+              address: result.data.address.address,
+              city: result.data.address.city,
+              province: result.data.address.province,
+              postal_code: result.data.address.postalCode,
+              country_code: 'IDN',
+            },
+          },
+          itemDetails: result.data.items.map((item) => ({
+            id: item.product.id,
+            price: item.product.price,
+            quantity: item.quantity,
+            name: item.product.name,
+            brand: item.product.brandId,
+            category: item.product.categoryId,
+            merchant_name: 'Toko Matra',
+            url: 'https://tokobuah.com/apple-fuji',
+          })),
+        }),
+      })
+
+      if (!resultMidtrans.ok) {
+        setError('Gagal memproses pembayaran')
+        setIsProcessing(false)
+        return
+      }
+
+      const dataMidtrans = await resultMidtrans.json()
+      if (!dataMidtrans.success) {
+        setError(dataMidtrans.message || 'Gagal memproses pembayaran')
+        setIsProcessing(false)
+        return
+      }
+
+      // Redirect to order details page
+      router.push(`/orders/${result.data.id}`)
     } catch (error) {
       console.error('Error during checkout:', error)
       setError('Terjadi kesalahan saat memproses pembayaran')
@@ -156,7 +264,6 @@ const PaymentForm = ({
       </div>
     )
   }
-  console.log(cartItems)
 
   const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
 
@@ -177,7 +284,6 @@ const PaymentForm = ({
   const customerLabelAddress = selectedAddress
     ? `${selectedAddress.labelAddress}`
     : '-'
-  console.log(customerProfile)
   // Buat HTML invoice
   const htmlContent = generateProformaPDF(
     cartItems,
@@ -192,10 +298,6 @@ const PaymentForm = ({
     customerEmail,
     customerPhone
   )
-
-  function setShowPreview(arg0: boolean): void {
-    throw new Error('Function not implemented.')
-  }
 
   return (
     <div className='max-w-5xl mx-auto py-10 px-4'>
@@ -329,10 +431,12 @@ const PaymentForm = ({
               <h3 className='text-lg font-semibold mb-4'>Detail Pembayaran</h3>
               <div className='mb-2'>
                 <span className='font-medium'>Metode: </span>
-                {paymentMethod === 'bank_transfer' && 'Transfer Bank'}
-                {paymentMethod === 'e_wallet' && 'E-Wallet'}
-                {paymentMethod === 'virtual_account' && 'Virtual Account'}
-                {paymentMethod === 'cod' && 'Bayar di Tempat (COD)'}
+                {paymentInstructions?.type === 'bank_transfer' &&
+                  'Transfer Bank'}
+                {paymentInstructions?.type === 'e_wallet' && 'E-Wallet'}
+                {paymentInstructions?.type === 'virtual_account' &&
+                  'Virtual Account'}
+                {paymentInstructions?.type === 'cod' && 'Bayar di Tempat (COD)'}
               </div>
               <div className='flex flex-col gap-1 mb-2'>
                 <div className='flex justify-between'>
@@ -409,87 +513,26 @@ const PaymentForm = ({
             </div>
             <form onSubmit={handleSubmit}>
               <div className='space-y-4'>
-                <label className='flex items-center space-x-2 border p-3 rounded-md hover:bg-gray-50 cursor-pointer'>
-                  <input
-                    type='radio'
-                    name='payment'
-                    value='bank_transfer'
-                    checked={paymentMethod === 'bank_transfer'}
-                    onChange={() => setPaymentMethod('bank_transfer')}
-                    className='w-4 h-4 text-blue-600'
-                  />
-                  <div className='flex gap-2'>
-                    <Building className='w-5 h-5 text-blue-600' />
-                    <div>
-                      <div className='font-medium'>Transfer Bank</div>
-                      <div className='text-xs text-gray-500'>
-                        BCA, Mandiri, BNI, BRI
-                      </div>
-                    </div>
+                <div className='mt-4'>
+                  <label className='text-sm font-medium'>
+                    Pilih Bank Virtual Account
+                  </label>
+                  <div className='space-y-2 mt-2'>
+                    {virtualAccountBanks.map((bank) => (
+                      <label key={bank} className='flex items-center space-x-2'>
+                        <input
+                          type='radio'
+                          name='va_bank'
+                          value={bank}
+                          checked={selectedVABank === bank}
+                          onChange={() => setSelectedVABank(bank)}
+                          className='w-4 h-4'
+                        />
+                        <span className='text-sm'>{bank.toUpperCase()}</span>
+                      </label>
+                    ))}
                   </div>
-                </label>
-
-                <label className='flex items-center space-x-2 border p-3 rounded-md hover:bg-gray-50 cursor-pointer'>
-                  <input
-                    type='radio'
-                    name='payment'
-                    value='e_wallet'
-                    checked={paymentMethod === 'e_wallet'}
-                    onChange={() => setPaymentMethod('e_wallet')}
-                    className='w-4 h-4 text-green-600'
-                  />
-                  <div className='flex gap-2'>
-                    <Wallet className='w-5 h-5 text-green-600' />
-                    <div>
-                      <div className='font-medium'>E-Wallet</div>
-                      <div className='text-xs text-gray-500'>
-                        OVO, GoPay, Dana, ShopeePay
-                      </div>
-                    </div>
-                  </div>
-                </label>
-
-                <label className='flex items-center space-x-2 border p-3 rounded-md hover:bg-gray-50 cursor-pointer'>
-                  <input
-                    type='radio'
-                    name='payment'
-                    value='virtual_account'
-                    checked={paymentMethod === 'virtual_account'}
-                    onChange={() => setPaymentMethod('virtual_account')}
-                    className='w-4 h-4 text-purple-600'
-                  />
-                  <div className='flex gap-2'>
-                    <CreditCard className='w-5 h-5 text-purple-600' />
-                    <div>
-                      <div className='font-medium'>Virtual Account</div>
-                      <div className='text-xs text-gray-500'>
-                        BCA VA, Mandiri VA, BNI VA
-                      </div>
-                    </div>
-                  </div>
-                </label>
-
-                <label className='flex items-center space-x-2 border p-3 rounded-md hover:bg-gray-50 cursor-pointer'>
-                  <input
-                    type='radio'
-                    name='payment'
-                    value='cod'
-                    checked={paymentMethod === 'cod'}
-                    onChange={() => setPaymentMethod('cod')}
-                    className='w-4 h-4 text-yellow-600'
-                  />
-                  <div className='flex gap-2'>
-                    <div className='w-5 h-5 flex items-center justify-center text-yellow-600 font-bold'>
-                      COD
-                    </div>
-                    <div>
-                      <div className='font-medium'>Bayar di Tempat</div>
-                      <div className='text-xs text-gray-500'>
-                        Tunai saat barang diterima
-                      </div>
-                    </div>
-                  </div>
-                </label>
+                </div>
               </div>
 
               <div className='mt-6 border-t pt-4'>
@@ -521,160 +564,6 @@ const PaymentForm = ({
           </div>
         </div>
       </div>
-
-      {/* Payment Instructions */}
-      {paymentInstructions && (
-        <div className='rounded-lg border shadow-sm p-6 mb-6'>
-          <h2 className='text-lg font-semibold mb-4'>Instruksi Pembayaran</h2>
-
-          <div className='bg-blue-50 p-4 rounded-md'>
-            {paymentInstructions.type === 'bank_transfer' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Silakan transfer ke rekening berikut:
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Bank</span>
-                    <span className='font-semibold'>
-                      {paymentInstructions.bank?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>No. Rekening</span>
-                    <span className='font-semibold'>
-                      {paymentInstructions.vaNumber}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Atas Nama</span>
-                    <span className='font-semibold'>
-                      PT Bahan Bangunan Indonesia
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>Jumlah</span>
-                    <span className='font-semibold text-primary'>
-                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Batas waktu pembayaran:{' '}
-                    {new Date(
-                      paymentInstructions.expiryTime || ''
-                    ).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {paymentInstructions.type === 'virtual_account' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Silakan transfer ke Virtual Account berikut:
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Bank</span>
-                    <span className='font-semibold'>
-                      {paymentInstructions.bank?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>No. Virtual Account</span>
-                    <span className='font-semibold'>
-                      {paymentInstructions.vaNumber}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>Jumlah</span>
-                    <span className='font-semibold text-primary'>
-                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Batas waktu pembayaran:{' '}
-                    {new Date(
-                      paymentInstructions.expiryTime || ''
-                    ).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {paymentInstructions.type === 'e_wallet' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Pembayaran E-Wallet
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Metode</span>
-                    <span className='font-semibold'>
-                      {paymentInstructions.bank?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>Jumlah</span>
-                    <span className='font-semibold text-primary'>
-                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Batas waktu pembayaran:{' '}
-                    {new Date(
-                      paymentInstructions.expiryTime || ''
-                    ).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {paymentInstructions.type === 'cod' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Pembayaran di Tempat (COD)
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>
-                      Total yang harus dibayar
-                    </span>
-                    <span className='font-semibold text-primary'>
-                      Rp {paymentInstructions.amount?.toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Silakan siapkan pembayaran tunai saat barang diterima
-                  </p>
-                </div>
-              </>
-            )}
-
-            <div className='mt-4 text-sm text-gray-600'>
-              <p className='mb-2'>Catatan Penting:</p>
-              <ul className='list-disc list-inside space-y-1'>
-                <li>Pastikan jumlah transfer sesuai dengan total pembayaran</li>
-                <li>Simpan bukti pembayaran Anda</li>
-                <li>Pesanan akan diproses setelah pembayaran dikonfirmasi</li>
-                <li>Jika ada kendala, silakan hubungi customer service kami</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

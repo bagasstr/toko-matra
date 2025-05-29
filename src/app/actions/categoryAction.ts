@@ -21,7 +21,7 @@ export async function createCategory(data: CreateCategoryInput) {
   try {
     const category = await prisma.category.create({
       data: {
-        id: generateCustomId('CAT'),
+        id: generateCustomId('sub-cat'),
         name: data.name,
         slug: createSlug(data.name),
         ...(data.parentId && {

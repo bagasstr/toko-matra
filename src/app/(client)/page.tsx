@@ -7,7 +7,10 @@ import Benefit from './components/benefit'
 import Faq from './components/faq'
 import MaterialsOffer from './components/materialsOffer'
 import FooterMobile from './components/footerMobile'
-const Home = () => {
+import { getOrderById } from '../actions/orderAction'
+const Home = async () => {
+  const products = await getOrderById('ORD-1748022780744-AB40222')
+  console.log(products)
   return (
     <div className={cn('px-4')}>
       <Suspense fallback={<div>Loading...</div>}>

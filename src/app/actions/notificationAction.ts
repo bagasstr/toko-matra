@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { validateSession } from './session'
+import { generateCustomId } from '@/lib/helpper'
 
 export type Notification = {
   id: string
@@ -123,7 +124,7 @@ export async function createNotification(
   try {
     const notification = await prisma.notification.create({
       data: {
-        id: crypto.randomUUID(),
+        id: generateCustomId('not'),
         userId,
         title,
         message,

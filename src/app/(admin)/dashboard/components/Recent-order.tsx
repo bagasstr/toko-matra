@@ -1,13 +1,5 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import {
   Table,
   TableBody,
@@ -17,123 +9,116 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { MoreHorizontal } from 'lucide-react'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { format } from 'date-fns'
+import { id } from 'date-fns/locale'
 
-export default function RecentOrders() {
-  const orders = [
-    {
-      id: 'ORD-001',
-      customer: 'Budi Santoso',
-      status: 'Selesai',
-      date: '2023-05-01',
-      total: 'Rp 2.450.000',
-    },
-    {
-      id: 'ORD-002',
-      customer: 'PT. Karya Abadi',
-      status: 'Diproses',
-      date: '2023-05-02',
-      total: 'Rp 5.780.000',
-    },
-    {
-      id: 'ORD-003',
-      customer: 'Toko Jaya Makmur',
-      status: 'Dikirim',
-      date: '2023-05-03',
-      total: 'Rp 1.250.000',
-    },
-    {
-      id: 'ORD-004',
-      customer: 'Andi Wijaya',
-      status: 'Menunggu Pembayaran',
-      date: '2023-05-04',
-      total: 'Rp 3.670.000',
-    },
-    {
-      id: 'ORD-005',
-      customer: 'CV. Maju Bersama',
-      status: 'Selesai',
-      date: '2023-05-05',
-      total: 'Rp 8.920.000',
-    },
-  ]
+interface OrderItem {
+  product: {
+    name: string
+  }
+  quantity: number
+  price: number
+}
+
+interface Order {
+  id: string
+  createdAt: string
+  user: {
+    profile: {
+      fullName: string
+    }
+  }
+  items: OrderItem[]
+  totalAmount: number
+  status: string
+  Payment: {
+    status: string
+  }[]
+}
+
+interface RecentOrdersProps {
+  orders: Order[]
+}
+
+export default function RecentOrders({ orders }: RecentOrdersProps) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+        return <Badge variant='outline'>Menunggu Pembayaran</Badge>
+      case 'CONFIRMED':
+        return (
+          <Badge variant='outline' className='bg-green-100 text-green-800'>
+            Dikonfirmasi
+          </Badge>
+        )
+      case 'SHIPPED':
+        return (
+          <Badge variant='outline' className='bg-blue-100 text-blue-800'>
+            Dikirim
+          </Badge>
+        )
+      case 'DELIVERED':
+        return (
+          <Badge variant='outline' className='bg-purple-100 text-purple-800'>
+            Terkirim
+          </Badge>
+        )
+      case 'CANCELLED':
+        return (
+          <Badge variant='outline' className='bg-red-100 text-red-800'>
+            Dibatalkan
+          </Badge>
+        )
+      default:
+        return <Badge variant='outline'>{status}</Badge>
+    }
+  }
+
+  const getPaymentStatus = (payments: { status: string }[]) => {
+    const lastPayment = payments[payments.length - 1]
+    if (!lastPayment) return 'PENDING'
+    return lastPayment.status
+  }
 
   return (
-    <Card className='col-span-7'>
-      <CardHeader className='flex flex-row items-center'>
-        <div className='grid gap-2'>
-          <CardTitle>Pesanan Terbaru</CardTitle>
-          <CardDescription>
-            Daftar 5 pesanan terbaru yang masuk ke sistem.
-          </CardDescription>
-        </div>
-        <Button variant='outline' size='sm' className='ml-auto'>
-          Lihat Semua
-        </Button>
-      </CardHeader>
-      <CardContent>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID Pesanan</TableHead>
-              <TableHead>Pelanggan</TableHead>
-              <TableHead>Tanggal</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className='text-right'>Total</TableHead>
-              <TableHead></TableHead>
+    <div className='space-y-4'>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>ID Pesanan</TableHead>
+            <TableHead>Pelanggan</TableHead>
+            <TableHead>Tanggal</TableHead>
+            <TableHead className='text-right'>Total</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Pembayaran</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {orders.map((order) => (
+            <TableRow key={order.id}>
+              <TableCell className='font-medium'>{order.id}</TableCell>
+              <TableCell>{order.user.profile.fullName}</TableCell>
+              <TableCell>
+                {format(new Date(order.createdAt), 'dd MMM yyyy', {
+                  locale: id,
+                })}
+              </TableCell>
+              <TableCell className='text-right'>
+                {new Intl.NumberFormat('id-ID', {
+                  style: 'currency',
+                  currency: 'IDR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(order.totalAmount)}
+              </TableCell>
+              <TableCell>{getStatusBadge(order.status)}</TableCell>
+              <TableCell>
+                {getStatusBadge(getPaymentStatus(order.Payment))}
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell className='font-medium'>{order.id}</TableCell>
-                <TableCell>{order.customer}</TableCell>
-                <TableCell>{order.date}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={
-                      order.status === 'Selesai'
-                        ? 'default'
-                        : order.status === 'Diproses'
-                        ? 'secondary'
-                        : order.status === 'Dikirim'
-                        ? 'outline'
-                        : 'destructive'
-                    }>
-                    {order.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className='text-right'>{order.total}</TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant='ghost' className='h-8 w-8 p-0'>
-                        <span className='sr-only'>Buka menu</span>
-                        <MoreHorizontal className='h-4 w-4' />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align='end'>
-                      <DropdownMenuLabel>Aksi</DropdownMenuLabel>
-                      <DropdownMenuItem>Lihat detail</DropdownMenuItem>
-                      <DropdownMenuItem>Update status</DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>Batalkan pesanan</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

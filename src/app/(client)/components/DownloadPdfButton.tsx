@@ -2,10 +2,14 @@
 
 import { generatePdfFromHtml } from '@/app/actions/pdfAction'
 import { Button } from '@/components/ui/button'
-import { Download } from 'lucide-react'
+import { Download, Printer } from 'lucide-react'
 import React from 'react'
 import { createProformaInvoiceFromCart } from '@/app/actions/proinvoiceAction'
 import { toast } from 'sonner'
+import {
+  updateOrderStatus,
+  updateOrderStatusShipped,
+} from '@/app/actions/orderAction'
 
 type CartButtonProps = {
   htmlContent: string
@@ -33,6 +37,12 @@ type ProInvoiceButtonProps = {
     }
     notes?: string
   }
+}
+
+type SJButtonProps = {
+  htmlContent: string
+  disabled?: boolean
+  orderId?: string
 }
 
 export function PdfCartButton({ htmlContent, disabled }: CartButtonProps) {
@@ -103,6 +113,36 @@ export function PdfProInvoiceButton({
       disabled={disabled}
       onClick={handleDownload}>
       <Download className='h-5 w-5' />
+    </Button>
+  )
+}
+
+export function PdfSJButton({ htmlContent, disabled, orderId }: SJButtonProps) {
+  const handleDownload = async () => {
+    if (orderId) {
+      const updateOrder = await updateOrderStatusShipped(orderId)
+      if (!updateOrder.success) {
+        throw new Error(updateOrder.error)
+      }
+      if (updateOrder.success) {
+        const res = await generatePdfFromHtml(htmlContent)
+        const blob = new Blob([res], { type: 'application/pdf' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = 'surat-jalan.pdf'
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        window.URL.revokeObjectURL(url)
+      }
+    }
+  }
+
+  return (
+    <Button disabled={disabled} onClick={handleDownload}>
+      <Printer className='h-5 w-5' />
+      Print
     </Button>
   )
 }

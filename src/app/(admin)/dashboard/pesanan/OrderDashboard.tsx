@@ -1,7 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { getAllOrders, updateOrderStatus } from '@/app/actions/orderAction'
+import {
+  getAllOrders,
+  updateOrderStatus,
+  updateOrderResi,
+} from '@/app/actions/orderAction'
 import { formatCurrency } from '@/lib/helpper'
 import { OrderStatus } from '@prisma/client'
 import { MoreHorizontal, Filter, Download } from 'lucide-react'
@@ -18,6 +22,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import Image from 'next/image'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 
 export default function OrderDashboard({
   initialOrders,
@@ -27,7 +34,15 @@ export default function OrderDashboard({
   const [orders, setOrders] = useState(initialOrders)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('Semua Status')
-
+  const [resi, setResi] = useState('')
+  const status = {
+    'Semua Status': 'Semua Status',
+    [OrderStatus.PENDING]: 'Menunggu Pembayaran',
+    [OrderStatus.CONFIRMED]: 'Diproses',
+    [OrderStatus.SHIPPED]: 'Dikirim',
+    [OrderStatus.DELIVERED]: 'Selesai',
+    [OrderStatus.CANCELLED]: 'Dibatalkan',
+  }
   useEffect(() => {
     async function fetchOrders() {
       setLoading(true)
@@ -59,8 +74,12 @@ export default function OrderDashboard({
     }
   }
 
+  const handleUpdateResi = async () => {
+    await updateOrderResi(orders[0].id, resi)
+  }
+
   return (
-    <div className='p-6'>
+    <div className='container mx-auto'>
       <div className='flex justify-between items-center mb-6'>
         <h1 className='text-2xl font-bold'>Daftar Pesanan</h1>
         <div className='text-sm text-gray-500'>
@@ -68,12 +87,12 @@ export default function OrderDashboard({
         </div>
       </div>
 
-      <div className='flex justify-between items-center mb-4'>
-        <div className='relative'>
+      <div className='flex flex-col gap-2 md:flex-row md:justify-between md:items-center mb-4'>
+        <div className='relative w-full md:w-auto'>
           <input
             type='text'
             placeholder='Cari pesanan atau pelanggan...'
-            className='pl-8 pr-4 py-2 border rounded-md w-80'
+            className='pl-8 pr-4 py-2 border rounded-md w-full md:w-80'
           />
           <svg
             className='absolute left-2.5 top-2.5 h-4 w-4 text-gray-400'
@@ -90,11 +109,11 @@ export default function OrderDashboard({
           </svg>
         </div>
 
-        <div className='flex gap-2'>
+        <div className='flex flex-col sm:flex-row gap-2 w-full md:w-auto'>
           <div className='relative'>
-            <button className='flex items-center gap-2 px-3 py-2 border rounded-md'>
+            <button className='flex items-center gap-2 px-3 py-2 border rounded-md w-full sm:w-auto'>
               <Filter className='h-4 w-4' />
-              <span>{statusFilter}</span>
+              <span>{status[statusFilter]}</span>
               <svg
                 className='h-4 w-4 text-gray-400'
                 xmlns='http://www.w3.org/2000/svg'
@@ -124,7 +143,7 @@ export default function OrderDashboard({
                   Menunggu Pembayaran
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={() => setStatusFilter(OrderStatus.PROCESSING)}>
+                  onClick={() => setStatusFilter(OrderStatus.CONFIRMED)}>
                   Diproses
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -143,15 +162,15 @@ export default function OrderDashboard({
             </DropdownMenu>
           </div>
 
-          <button className='flex items-center gap-2 px-3 py-2 border rounded-md'>
+          <button className='flex items-center gap-2 px-3 py-2 border rounded-md w-full sm:w-auto'>
             <Download className='h-4 w-4' />
             <span>Export</span>
           </button>
         </div>
       </div>
 
-      <div className='bg-white rounded-lg shadow overflow-hidden'>
-        <table className='min-w-full divide-y divide-gray-200'>
+      <div className='bg-white rounded-lg shadow overflow-x-auto'>
+        <table className='min-w-[600px] w-full divide-y divide-gray-200'>
           <thead className='bg-gray-50'>
             <tr>
               <th
@@ -227,7 +246,7 @@ export default function OrderDashboard({
                           : ''
                       }
                       ${
-                        order.status === OrderStatus.PROCESSING
+                        order.status === OrderStatus.CONFIRMED
                           ? 'bg-blue-100 text-blue-800'
                           : ''
                       }
@@ -249,7 +268,7 @@ export default function OrderDashboard({
                     `}>
                       {order.status === OrderStatus.PENDING &&
                         'Menunggu Pembayaran'}
-                      {order.status === OrderStatus.PROCESSING && 'Diproses'}
+                      {order.status === OrderStatus.CONFIRMED && 'Diproses'}
                       {order.status === OrderStatus.SHIPPED && 'Dikirim'}
                       {order.status === OrderStatus.DELIVERED && 'Selesai'}
                       {order.status === OrderStatus.CANCELLED && 'Dibatalkan'}
@@ -262,7 +281,7 @@ export default function OrderDashboard({
                           Detail
                         </button>
                       </DialogTrigger>
-                      <DialogContent className='sm:max-w-md'>
+                      <DialogContent className='max-w-full sm:max-w-md max-h-[80vh] overflow-y-auto'>
                         <DialogHeader>
                           <DialogTitle>
                             Detail Pesanan #{order.id.substring(0, 8)}
@@ -305,12 +324,19 @@ export default function OrderDashboard({
                               Produk yang Dibeli
                             </h4>
                             <div className='border rounded-md divide-y'>
-                              {order.orderItems?.map((item) => (
+                              {order.items?.map((item) => (
                                 <div
                                   key={item.id}
                                   className='flex justify-between p-3'>
                                   <div className='flex items-center gap-3'>
-                                    <div className='w-10 h-10 bg-gray-200 rounded-md'></div>
+                                    <div className='w-10 h-10 bg-gray-200 rounded-md'>
+                                      <Image
+                                        src={item.product?.images[0]}
+                                        alt={item.product?.name}
+                                        width={40}
+                                        height={40}
+                                      />
+                                    </div>
                                     <div>
                                       <p className='text-sm font-medium'>
                                         {item.product?.name || 'Produk'}
@@ -355,7 +381,7 @@ export default function OrderDashboard({
                                   `}>
                                   {status === OrderStatus.PENDING &&
                                     'Menunggu Pembayaran'}
-                                  {status === OrderStatus.PROCESSING &&
+                                  {status === OrderStatus.CONFIRMED &&
                                     'Diproses'}
                                   {status === OrderStatus.SHIPPED && 'Dikirim'}
                                   {status === OrderStatus.DELIVERED &&
@@ -365,6 +391,23 @@ export default function OrderDashboard({
                                 </button>
                               ))}
                             </div>
+                          </div>
+                          <div className='mt-4 space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2 border rounded-md p-4'>
+                            <h2 className='text-xl font-bold mb-4 sm:mb-0'>
+                              Nomor Resi
+                            </h2>
+                            <Input
+                              className='w-full sm:w-auto'
+                              type='text'
+                              placeholder='Masukkan/scan nomor resi'
+                              value={resi}
+                              onChange={(e) => setResi(e.target.value)}
+                            />
+                            <Button
+                              className='w-full sm:w-auto'
+                              onClick={handleUpdateResi}>
+                              Simpan
+                            </Button>
                           </div>
                         </div>
                       </DialogContent>
@@ -379,7 +422,7 @@ export default function OrderDashboard({
                       <DropdownMenuContent align='end'>
                         <DropdownMenuItem
                           onClick={() =>
-                            handleStatusChange(order.id, OrderStatus.PROCESSING)
+                            handleStatusChange(order.id, OrderStatus.CONFIRMED)
                           }>
                           Proses Pesanan
                         </DropdownMenuItem>

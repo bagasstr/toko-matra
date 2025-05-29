@@ -324,6 +324,8 @@ export default function Page() {
     }
   }
 
+  console.log(form.getValues('brandId'))
+
   async function onSubmit(values: CreateProductSchema) {
     if (selectedFiles.length === 0 && previews.length === 0) {
       toast.error('Harap upload minimal 1 gambar produk')
@@ -364,7 +366,7 @@ export default function Page() {
         isFeatured: values.isFeatured,
         isActive: values.isActive,
         categoryId: Number(values.categoryId),
-        brandId: values.brandId ? Number(values.brandId) : undefined,
+        brandId: values.brandId,
         stock: Number(values.stock),
         minOrder: Number(values.minOrder),
         multiOrder: Number(values.multiOrder),

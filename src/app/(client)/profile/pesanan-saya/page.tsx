@@ -15,19 +15,10 @@ interface PesananSayaPageProps {
 export default async function PesananSayaPage({
   searchParams,
 }: PesananSayaPageProps) {
-  const userId = searchParams.user
   let orderResult = { success: false, data: [] as any[] }
-  if (userId) {
-    const result = await getUserOrders()
-    orderResult = { success: result.success, data: result.data || [] }
-  }
+  const result = await getUserOrders()
+  orderResult = { success: result.success, data: result.data || [] }
   const orders = orderResult.success ? orderResult.data : []
-  const userSession = await validateSession()
-  const userIdSession = userSession?.user?.profile.id
-
-  if (userId && userId.toLowerCase() !== userIdSession?.toLowerCase()) {
-    return <AuthSection />
-  }
 
   if (!orderResult.success) {
     return (
@@ -98,7 +89,7 @@ export default async function PesananSayaPage({
                     className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                       order.status === 'PENDING'
                         ? 'bg-yellow-100 text-yellow-800'
-                        : order.status === 'PROCESSING'
+                        : order.status === 'CONFIRMED'
                         ? 'bg-blue-100 text-blue-800'
                         : order.status === 'SHIPPED'
                         ? 'bg-indigo-100 text-indigo-800'
@@ -108,7 +99,7 @@ export default async function PesananSayaPage({
                     }`}>
                     {order.status === 'PENDING'
                       ? 'Menunggu Pembayaran'
-                      : order.status === 'PROCESSING'
+                      : order.status === 'CONFIRMED'
                       ? 'Diproses'
                       : order.status === 'SHIPPED'
                       ? 'Dikirim'
@@ -154,7 +145,7 @@ export default async function PesananSayaPage({
                     )}
                   </div>
 
-                  <Link href={`/orders/${order.id}`}>
+                  <Link href={`/profile/pesanan-saya/${order.id}`}>
                     <Button variant='outline' size='sm'>
                       Detail Pesanan
                     </Button>

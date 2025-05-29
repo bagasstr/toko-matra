@@ -1,25 +1,105 @@
 'use server'
 
-import { prisma } from '@/lib/prisma'
-import { revalidatePath } from 'next/cache'
-import { cookies } from 'next/headers'
-import { validateSession } from './session'
 import { generateCustomId } from '@/lib/helpper'
-import { OrderStatus } from '@prisma/client'
+import { prisma } from '@/lib/prisma'
+import { OrderItem } from '@prisma/client'
+import { validateSession } from './session'
+import { getCartItems } from './cartAction'
+import { revalidatePath } from 'next/cache'
 
-// Interface for creating an order
-interface CreateOrderInput {
+enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
+export interface IOrder {
+  id: string
+  userId: string
+  user: string
   addressId: string
+  address: string
+  status: OrderStatus
+  totalAmount: number
+  receiptNumber?: string | null
   items: {
     productId: string
     quantity: number
     price: number
   }[]
-  paymentMethod: string
+  createdAt: Date
+  updatedAt: Date
+  Payment: string[]
+  Shipments?: string | null
+  paymentMethod?: string
+  bank?: string
+  paymentType?: string
+  transactionId?: string
+  transactionTime?: string
+  transactionStatus?: string
+  fraudStatus?: string
+  vaNumber?: string
+  approvalCode?: string
+  rawResponse?: string
+  paidAt?: string
 }
 
-// Create a new order
-export async function createOrder(input: CreateOrderInput) {
+export async function createOrder(order: IOrder) {
+  const result = await prisma.order.create({
+    data: {
+      id: generateCustomId('ORD'),
+      userId: order.userId,
+      addressId: order.addressId,
+      status: order.status,
+      totalAmount: order.totalAmount,
+      receiptNumber: order.receiptNumber,
+      items: {
+        create: order.items.map((item) => ({
+          id: crypto.randomUUID(),
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          product: {
+            connect: {
+              id: item.productId,
+            },
+          },
+        })),
+      },
+      Payment: {
+        create: order.Payment.map((paymentId) => ({
+          id: paymentId,
+          amount: order.totalAmount,
+          paymentMethod: 'bank_transfer', // Default payment method
+          status: 'PENDING', // Default status
+        })),
+      },
+      Shipment: order.Shipments
+        ? {
+            create: {
+              id: crypto.randomUUID(),
+              deliveryNumber: order.Shipments,
+              deliveryDate: new Date(),
+              status: 'PENDING',
+            },
+          }
+        : undefined,
+    },
+  })
+  return result
+}
+
+interface CheckoutFormData {
+  addressId: string
+  bank: string
+  paymentMethod: string
+  notes?: string
+}
+
+export async function processCheckoutAndCreateOrder(
+  formData: CheckoutFormData
+) {
   try {
     const session = await validateSession()
     if (!session?.user) {
@@ -29,120 +109,115 @@ export async function createOrder(input: CreateOrderInput) {
       }
     }
 
-    const userId = session.user.id
+    // Get cart items
+    const cartResult = await getCartItems()
+    if (
+      !cartResult.success ||
+      !cartResult.data ||
+      cartResult.data.length === 0
+    ) {
+      return {
+        success: false,
+        message: 'Cart is empty or could not be retrieved',
+      }
+    }
 
-    // Calculate total amount
-    const totalAmount = input.items.reduce(
-      (sum, item) => sum + item.price * item.quantity,
+    // Prepare order items
+    const items = cartResult.data.map((item: any) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+      price: Number(item.product.price),
+    }))
+
+    const totalAmount = items.reduce(
+      (total, item) => total + item.price * item.quantity,
       0
     )
 
-    // Start a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Create the order
-      const order = await tx.order.create({
-        data: {
-          id: generateCustomId('ORD'),
-          userId,
-          addressId: input.addressId,
-          totalAmount,
-          status: 'PENDING',
+    // Create order
+    const orderResult = await prisma.order.create({
+      data: {
+        id: generateCustomId('ORD'),
+        user: {
+          connect: {
+            id: session.user.id,
+          },
         },
-      })
-
-      // 2. Create order items
-      const orderItems = await Promise.all(
-        input.items.map(async (item) => {
-          return tx.orderItem.create({
-            data: {
-              id: generateCustomId('ORD-ITM'),
-              orderId: order.id,
-              productId: item.productId,
-              quantity: item.quantity,
-              price: item.price,
+        address: {
+          connect: {
+            id: formData.addressId,
+          },
+        },
+        status: OrderStatus.PENDING,
+        totalAmount,
+        receiptNumber: null,
+        items: {
+          create: items.map((item) => ({
+            id: crypto.randomUUID(),
+            product: {
+              connect: {
+                id: item.productId,
+              },
             },
-          })
-        })
-      )
-
-      // 3. Create payment record
-      const payment = await tx.payment.create({
-        data: {
-          id: generateCustomId('PAY'),
-          orderId: order.id,
-          amount: totalAmount,
-          paymentMethod: input.paymentMethod,
-          status: 'PENDING',
+            quantity: item.quantity,
+            price: item.price,
+          })),
         },
-      })
-
-      // 4. Create shipment record
-      const shipment = await tx.shipment.create({
-        data: {
-          id: generateCustomId('SHP'),
-          orderId: order.id,
-          status: 'PENDING',
+        Payment: {
+          create: [
+            {
+              id: crypto.randomUUID(),
+              amount: totalAmount,
+              paymentMethod: formData.paymentMethod,
+              status: 'PENDING',
+              bank: formData.bank,
+            },
+          ],
         },
-      })
-
-      // 5. Update product stock
-      await Promise.all(
-        input.items.map(async (item) => {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-          })
-
-          if (product) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: product.stock - item.quantity },
-            })
-          }
-        })
-      )
-
-      // 6. Clear cart after successful order
-      const cart = await tx.cart.findFirst({
-        where: { userId },
-        select: { id: true },
-      })
-
-      if (cart) {
-        await tx.cartItem.deleteMany({
-          where: { cartId: cart.id },
-        })
-      }
-
-      return {
-        order,
-        orderItems,
-        payment,
-        shipment,
-      }
+        Shipment: {
+          create: {
+            id: crypto.randomUUID(),
+            status: 'PENDING',
+            deliveryDate: new Date(),
+            deliveryNumber: generateCustomId('DEL'),
+          },
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        Payment: true,
+        address: true,
+        user: {
+          select: {
+            profile: true,
+          },
+        },
+      },
     })
 
-    revalidatePath('/orders')
-    revalidatePath('/keranjang')
-
-    // Safely convert any Decimal objects to plain numbers
-    const safeData = JSON.parse(JSON.stringify(result))
-
+    // Return success with order data
     return {
+      data: orderResult,
       success: true,
       message: 'Order created successfully',
-      data: safeData,
     }
   } catch (error) {
-    console.error('Error creating order:', error)
+    console.error('Error processing checkout and creating order:', error)
     return {
       success: false,
-      message: 'Failed to create order',
+      message: 'Failed to process checkout and create order',
       error,
     }
   }
 }
 
-// Get all orders for the current user
+// // Get all orders for the current user
 export async function getUserOrders() {
   try {
     const session = await validateSession()
@@ -166,6 +241,15 @@ export async function getUserOrders() {
         Payment: true,
         Shipment: true,
         address: true,
+        user: {
+          select: {
+            profile: {
+              select: {
+                fullName: true,
+              },
+            },
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     })
@@ -204,6 +288,11 @@ export async function getOrderById(orderId: string) {
         userId, // Ensure the order belongs to the current user
       },
       include: {
+        user: {
+          select: {
+            profile: true,
+          },
+        },
         items: {
           include: {
             product: true,
@@ -260,6 +349,55 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
       where: { id: orderId },
       data: { status },
     })
+    await prisma.shipment.update({
+      where: { orderId },
+      data: { status },
+    })
+
+    revalidatePath('/admin/orders')
+    revalidatePath(`/orders/${orderId}`)
+
+    return {
+      success: true,
+      message: 'Order status updated successfully',
+      data: updatedOrder,
+    }
+  } catch (error) {
+    console.error('Error updating order status:', error)
+    return {
+      success: false,
+      message: 'Failed to update order status',
+      error,
+    }
+  }
+}
+
+export async function updateOrderStatusShipped(orderId: string) {
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+      }
+    }
+
+    // Check if user is admin (only admins should update order status)
+    if (session.user.role !== 'ADMIN') {
+      return {
+        success: false,
+        message: 'Unauthorized to update order status',
+      }
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: OrderStatus.SHIPPED },
+    })
+    await prisma.shipment.update({
+      where: { orderId },
+      data: { status: OrderStatus.SHIPPED },
+    })
 
     revalidatePath('/admin/orders')
     revalidatePath(`/orders/${orderId}`)
@@ -312,7 +450,7 @@ export async function cancelOrder(orderId: string) {
       }
 
       // 2. Check if the order can be cancelled (only PENDING or PROCESSING orders)
-      if (order.status !== 'PENDING' && order.status !== 'PROCESSING') {
+      if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
         throw new Error(`Cannot cancel order with status: ${order.status}`)
       }
 
@@ -456,7 +594,7 @@ export async function updatePaymentStatus(paymentId: string, status: string) {
     if (status === 'PAID') {
       await prisma.order.update({
         where: { id: updatedPayment.orderId },
-        data: { status: OrderStatus.PROCESSING },
+        data: { status: OrderStatus.CONFIRMED },
       })
     }
 
@@ -535,6 +673,45 @@ export async function updateShipment(
     return {
       success: false,
       message: 'Failed to update shipment',
+      error,
+    }
+  }
+}
+
+export async function updateOrderResi(orderId: string, receiptNumber: string) {
+  // ...implementasi seperti yang sudah dijelaskan sebelumnya...
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+      }
+    }
+
+    // Check if user is admin
+    if (session.user.role !== 'ADMIN') {
+      return {
+        success: false,
+        message: 'Unauthorized to update order resi',
+      }
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { receiptNumber, status: OrderStatus.SHIPPED },
+    })
+
+    return {
+      success: true,
+      message: 'Order resi updated successfully',
+      data: updatedOrder,
+    }
+  } catch (error) {
+    console.error('Error updating order resi:', error)
+    return {
+      success: false,
+      message: 'Failed to update order resi',
       error,
     }
   }

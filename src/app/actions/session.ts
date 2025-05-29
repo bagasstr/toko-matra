@@ -6,7 +6,7 @@ import { cookies } from 'next/headers'
 import { generateCustomId } from '@/lib/helpper'
 
 export const createSession = async (id: string) => {
-  const expires = new Date(Date.now() + 60 * 60 * 24 * 30 * 1000)
+  const expires = new Date(Date.now() + 1 * 60 * 60 * 1000)
   const sessionToken = randomUUID()
 
   const exists = await prisma.account.findFirst({
@@ -17,7 +17,7 @@ export const createSession = async (id: string) => {
   if (exists?.provider === 'credentials') {
     const session = await prisma.session.create({
       data: {
-        id: generateCustomId('SES'),
+        id: generateCustomId('ses'),
         sessionToken,
         userId: id,
         expires,

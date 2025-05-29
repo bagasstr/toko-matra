@@ -143,16 +143,18 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
       toast.error('Silakan pilih alamat terlebih dahulu')
       return
     }
-    
+
     // Validasi apakah alamat yang dipilih milik pengguna ini
-    const addressExists = user.address?.some(addr => addr.id === selectAddress)
+    const addressExists = user.address?.some(
+      (addr) => addr.id === selectAddress
+    )
     if (!addressExists) {
       toast.error('Alamat tidak valid untuk pengguna ini')
       return
     }
-    
-    console.log(user.id, selectAddress);
-    
+
+    console.log(user.id, selectAddress)
+
     startTransition(async () => {
       try {
         const result = await activeAddress(user.id, selectAddress)
@@ -180,43 +182,40 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
   }, [user.role, router])
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto py-8 px-4 max-w-5xl">
+    <div className='min-h-screen bg-gray-50'>
+      <div className='container mx-auto py-8 px-4 max-w-5xl'>
         {/* Header */}
-        <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-16 w-16 border-2 border-white shadow-md">
+        <div className='mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4'>
+          <div className='flex items-center gap-4'>
+            <Avatar className='h-16 w-16 border-2 border-white shadow-md'>
               <AvatarImage src={user.profile?.imageUrl} />
-              <AvatarFallback className="bg-blue-600 text-white text-xl">
+              <AvatarFallback className='bg-blue-600 text-white text-xl'>
                 {user.profile?.fullName?.charAt(0) || user.email.charAt(0)}
               </AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">
+              <h1 className='text-2xl font-bold text-gray-800'>
                 {user.profile?.fullName || 'Pengguna'}
               </h1>
-              <p className="text-sm text-gray-500 flex items-center gap-1">
-                <Mail className="h-3.5 w-3.5" />
+              <p className='text-sm text-gray-500 flex items-center gap-1'>
+                <Mail className='h-3.5 w-3.5' />
                 {user.email}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className='flex gap-2'>
             <Dialog
               open={isProfileDialogOpen}
               onOpenChange={setIsProfileDialogOpen}>
               <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2">
-                  <Edit2 className="h-4 w-4" />
+                <Button variant='outline' size='sm' className='gap-2'>
+                  <Edit2 className='h-4 w-4' />
                   Edit Profil
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl">
+              <DialogContent className='max-w-2xl'>
                 <DialogHeader>
-                  <DialogTitle className="text-xl font-semibold">
+                  <DialogTitle className='text-xl font-semibold'>
                     Edit Profil
                   </DialogTitle>
                 </DialogHeader>
@@ -243,43 +242,45 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
               </DialogContent>
             </Dialog>
             <Button
-              variant="ghost"
-              size="sm"
+              variant='ghost'
+              size='sm'
               onClick={handleLogout}
-              className="gap-2 text-red-600 hover:text-red-700 hover:bg-red-50">
-              <LogOut className="h-4 w-4" />
+              className='gap-2 text-red-600 hover:text-red-700 hover:bg-red-50'>
+              <LogOut className='h-4 w-4' />
               Keluar
             </Button>
           </div>
         </div>
 
         {/* Content */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className='grid gap-6 md:grid-cols-3'>
           {/* Profile Info */}
-          <div className="md:col-span-1 space-y-6">
-            <Card className="shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <User className="h-4 w-4 text-blue-600" />
+          <div className='md:col-span-1 space-y-6'>
+            <Card className='shadow-sm'>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-lg font-medium flex items-center gap-2'>
+                  <User className='h-4 w-4 text-blue-600' />
                   Info Profil
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <User2 className="h-4 w-4 text-gray-400" />
-                  <span>{user.profile?.userName || 'Username belum diatur'}</span>
+              <CardContent className='space-y-4 pt-2'>
+                <div className='flex items-center gap-2 text-sm text-gray-600'>
+                  <User2 className='h-4 w-4 text-gray-400' />
+                  <span>
+                    {user.profile?.userName || 'Username belum diatur'}
+                  </span>
                 </div>
-                
+
                 {user.profile?.phoneNumber && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Phone className="h-4 w-4 text-gray-400" />
+                  <div className='flex items-center gap-2 text-sm text-gray-600'>
+                    <Phone className='h-4 w-4 text-gray-400' />
                     <span>{user.profile.phoneNumber}</span>
                   </div>
                 )}
-                
+
                 {user.profile?.gender && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <User2 className="h-4 w-4 text-gray-400" />
+                  <div className='flex items-center gap-2 text-sm text-gray-600'>
+                    <User2 className='h-4 w-4 text-gray-400' />
                     <span>
                       {user.profile.gender === 'male'
                         ? 'Laki-laki'
@@ -289,10 +290,10 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                     </span>
                   </div>
                 )}
-                
+
                 {user.profile?.dateOfBirth && (
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4 text-gray-400" />
+                  <div className='flex items-center gap-2 text-sm text-gray-600'>
+                    <Calendar className='h-4 w-4 text-gray-400' />
                     <span>
                       {new Date(user.profile.dateOfBirth).toLocaleDateString(
                         'id-ID'
@@ -300,10 +301,20 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                     </span>
                   </div>
                 )}
-                
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+
+                <div className='flex items-center gap-2 text-sm text-gray-600'>
+                  <svg
+                    xmlns='http://www.w3.org/2000/svg'
+                    className='h-4 w-4 text-gray-400'
+                    fill='none'
+                    viewBox='0 0 24 24'
+                    stroke='currentColor'>
+                    <path
+                      strokeLinecap='round'
+                      strokeLinejoin='round'
+                      strokeWidth={2}
+                      d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+                    />
                   </svg>
                   <span>
                     Bergabung sejak{' '}
@@ -316,34 +327,34 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
             </Card>
 
             {/* Stats */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <ShoppingBag className="h-4 w-4 text-blue-600" />
+            <Card className='shadow-sm'>
+              <CardHeader className='pb-2'>
+                <CardTitle className='text-lg font-medium flex items-center gap-2'>
+                  <ShoppingBag className='h-4 w-4 text-blue-600' />
                   Statistik
                 </CardTitle>
               </CardHeader>
-              <CardContent className="pt-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-blue-700">
+              <CardContent className='pt-2'>
+                <div className='grid grid-cols-2 gap-4'>
+                  <div className='bg-blue-50 rounded-lg p-3 text-center'>
+                    <p className='text-2xl font-bold text-blue-700'>
                       {user.address?.length || 0}
                     </p>
-                    <p className="text-xs text-blue-600">Alamat</p>
+                    <p className='text-xs text-blue-600'>Alamat</p>
                   </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <p className="text-2xl font-bold text-green-700">
+                  <div className='bg-green-50 rounded-lg p-3 text-center'>
+                    <p className='text-2xl font-bold text-green-700'>
                       {user.order?.length || 0}
                     </p>
-                    <p className="text-xs text-green-600">Pesanan</p>
+                    <p className='text-xs text-green-600'>Pesanan</p>
                   </div>
                 </div>
-                
+
                 {user.order && user.order.length > 0 && (
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-center mt-4 text-blue-600 hover:bg-blue-50"
-                    onClick={() => router.push('/orders')}>
+                  <Button
+                    variant='ghost'
+                    className='w-full justify-center mt-4 text-blue-600 hover:bg-blue-50'
+                    onClick={() => router.push('/profile/pesanan-saya')}>
                     Lihat Riwayat Pesanan
                   </Button>
                 )}
@@ -352,17 +363,27 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
 
             {/* Bio */}
             {user.profile?.bio && (
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-medium flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+              <Card className='shadow-sm'>
+                <CardHeader className='pb-2'>
+                  <CardTitle className='text-lg font-medium flex items-center gap-2'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      className='h-4 w-4 text-blue-600'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                      stroke='currentColor'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z'
+                      />
                     </svg>
                     Bio
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-2">
-                  <p className="text-sm text-gray-600 italic">
+                <CardContent className='pt-2'>
+                  <p className='text-sm text-gray-600 italic'>
                     "{user.profile.bio}"
                   </p>
                 </CardContent>
@@ -371,23 +392,23 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
 
             {/* Business Info */}
             {(user.profile?.companyName || user.profile?.taxId) && (
-              <Card className="shadow-sm">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg font-medium flex items-center gap-2">
-                    <Building2 className="h-4 w-4 text-blue-600" />
+              <Card className='shadow-sm'>
+                <CardHeader className='pb-2'>
+                  <CardTitle className='text-lg font-medium flex items-center gap-2'>
+                    <Building2 className='h-4 w-4 text-blue-600' />
                     Info Bisnis
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-2">
+                <CardContent className='space-y-4 pt-2'>
                   {user.profile.companyName && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Building2 className="h-4 w-4 text-gray-400" />
+                    <div className='flex items-center gap-2 text-sm text-gray-600'>
+                      <Building2 className='h-4 w-4 text-gray-400' />
                       <span>{user.profile.companyName}</span>
                     </div>
                   )}
                   {user.profile.taxId && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <Receipt className="h-4 w-4 text-gray-400" />
+                    <div className='flex items-center gap-2 text-sm text-gray-600'>
+                      <Receipt className='h-4 w-4 text-gray-400' />
                       <span>{user.profile.taxId}</span>
                     </div>
                   )}
@@ -397,28 +418,28 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
           </div>
 
           {/* Address */}
-          <div className="md:col-span-2">
-            <Card className="shadow-sm">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-medium flex items-center gap-2">
-                  <MapPin className="h-4 w-4 text-blue-600" />
+          <div className='md:col-span-2'>
+            <Card className='shadow-sm'>
+              <CardHeader className='flex flex-row items-center justify-between pb-2'>
+                <CardTitle className='text-lg font-medium flex items-center gap-2'>
+                  <MapPin className='h-4 w-4 text-blue-600' />
                   Alamat
                 </CardTitle>
                 <Button
-                  variant="ghost"
-                  size="sm"
+                  variant='ghost'
+                  size='sm'
                   onClick={() => {
                     setSelectedAddress(null)
                     setIsAddressDialogOpen(true)
                   }}
-                  className="gap-1 text-blue-600 hover:bg-blue-50">
-                  <Plus className="h-3.5 w-3.5" />
+                  className='gap-1 text-blue-600 hover:bg-blue-50'>
+                  <Plus className='h-3.5 w-3.5' />
                   Tambah
                 </Button>
               </CardHeader>
               <CardContent>
                 {user.address && user.address.length > 0 ? (
-                  <div className="space-y-3">
+                  <div className='space-y-3'>
                     {sortedAddress.map((address) => (
                       <div
                         key={address.id}
@@ -432,29 +453,39 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         )}>
-                        <div className="flex justify-between items-start">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
+                        <div className='flex justify-between items-start'>
+                          <div className='space-y-2'>
+                            <div className='flex items-center gap-2'>
                               {selectAddress === address.id && (
-                                <Check size={16} className="text-blue-600" />
+                                <Check size={16} className='text-blue-600' />
                               )}
-                              <Badge variant={address.isPrimary ? "default" : "outline"} className={address.isPrimary ? "bg-blue-500 hover:bg-blue-600" : ""}>
+                              <Badge
+                                variant={
+                                  address.isPrimary ? 'default' : 'outline'
+                                }
+                                className={
+                                  address.isPrimary
+                                    ? 'bg-blue-500 hover:bg-blue-600'
+                                    : ''
+                                }>
                                 {address.labelAddress}
                               </Badge>
-                              
+
                               {address.isPrimary && (
-                                <Badge variant="outline" className="border-purple-500 text-purple-600">
+                                <Badge
+                                  variant='outline'
+                                  className='border-purple-500 text-purple-600'>
                                   Utama
                                 </Badge>
                               )}
                             </div>
-                            <p className="font-medium text-gray-800">
+                            <p className='font-medium text-gray-800'>
                               {address.recipientName}
                             </p>
-                            <p className="text-sm text-gray-600">
+                            <p className='text-sm text-gray-600'>
                               {address.address}
                             </p>
-                            <p className="text-xs text-gray-500">
+                            <p className='text-xs text-gray-500'>
                               {[
                                 address.village,
                                 address.district,
@@ -466,51 +497,64 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                                 .join(', ')}
                             </p>
                           </div>
-                          <div className="flex gap-1">
+                          <div className='flex gap-1'>
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant='ghost'
+                              size='icon'
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setSelectedAddress(address)
                                 setIsAddressDialogOpen(true)
                               }}
-                              className="h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50">
-                              <Edit2 className="h-4 w-4" />
+                              className='h-8 w-8 text-gray-500 hover:text-blue-600 hover:bg-blue-50'>
+                              <Edit2 className='h-4 w-4' />
                             </Button>
                             <Button
-                              variant="ghost"
-                              size="icon"
+                              variant='ghost'
+                              size='icon'
                               onClick={(e) => {
                                 e.stopPropagation()
                                 setSelectedAddress(address)
                                 setIsDeleteDialogOpen(true)
                               }}
-                              className="h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50">
-                              <Trash2 className="h-4 w-4" />
+                              className='h-8 w-8 text-gray-500 hover:text-red-600 hover:bg-red-50'>
+                              <Trash2 className='h-4 w-4' />
                             </Button>
                           </div>
                         </div>
                       </div>
                     ))}
-                    <div className="flex justify-end mt-4">
+                    <div className='flex justify-end mt-4'>
                       <Button
-                        variant="default"
-                        size="sm"
+                        variant='default'
+                        size='sm'
                         disabled={disabled}
                         onClick={handleSetActiveAddress}
-                        className="bg-blue-600 hover:bg-blue-700">
+                        className='bg-blue-600 hover:bg-blue-700'>
                         {isPending ? (
-                          <span className="flex items-center gap-2">
-                            <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          <span className='flex items-center gap-2'>
+                            <svg
+                              className='animate-spin h-4 w-4 text-white'
+                              xmlns='http://www.w3.org/2000/svg'
+                              fill='none'
+                              viewBox='0 0 24 24'>
+                              <circle
+                                className='opacity-25'
+                                cx='12'
+                                cy='12'
+                                r='10'
+                                stroke='currentColor'
+                                strokeWidth='4'></circle>
+                              <path
+                                className='opacity-75'
+                                fill='currentColor'
+                                d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
                             </svg>
                             Memproses...
                           </span>
                         ) : (
-                          <span className="flex items-center gap-2">
-                            <Check className="h-4 w-4" />
+                          <span className='flex items-center gap-2'>
+                            <Check className='h-4 w-4' />
                             Jadikan Alamat Aktif
                           </span>
                         )}
@@ -518,14 +562,14 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-8 text-center">
-                    <div className="rounded-full bg-blue-50 p-4 mb-3">
-                      <MapPin className="h-6 w-6 text-blue-500" />
+                  <div className='flex flex-col items-center justify-center py-8 text-center'>
+                    <div className='rounded-full bg-blue-50 p-4 mb-3'>
+                      <MapPin className='h-6 w-6 text-blue-500' />
                     </div>
-                    <h3 className="text-base font-medium text-gray-800 mb-1">
+                    <h3 className='text-base font-medium text-gray-800 mb-1'>
                       Belum ada alamat
                     </h3>
-                    <p className="text-sm text-gray-500 max-w-md mb-4">
+                    <p className='text-sm text-gray-500 max-w-md mb-4'>
                       Tambahkan alamat untuk memudahkan pengiriman
                     </p>
                     <Button
@@ -533,9 +577,9 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                         setSelectedAddress(null)
                         setIsAddressDialogOpen(true)
                       }}
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700">
-                      <Plus className="h-4 w-4 mr-1" />
+                      size='sm'
+                      className='bg-blue-600 hover:bg-blue-700'>
+                      <Plus className='h-4 w-4 mr-1' />
                       Tambah Alamat
                     </Button>
                   </div>
@@ -555,9 +599,9 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
             setSelectedAddress(null)
           }
         }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className='max-w-2xl'>
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
+            <DialogTitle className='text-xl font-semibold'>
               Tambah Alamat
             </DialogTitle>
           </DialogHeader>
@@ -574,9 +618,9 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
             setSelectedAddress(null)
           }
         }}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className='max-w-2xl'>
           <DialogHeader>
-            <DialogTitle className="text-xl font-semibold">
+            <DialogTitle className='text-xl font-semibold'>
               Edit Alamat
             </DialogTitle>
           </DialogHeader>
@@ -591,22 +635,23 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
       <AlertDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="bg-white rounded-lg">
+        <AlertDialogContent className='bg-white rounded-lg'>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-semibold">
+            <AlertDialogTitle className='text-lg font-semibold'>
               Hapus Alamat
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-gray-600">
-              Apakah Anda yakin ingin menghapus alamat ini? Tindakan ini tidak dapat dibatalkan.
+            <AlertDialogDescription className='text-gray-600'>
+              Apakah Anda yakin ingin menghapus alamat ini? Tindakan ini tidak
+              dapat dibatalkan.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel className="border-gray-200 text-gray-700 hover:bg-gray-100">
+          <AlertDialogFooter className='mt-4'>
+            <AlertDialogCancel className='border-gray-200 text-gray-700 hover:bg-gray-100'>
               Batal
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAddress}
-              className="bg-red-500 text-white hover:bg-red-600">
+              className='bg-red-500 text-white hover:bg-red-600'>
               Hapus
             </AlertDialogAction>
           </AlertDialogFooter>

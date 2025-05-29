@@ -32,7 +32,7 @@ export async function addAddress(data: AddressFormValues) {
     // Tambah alamat baru
     await prisma.address.create({
       data: {
-        id: generateCustomId('ADR'),
+        id: generateCustomId('adr'),
         userId,
         labelAddress: data.labelAddress,
         recipientName: data.recipientName,

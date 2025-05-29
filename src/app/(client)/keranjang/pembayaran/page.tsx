@@ -27,6 +27,7 @@ export default async function PaymentPage({
   return (
     <div className=''>
       <PaymentForm
+        cookies={session}
         initialCartData={cartData}
         customerProfile={customerProfile}
       />

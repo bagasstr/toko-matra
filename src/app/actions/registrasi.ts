@@ -57,13 +57,13 @@ export const registrasi = async (
         // Buat user baru
         const user = await tx.user.create({
           data: {
-            id: generateCustomId('USR'),
+            id: generateCustomId('usr'),
             email,
             password: passwordHash,
             typeUser,
             profile: {
               create: {
-                id: generateCustomId('PRF'),
+                id: generateCustomId('prf'),
                 fullName: name,
                 email,
                 userName: `@${email.split('@')[0]}`,
@@ -76,7 +76,7 @@ export const registrasi = async (
         // Buat akun credentials
         await tx.account.create({
           data: {
-            id: generateCustomId('ACC'),
+            id: generateCustomId('acc'),
             userId: user.id,
             type: 'credentials',
             provider: 'credentials',
@@ -87,7 +87,7 @@ export const registrasi = async (
         // Buat token verifikasi
         await tx.verificationToken.create({
           data: {
-            id: generateCustomId('VFT'),
+            id: generateCustomId('vft'),
             identifier: email,
             token,
             expires: expired,

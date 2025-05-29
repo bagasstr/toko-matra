@@ -22,6 +22,7 @@ import {
   Users,
   Warehouse,
   ChevronDown,
+  Truck,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -160,15 +161,25 @@ const DashboardNav = () => {
                   </div>
                 )}
               </SidebarMenuItem>
-
               <SidebarMenuItem>
                 <SidebarMenuButton
                   variant={'default'}
                   asChild
-                  isActive={pathname === '/dashboard/analitik'}>
-                  <Link href='/dashboard/analitik'>
+                  isActive={pathname === '/dashboard/surat-jalan'}>
+                  <Link href='/dashboard/surat-jalan'>
+                    <Truck className='h-4 w-4' />
+                    <span>Surat Jalan</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  variant={'default'}
+                  asChild
+                  isActive={pathname === '/dashboard/statistik'}>
+                  <Link href='/dashboard/statistik'>
                     <BarChart3 className='h-4 w-4' />
-                    <span>Analitik</span>
+                    <span>Statistik</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

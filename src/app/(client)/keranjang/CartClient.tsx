@@ -10,7 +10,6 @@ import { updateCartItemQuantity, clearCart } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { Skeleton } from '@/components/ui/skeleton'
 import { validateSession } from '@/app/actions/session'
-import AuthSection from '@/components/ui/AuthSection'
 import { generateCartPDF } from '@/lib/pdfCartFormatter'
 import { PdfCartButton } from '../components/DownloadPdfButton'
 

@@ -1,417 +1,389 @@
-import { getOrderById } from '@/app/actions/orderAction'
-import { Button } from '@/components/ui/button'
+'use client'
+
 import {
   CheckCircle2,
   AlertCircle,
   ArrowLeft,
   Package,
   Truck,
+  Copy,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { Payment } from '@/types/payment'
-import { validateSession } from '@/app/actions/session'
-
-export const dynamic = 'force-dynamic'
+import { useParams, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import {
+  checkMidtransTransaction,
+  getPaymentByOrderId,
+} from '@/app/actions/midtransAction'
+import { toast } from 'sonner'
+import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card'
+import { ButtonCopy, ButtonCancelTrx } from '@/components/ButtonCopy'
+import { clearCartAfterOrder } from '@/app/actions/cartAction'
+import { useCartStore } from '@/hooks/zustandStore'
 
 interface OrderPageProps {
   params: {
     id: string
   }
-  searchParams: {
-    success?: string
-  }
 }
 
-export default async function OrderPage({
-  params,
-  searchParams,
-}: OrderPageProps) {
-  const orderId = params.id
-  const isSuccess = searchParams.success === 'true'
-  const session = await validateSession()
-  const userId = session?.user?.profile.id.toLowerCase()
+export default function OrderPage() {
+  const router = useRouter()
+  const param = useParams()
+  const [paymentResult, setPaymentResult] = useState<any>(null)
+  const [transactionResult, setTransactionResult] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const { fetchCart } = useCartStore()
 
-  const orderResult = await getOrderById(orderId)
-  const order = orderResult.success ? orderResult.data : null
+  console.log(param)
+  useEffect(() => {
+    async function fetchOrderDetails() {
+      try {
+        // Fetch payment details
+        const paymentRes = await getPaymentByOrderId(param.id as string)
 
-  if (!order) {
+        if (!paymentRes.success || !paymentRes.data) {
+          setError(paymentRes.message || 'Gagal memuat detail pembayaran')
+          setLoading(false)
+          return
+        }
+
+        setPaymentResult(paymentRes.data)
+
+        let transactionRes = null
+        // Check transaction status if we have a transactionId
+        if (paymentRes.data.transactionId) {
+          transactionRes = await checkMidtransTransaction(
+            paymentRes.data.transactionId
+          )
+
+          if (!transactionRes.success) {
+            setError(
+              transactionRes.message || 'Gagal memeriksa status transaksi'
+            )
+          } else {
+            setTransactionResult(transactionRes.data)
+          }
+        }
+
+        // Check if payment is successful based on transaction status
+        const isPaymentSuccessful =
+          paymentRes.data.status === 'SUCCESS' ||
+          transactionRes?.data?.statusResponse?.data?.status === 'SETTLEMENT' ||
+          transactionRes?.data?.statusResponse?.data?.status === 'SUCCESS'
+
+        if (isPaymentSuccessful) {
+          try {
+            // Clear cart items for this order
+            await clearCartAfterOrder(paymentRes.data.order.id)
+
+            // Refresh cart state
+            await fetchCart()
+
+            // Show success toast
+            toast.success('Pesanan berhasil dibayar dan keranjang diperbarui')
+
+            // Redirect to success page
+            router.replace(
+              `/payment/success?order_id=${paymentRes.data.transactionId}`
+            )
+          } catch (clearError) {
+            console.error('Error clearing cart:', clearError)
+            toast.error('Gagal membersihkan keranjang')
+          }
+          return
+        }
+
+        setLoading(false)
+      } catch (err) {
+        setError('Terjadi kesalahan saat memuat halaman')
+        setLoading(false)
+      }
+    }
+
+    fetchOrderDetails()
+  }, [param.id, router, fetchCart])
+
+  // Loading state
+  if (loading) {
     return (
-      <div className='max-w-3xl mx-auto py-10 px-4'>
-        <div className='flex items-center gap-2 mb-6'>
-          <Link href='/orders'>
-            <Button variant='ghost' size='sm'>
-              <ArrowLeft className='w-4 h-4 mr-2' />
-              Kembali ke Pesanan
-            </Button>
-          </Link>
+      <div className='max-w-5xl mx-auto py-10 px-4'>
+        <div className='text-center text-gray-600'>
+          Memuat detail pesanan...
         </div>
-
-        <div className='bg-red-50 text-red-800 p-4 rounded-md flex items-center gap-2 mb-6'>
-          <AlertCircle className='w-5 h-5' />
-          <p>
-            Pesanan tidak ditemukan atau Anda tidak memiliki akses ke pesanan
-            ini.
-          </p>
-        </div>
-
-        <Link href='/produk'>
-          <Button>Lihat Produk</Button>
-        </Link>
       </div>
     )
   }
 
-  const payment = order.Payment[0] as Payment
-  const shipment = order.Shipment
-  const address = order.address
+  // Error state
+  if (error) {
+    return (
+      <div className='max-w-5xl mx-auto py-10 px-4'>
+        <div className='bg-red-50 text-red-800 p-4 rounded-md flex items-center gap-2'>
+          <AlertCircle className='w-5 h-5' />
+          <p>{error}</p>
+        </div>
+      </div>
+    )
+  }
+
+  // If no payment result, show error
+  if (!paymentResult) {
+    return (
+      <div className='max-w-5xl mx-auto py-10 px-4'>
+        <div className='bg-red-50 text-red-800 p-4 rounded-md'>
+          Tidak dapat memuat detail pesanan
+        </div>
+      </div>
+    )
+  }
+
+  const order = paymentResult.order
+  const payment = paymentResult
 
   return (
-    <div className='max-w-3xl mx-auto py-10 px-4'>
-      {isSuccess && (
-        <div className='bg-green-50 text-green-800 p-4 rounded-md flex items-center gap-2 mb-6'>
-          <CheckCircle2 className='w-5 h-5' />
-          <p>
-            Pesanan berhasil dibuat! Silakan lakukan pembayaran sesuai
-            instruksi.
-          </p>
-        </div>
-      )}
-
-      <div className='flex items-center justify-between mb-6'>
-        <h1 className='text-2xl font-bold'>Detail Pesanan</h1>
-        <div className='text-sm text-gray-500'>
-          ID Pesanan: <span className='font-medium'>{order.id}</span>
-        </div>
-      </div>
-
-      {/* Order Status */}
-      <div className='rounded-lg border shadow-sm p-6 mb-6'>
-        <div className='flex items-center justify-between mb-4'>
-          <h2 className='text-lg font-semibold'>Status Pesanan</h2>
-          <div
-            className={`px-3 py-1 rounded-full text-sm font-medium ${
-              order.status === 'PENDING'
-                ? 'bg-yellow-100 text-yellow-800'
-                : order.status === 'PROCESSING'
-                ? 'bg-blue-100 text-blue-800'
-                : order.status === 'SHIPPED'
-                ? 'bg-indigo-100 text-indigo-800'
-                : order.status === 'DELIVERED'
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
-            }`}>
-            {order.status === 'PENDING'
-              ? 'Menunggu Pembayaran'
-              : order.status === 'PROCESSING'
-              ? 'Diproses'
-              : order.status === 'SHIPPED'
-              ? 'Dikirim'
-              : order.status === 'DELIVERED'
-              ? 'Diterima'
-              : 'Dibatalkan'}
-          </div>
-        </div>
-
-        <div className='grid grid-cols-1 md:grid-cols-2 gap-4 mt-4'>
-          <div>
-            <div className='text-sm text-gray-500 mb-1'>Tanggal Pesanan</div>
-            <div>
-              {new Date(order.createdAt).toLocaleDateString('id-ID', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </div>
-          </div>
-
-          <div>
-            <div className='text-sm text-gray-500 mb-1'>Metode Pembayaran</div>
-            <div className='capitalize'>
-              {payment.paymentMethod.replace('_', ' ')}
-            </div>
-          </div>
-        </div>
-
-        <div className='mt-4 pt-4 border-t'>
-          <div className='flex items-center gap-2 text-blue-600'>
-            {order.status === 'PENDING' ? (
-              <Package className='w-5 h-5' />
-            ) : (
-              <Truck className='w-5 h-5' />
-            )}
-            <div>
-              {order.status === 'PENDING'
-                ? 'Silakan lakukan pembayaran untuk memproses pesanan Anda'
-                : order.status === 'PROCESSING'
-                ? 'Pesanan Anda sedang diproses dan akan segera dikirim'
-                : order.status === 'SHIPPED'
-                ? `Pesanan Anda sedang dalam pengiriman ${
-                    shipment.trackingNumber
-                      ? `dengan nomor resi ${shipment.trackingNumber}`
-                      : ''
-                  }`
-                : order.status === 'DELIVERED'
-                ? 'Pesanan Anda telah diterima'
-                : 'Pesanan Anda telah dibatalkan'}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Order Items */}
-      <div className='rounded-lg border shadow-sm p-6 mb-6'>
-        <h2 className='text-lg font-semibold mb-4'>Produk</h2>
-
-        <div className='space-y-4'>
-          {order.items.map((item: any) => (
-            <div
-              key={item.id}
-              className='flex gap-4 items-center border-b pb-4'>
-              <Image
-                src={item.product.images[0] || '/placeholder.png'}
-                alt={item.product.name}
-                width={64}
-                height={64}
-                className='object-contain rounded bg-gray-50'
-              />
-              <div className='flex-1'>
-                <div className='font-semibold text-base mb-1'>
-                  {item.product.name}
-                </div>
-                <div className='text-gray-500 text-sm'>
-                  {item.quantity} x Rp{' '}
-                  {Number(item.price).toLocaleString('id-ID')}
-                </div>
-              </div>
-              <div className='text-right font-bold'>
-                Rp{' '}
-                {(Number(item.price) * item.quantity).toLocaleString('id-ID')}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className='mt-6 space-y-2'>
-          <div className='flex justify-between'>
-            <span className='text-gray-600'>Subtotal</span>
-            <span className='font-medium'>
-              Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-            </span>
-          </div>
-          <div className='flex justify-between border-t pt-2 mt-2'>
-            <span className='font-bold'>Total</span>
-            <span className='font-bold text-primary text-lg'>
-              Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Shipping Address */}
-      <div className='rounded-lg border shadow-sm p-6 mb-6'>
-        <h2 className='text-lg font-semibold mb-4'>Alamat Pengiriman</h2>
-
-        <div>
-          <div className='font-medium'>{address.recipientName}</div>
-          <div className='text-gray-600 mt-1'>{address.address}</div>
-          <div className='text-gray-600'>
-            {address.village}, {address.district}, {address.city},{' '}
-            {address.province} {address.postalCode}
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Instructions */}
-      {order.status === 'PENDING' && payment && (
-        <div className='rounded-lg border shadow-sm p-6 mb-6'>
-          <h2 className='text-lg font-semibold mb-4'>Instruksi Pembayaran</h2>
-
-          <div className='bg-blue-50 p-4 rounded-md'>
-            {payment.paymentMethod === 'bank_transfer' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Silakan transfer ke rekening berikut:
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Bank</span>
-                    <span className='font-semibold'>
-                      {payment.paymentDetails?.bank?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>No. Rekening</span>
-                    <span className='font-semibold'>
-                      {payment.paymentDetails?.vaNumber}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Atas Nama</span>
-                    <span className='font-semibold'>
-                      PT Bahan Bangunan Indonesia
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>Jumlah</span>
-                    <span className='font-semibold text-primary'>
-                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Batas waktu pembayaran:{' '}
-                    {new Date(
-                      payment.paymentDetails?.expiryTime || ''
-                    ).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {payment.paymentMethod === 'virtual_account' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Silakan transfer ke Virtual Account berikut:
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Bank</span>
-                    <span className='font-semibold'>
-                      {payment.paymentDetails?.bank?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>No. Virtual Account</span>
-                    <span className='font-semibold'>
-                      {payment.paymentDetails?.vaNumber}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>Jumlah</span>
-                    <span className='font-semibold text-primary'>
-                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Batas waktu pembayaran:{' '}
-                    {new Date(
-                      payment.paymentDetails?.expiryTime || ''
-                    ).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {payment.paymentMethod === 'e_wallet' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Pembayaran E-Wallet
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center mb-2'>
-                    <span className='text-gray-600'>Metode</span>
-                    <span className='font-semibold'>
-                      {payment.paymentDetails?.eWalletType?.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>Jumlah</span>
-                    <span className='font-semibold text-primary'>
-                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                {payment.midtransRedirectUrl && (
-                  <div className='mt-4'>
-                    <a
-                      href={payment.midtransRedirectUrl}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='inline-block bg-blue-600 text-white px-6 py-3 rounded-md hover:bg-blue-700 transition-colors'>
-                      Lanjutkan ke Pembayaran
-                    </a>
-                  </div>
-                )}
-                <div className='bg-yellow-50 p-3 rounded-md mt-4'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Batas waktu pembayaran:{' '}
-                    {new Date(
-                      payment.paymentDetails?.expiryTime || ''
-                    ).toLocaleString('id-ID')}
-                  </p>
-                </div>
-              </>
-            )}
-
-            {payment.paymentMethod === 'cod' && (
-              <>
-                <p className='font-medium text-blue-800 mb-2'>
-                  Pembayaran di Tempat (COD)
-                </p>
-                <div className='bg-white p-4 rounded-md mb-4'>
-                  <div className='flex justify-between items-center'>
-                    <span className='text-gray-600'>
-                      Total yang harus dibayar
-                    </span>
-                    <span className='font-semibold text-primary'>
-                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
-                    </span>
-                  </div>
-                </div>
-                <div className='bg-yellow-50 p-3 rounded-md'>
-                  <p className='text-sm text-yellow-800 flex items-center gap-2'>
-                    <AlertCircle className='w-4 h-4' />
-                    Silakan siapkan pembayaran tunai saat barang diterima
-                  </p>
-                </div>
-              </>
-            )}
-
-            <div className='mt-4 text-sm text-gray-600'>
-              <p className='mb-2'>Catatan Penting:</p>
-              <ul className='list-disc list-inside space-y-1'>
-                <li>Pastikan jumlah transfer sesuai dengan total pembayaran</li>
-                <li>Simpan bukti pembayaran Anda</li>
-                <li>Pesanan akan diproses setelah pembayaran dikonfirmasi</li>
-                <li>Jika ada kendala, silakan hubungi customer service kami</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className='flex justify-between'>
-        <Link
-          href={{
-            pathname: '/profile/pesanan-saya',
-            query: {
-              user: userId,
-            },
-          }}>
-          <Button variant='outline'>
-            <ArrowLeft className='w-4 h-4 mr-2' />
-            Lihat Semua Pesanan
-          </Button>
-        </Link>
-
-        {order.status === 'PENDING' && (
-          <Link href={`/orders/${order.id}/cancel`}>
-            <Button
-              variant='ghost'
-              className='text-red-600 hover:text-red-700 hover:bg-red-50'>
-              Batalkan Pesanan
-            </Button>
+    <div className='min-h-screen bg-gray-50'>
+      <div className='max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8'>
+        {/* Header */}
+        <div className='mb-8'>
+          <Link
+            href='/orders'
+            className='inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 mb-4 transition-colors'>
+            <ArrowLeft className='w-4 h-4' />
+            Kembali ke Daftar Pesanan
           </Link>
-        )}
+          <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>
+            Detail Pesanan
+          </h1>
+        </div>
+
+        <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8'>
+          {/* Main Content */}
+          <div className='lg:col-span-2 space-y-6'>
+            {/* Order Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informasi Pesanan</CardTitle>
+              </CardHeader>
+              <CardContent className='space-y-4'>
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='space-y-3'>
+                    <div className='flex flex-col sm:flex-row sm:items-center gap-1'>
+                      <span className='text-sm font-medium text-gray-500 min-w-[80px]'>
+                        Order ID:
+                      </span>
+                      <span className='font-semibold'>{order.id}</span>
+                    </div>
+                    <div className='flex flex-col sm:flex-row sm:items-center gap-1'>
+                      <span className='text-sm font-medium text-gray-500 min-w-[80px]'>
+                        Status:
+                      </span>
+                      <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800'>
+                        {order.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div className='space-y-3'>
+                    <div className='flex flex-col sm:flex-row sm:items-center gap-1'>
+                      <span className='text-sm font-medium text-gray-500 min-w-[80px]'>
+                        Tanggal:
+                      </span>
+                      <span className='font-semibold'>
+                        {new Date(order.createdAt).toLocaleDateString('id-ID', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </span>
+                    </div>
+                    <div className='flex flex-col sm:flex-row sm:items-center gap-1'>
+                      <span className='text-sm font-medium text-gray-500 min-w-[80px]'>
+                        Total:
+                      </span>
+                      <span className='font-bold text-lg text-green-600'>
+                        Rp {order.totalAmount.toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Order Items */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Item Pesanan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-4'>
+                  {order.items.map((item, index) => (
+                    <div
+                      key={item.id}
+                      className={`flex flex-col sm:flex-row gap-4 ${
+                        index !== order.items.length - 1
+                          ? 'border-b border-gray-200 pb-4'
+                          : ''
+                      }`}>
+                      <div className='flex-shrink-0'>
+                        <Image
+                          src={
+                            item.product.images[0] ||
+                            '/placeholder.svg?height=80&width=80'
+                          }
+                          alt={item.product.name}
+                          width={80}
+                          height={80}
+                          className='object-cover rounded-lg bg-gray-100 border'
+                        />
+                      </div>
+                      <div className='flex-1 min-w-0'>
+                        <h4 className='font-semibold text-gray-900 mb-2'>
+                          {item.product.name}
+                        </h4>
+                        <div className='flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2'>
+                          <div className='text-sm text-gray-600'>
+                            {item.quantity} x Rp{' '}
+                            {item.price.toLocaleString('id-ID')}
+                          </div>
+                          <div className='font-bold text-lg'>
+                            Rp{' '}
+                            {(item.price * item.quantity).toLocaleString(
+                              'id-ID'
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Shipping Address */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Alamat Pengiriman</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-2'>
+                  <div className='font-semibold text-gray-900'>
+                    {order.address.recipientName}
+                  </div>
+                  <div className='inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium'>
+                    {order.address.labelAddress}
+                  </div>
+                  <div className='text-gray-700 leading-relaxed'>
+                    <div>{order.address.address}</div>
+                    <div>
+                      {order.address.village}, {order.address.district}
+                    </div>
+                    <div>
+                      {order.address.city}, {order.address.province}{' '}
+                      {order.address.postalCode}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar - Payment Information */}
+          <div className='lg:col-span-1'>
+            <div className='sticky top-6'>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Informasi Pembayaran</CardTitle>
+                </CardHeader>
+                <CardContent className='space-y-4'>
+                  <div className='space-y-3'>
+                    <div className='flex justify-between items-center'>
+                      <span className='text-sm font-medium text-gray-500'>
+                        Status:
+                      </span>
+                      <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800'>
+                        {payment.status}
+                      </span>
+                    </div>
+
+                    <div className='flex justify-between items-center'>
+                      <span className='text-sm font-medium text-gray-500'>
+                        Metode:
+                      </span>
+                      <span className='font-medium text-right'>
+                        {payment.paymentMethod}
+                      </span>
+                    </div>
+
+                    {payment.bank && (
+                      <div className='flex justify-between items-center'>
+                        <span className='text-sm font-medium text-gray-500'>
+                          Bank:
+                        </span>
+                        <span className='font-medium uppercase'>
+                          {payment.bank}
+                        </span>
+                      </div>
+                    )}
+
+                    {payment.vaNumber && (
+                      <div className='flex flex-col gap-1'>
+                        <span className='text-sm font-medium text-gray-500'>
+                          Nomor VA:
+                        </span>
+                        <div className='bg-gray-50 p-3 rounded-lg border relative group'>
+                          <code className='text-sm font-mono break-all'>
+                            {payment.vaNumber}
+                          </code>
+                          <ButtonCopy text={payment.vaNumber} />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className='border-t pt-3'>
+                      <div className='flex justify-between items-center'>
+                        <span className='text-base font-semibold'>Total:</span>
+                        <span className='text-lg font-bold text-green-600'>
+                          Rp {payment.amount.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {transactionResult?.statusResponse?.data?.status ===
+                      'PENDING' &&
+                      transactionResult.statusResponse.data.expiry_time && (
+                        <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                          <div className='text-sm font-medium text-red-800 mb-1'>
+                            Batas Pembayaran:
+                          </div>
+                          <div className='text-sm font-semibold text-red-600'>
+                            {new Date(
+                              transactionResult.statusResponse.data.expiry_time
+                            ).toLocaleString('id-ID', {
+                              dateStyle: 'medium',
+                              timeStyle: 'short',
+                            })}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+
+                  {payment.status === 'PENDING' && (
+                    <div className='pt-4 border-t'>
+                      <ButtonCancelTrx
+                        transactionId={
+                          transactionResult?.statusResponse?.data?.order_id
+                        }
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )

@@ -54,7 +54,7 @@ export async function createBrand(data: CreateBrandInput) {
 
     const brand = await prisma.brand.create({
       data: {
-        id: generateCustomId('BRD'),
+        id: generateCustomId('brd'),
         name: data.name,
         logo: logoPath,
         slug,
