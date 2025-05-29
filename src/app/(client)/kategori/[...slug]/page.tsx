@@ -31,11 +31,9 @@ import {
 } from '@/app/actions/wishlist'
 
 // Utility function to safely get brand name
-function getBrandName(brand: any): string {
-  if (typeof brand === 'object' && brand !== null) {
-    return brand.name || 'No Brand'
-  }
-  return brand || 'No Brand'
+function getBrandName(brand: Brand | undefined | null): string {
+  if (!brand) return 'No Brand'
+  return brand.name || 'No Brand'
 }
 
 // Utility function to safely get category slug
@@ -64,7 +62,7 @@ type Product = {
   slug: string
   images: string[]
   price: number
-  brand: Brand
+  brand: Brand | null
   category?: {
     slug: string
     name: string
@@ -179,7 +177,12 @@ function CategoryPage() {
             }
           : { name: 'Tidak Dikategorikan', slug: '' },
         images: currentProduct.images || [],
-        brand: getBrandName(currentProduct.brand),
+        brand: currentProduct.brand
+          ? {
+              id: currentProduct.brand.id || '',
+              name: currentProduct.brand.name || 'No Brand',
+            }
+          : { id: '', name: 'No Brand' },
         price: currentProduct.price || 0,
         minOrder: currentProduct.minOrder || 1,
         multiOrder: currentProduct.multiOrder || 1,
@@ -462,7 +465,7 @@ function ProductPage({
           </div>
           <div className='p-4'>
             <Badge variant='secondary'>
-              {product.brand.name || 'No Brand'}
+              {product.brand?.name || 'No Brand'}
             </Badge>
             <h3 className='font-medium text-gray-900 line-clamp-2 my-2'>
               {product.name}
@@ -550,7 +553,12 @@ function ProductDetailPage({
   const safeProduct = {
     id: product.id || '',
     name: product.name || 'Produk Tidak Dikenal',
-    brand: getBrandName(product.brand),
+    brand: product.brand
+      ? {
+          id: product.brand.id || '',
+          name: product.brand.name || 'No Brand',
+        }
+      : { id: '', name: 'No Brand' },
     label: product.label || null,
     price: product.price || 0,
     unit: product.unit || '',
@@ -725,7 +733,9 @@ function ProductDetailPage({
         <div className='space-y-6'>
           <div className=''>
             <div className=''>
-              <p className='text-sm text-gray-500 mb-2'>{safeProduct.brand}</p>
+              <p className='text-sm text-gray-500 mb-2'>
+                {safeProduct.brand.name}
+              </p>
               <p className='text-2xl font-semibold mb-2'>{safeProduct.name}</p>
               {safeProduct.label && (
                 <span
@@ -910,7 +920,7 @@ function ProductDetailPage({
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Merek</span>
                 <span className='text-muted-foreground'>
-                  {safeProduct.brand}
+                  {safeProduct.brand.name}
                 </span>
               </p>
               <Separator />
@@ -1336,7 +1346,7 @@ function ProductDetailPage({
               <p className='text-sm mt-2 grid grid-cols-2'>
                 <span className=''>Merek</span>
                 <span className='text-muted-foreground'>
-                  {safeProduct.brand}
+                  {safeProduct.brand.name}
                 </span>
               </p>
               <Separator />
