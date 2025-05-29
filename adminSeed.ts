@@ -10,7 +10,7 @@ async function seedAdmin() {
     await prisma.$transaction(async (tx) => {
       const { id } = await tx.user.create({
         data: {
-          id: generateCustomId('USR'),
+          id: generateCustomId('usr'),
           email: 'admin@gmail.com',
           emailVerified: new Date(),
           password: await bcrypt.hash('admin123', 10),
@@ -18,7 +18,7 @@ async function seedAdmin() {
           role: 'ADMIN',
           profile: {
             create: {
-              id: generateCustomId('PRF'),
+              id: generateCustomId('prf'),
               email: 'admin@gmail.com',
               fullName: 'Admin',
               phoneNumber: null,
@@ -28,7 +28,7 @@ async function seedAdmin() {
       })
       await tx.account.create({
         data: {
-          id: generateCustomId('ACC'),
+          id: generateCustomId('acc'),
           userId: id,
           type: 'credentials',
           provider: 'credentials',

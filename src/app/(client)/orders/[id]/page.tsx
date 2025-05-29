@@ -22,6 +22,7 @@ import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card'
 import { ButtonCopy, ButtonCancelTrx } from '@/components/ButtonCopy'
 import { clearCartAfterOrder } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
+import { cn } from '@/lib/utils'
 
 interface OrderPageProps {
   params: {
@@ -181,7 +182,15 @@ export default function OrderPage() {
                       <span className='text-sm font-medium text-gray-500 min-w-[80px]'>
                         Status:
                       </span>
-                      <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800'>
+                      <span
+                        className={cn(
+                          'inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          order.status === 'SUCCESS'
+                            ? 'bg-green-100 text-green-800'
+                            : order.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        )}>
                         {order.status}
                       </span>
                     </div>
@@ -203,7 +212,7 @@ export default function OrderPage() {
                       <span className='text-sm font-medium text-gray-500 min-w-[80px]'>
                         Total:
                       </span>
-                      <span className='font-bold text-lg text-green-600'>
+                      <span className='font-bold text-lg text-primary'>
                         Rp {order.totalAmount.toLocaleString('id-ID')}
                       </span>
                     </div>
@@ -262,6 +271,49 @@ export default function OrderPage() {
               </CardContent>
             </Card>
 
+            {/* Order Summary with PPN */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Ringkasan Pesanan</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className='space-y-3'>
+                  <div className='flex justify-between'>
+                    <span className='text-gray-600'>Subtotal</span>
+                    <span>
+                      Rp{' '}
+                      {(
+                        order.subtotalAmount ??
+                        order.items.reduce(
+                          (total, item) => total + item.price * item.quantity,
+                          0
+                        )
+                      ).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className='flex justify-between'>
+                    <span className='text-gray-600'>PPN (11%)</span>
+                    <span>
+                      Rp{' '}
+                      {Math.round(
+                        (order.subtotalAmount ??
+                          order.items.reduce(
+                            (total, item) => total + item.price * item.quantity,
+                            0
+                          )) * 0.11
+                      ).toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className='flex justify-between border-t pt-3 font-bold'>
+                    <span>Total</span>
+                    <span className='text-primary'>
+                      Rp {order.totalAmount.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Shipping Address */}
             <Card>
               <CardHeader>
@@ -303,7 +355,15 @@ export default function OrderPage() {
                       <span className='text-sm font-medium text-gray-500'>
                         Status:
                       </span>
-                      <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800'>
+                      <span
+                        className={cn(
+                          'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+                          payment.status === 'SUCCESS'
+                            ? 'bg-green-100 text-green-800'
+                            : payment.status === 'PENDING'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-red-100 text-red-800'
+                        )}>
                         {payment.status}
                       </span>
                     </div>
@@ -313,7 +373,9 @@ export default function OrderPage() {
                         Metode:
                       </span>
                       <span className='font-medium text-right'>
-                        {payment.paymentMethod}
+                        {payment.paymentMethod === 'bank_transfer'
+                          ? 'Transfer Bank VA'
+                          : ''}
                       </span>
                     </div>
 
@@ -343,9 +405,9 @@ export default function OrderPage() {
                     )}
 
                     <div className='border-t pt-3'>
-                      <div className='flex justify-between items-center'>
-                        <span className='text-base font-semibold'>Total:</span>
-                        <span className='text-lg font-bold text-green-600'>
+                      <div className='flex justify-between items-center border-t pt-2 mt-2'>
+                        <span className='text-base font-bold'>Total:</span>
+                        <span className='text-lg font-bold text-primary'>
                           Rp {payment.amount.toLocaleString('id-ID')}
                         </span>
                       </div>

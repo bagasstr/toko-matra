@@ -211,7 +211,7 @@ function CategoryPage() {
   return (
     <div className=''>
       <nav
-        className={`${
+        className={`mb-16 ${
           params.slug.length === 3 ? 'hidden' : ''
         } text-sm text-gray-500 flex gap-2 items-center`}
         aria-label='Breadcrumb'>
@@ -444,7 +444,6 @@ function ProductPage({
       </div>
     )
   }
-  console.log('products', activeProducts)
 
   return (
     <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
@@ -812,7 +811,7 @@ function ProductDetailPage({
                       <div className='flex items-center gap-3 bg-gray-50 rounded-lg px-3 py-2'>
                         <div>
                           <div className='font-semibold text-gray-800'>
-                            Jakarta dan sekitarnya
+                            Jabodetabek
                           </div>
                           <div className='text-xs text-gray-600'>
                             1-2 hari kerja
@@ -835,7 +834,8 @@ function ProductDetailPage({
                             Luar Pulau Jawa
                           </div>
                           <div className='text-xs text-gray-600'>
-                            5-7 hari kerja
+                            1-4 hari kerja (tergantung jarak lokasi suplier ke
+                            alamat tujuan)
                           </div>
                         </div>
                       </div>
@@ -850,16 +850,12 @@ function ProductDetailPage({
                       <ul className='space-y-2 text-sm'>
                         <li className='flex items-start gap-2'>
                           <span className='text-green-600 mt-0.5'>✔</span>{' '}
-                          Armada BuildMart (truk dan pickup khusus untuk
-                          material bangunan)
+                          Ekspedisi partner (untuk pengiriman jabodetabek dan
+                          pulau jawa)
                         </li>
                         <li className='flex items-start gap-2'>
                           <span className='text-green-600 mt-0.5'>✔</span>{' '}
-                          Ekspedisi partner (untuk pengiriman ke luar kota)
-                        </li>
-                        <li className='flex items-start gap-2'>
-                          <span className='text-green-600 mt-0.5'>✔</span>{' '}
-                          Pengambilan langsung di toko (gratis)
+                          Ekspedisi dari suplier (untuk pengiriman ke luar kota)
                         </li>
                       </ul>
                     </div>

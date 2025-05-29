@@ -79,7 +79,7 @@ export default async function OrdersPage() {
                     className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${
                       order.status === 'PENDING'
                         ? 'bg-yellow-100 text-yellow-800'
-                        : order.status === 'PROCESSING'
+                        : order.status === 'CONFIRMED'
                         ? 'bg-blue-100 text-blue-800'
                         : order.status === 'SHIPPED'
                         ? 'bg-indigo-100 text-indigo-800'
@@ -89,7 +89,7 @@ export default async function OrdersPage() {
                     }`}>
                     {order.status === 'PENDING'
                       ? 'Menunggu Pembayaran'
-                      : order.status === 'PROCESSING'
+                      : order.status === 'CONFIRMED'
                       ? 'Diproses'
                       : order.status === 'SHIPPED'
                       ? 'Dikirim'

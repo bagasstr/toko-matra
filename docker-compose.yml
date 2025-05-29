@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  nextjs:
+    container_name: tokomatra_nextjs
+    restart: always
+    image: ghcr.io/bagasstr/toko-matrakosala:0.1
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '3001:3000'
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/.next
+      - /mnt/nas/docker-data/toko_matra/files_uploads/image:/app/public/upload/image
+      - /mnt/nas/docker-data/toko_matra/files_uploads/document:/app/public/upload/document
+    networks:
+      - ix-cloudflared_default
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres_db_tokomatra
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: tokomatra
+    ports:
+      - '4321:5432'
+    volumes:
+      - /mnt/nas/docker-data/postgres_tokomatra:/var/lib/postgresql/data
+    networks:
+      - ix-cloudflared_default
+
+volumes:
+  postgres-data:
+    driver: local
+networks:
+  ix-cloudflared_default:
+    external: true
+    name: ix-cloudflared_default

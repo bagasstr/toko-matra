@@ -24,6 +24,7 @@ import { getUserAddresses } from '../../../actions/addressAction'
 import { useRouter } from 'next/navigation'
 import { generateProformaPDF } from '@/lib/pdfProInvFormatter'
 import { PdfProInvoiceButton } from '../../components/DownloadPdfButton'
+import { getPaymentByOrderId } from '@/app/actions/midtransAction'
 
 type PaymentMethod = 'bank_transfer' | 'e_wallet' | 'virtual_account' | 'cod'
 
@@ -38,6 +39,7 @@ interface PaymentInstructions {
 interface PaymentFormProps {
   initialCartData: any
   customerProfile?: {
+    id?: string
     fullName?: string
     email?: string
     phoneNumber?: string
@@ -164,8 +166,14 @@ const PaymentForm = ({
         setIsProcessing(false)
         return
       }
+      const resultPayment = await getPaymentByOrderId(result.data.id)
+      if (!resultPayment.success || !resultPayment.data) {
+        setError('Gagal mendapatkan detail pesanan')
+        setIsProcessing(false)
+        return
+      }
 
-      console.log(result)
+      console.log(resultPayment)
 
       // Create payment transaction
       const resultMidtrans = await fetch('http://localhost:3000/api/payment', {
@@ -177,8 +185,8 @@ const PaymentForm = ({
         body: JSON.stringify({
           bank: selectedVABank,
           paymentType: 'bank_transfer',
-          amount: result.data.totalAmount,
-          orderId: result.data.id,
+          amount: resultPayment.data.amount,
+          orderId: resultPayment.data.orderId,
           customerDetails: {
             first_name: result.data.user.profile.fullName,
             email: result.data.user.profile.email,
@@ -330,7 +338,13 @@ const PaymentForm = ({
                 <p className='text-gray-500 mb-4'>
                   Anda belum memiliki alamat tersimpan
                 </p>
-                <Link href='/profile/addresses/new'>
+                <Link
+                  href={{
+                    pathname: '/profile',
+                    query: {
+                      user: customerProfile?.id,
+                    },
+                  }}>
                   <Button>
                     <MapPin className='w-4 h-4 mr-2' />
                     Tambah Alamat Baru

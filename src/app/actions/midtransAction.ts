@@ -31,7 +31,6 @@ type OrderStatus =
 // Interface untuk parameter pembayaran Midtrans
 interface MidtransPaymentParams {
   orderId: string
-  amount: number
   customerDetails: {
     first_name: string
     last_name?: string
@@ -57,7 +56,6 @@ interface PaymentResponse {
 // Validation helper functions
 function validateMidtransParams(params: MidtransPaymentParams): string | null {
   if (!params.orderId?.trim()) return 'Order ID is required'
-  if (!params.amount || params.amount <= 0) return 'Valid amount is required'
   if (!params.customerDetails?.first_name?.trim())
     return 'Customer first name is required'
   if (!params.customerDetails?.email?.trim())
@@ -131,17 +129,69 @@ export async function createMidtransPayment(
     // Generate transaction ID untuk Midtrans
     const transactionId = `ord-${Date.now()}`
 
+    // Calculate total amount from item details
+    const itemDetailsSum = params.itemDetails.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    )
+    const ppn = Math.round(itemDetailsSum * 0.11)
+    const totalAmount = itemDetailsSum + ppn
+
+    // Ensure item details have exact prices to match total
+    const adjustedItemDetails = params.itemDetails.map((item, index) => {
+      // For the last item, adjust the price to make the total exact
+      if (index === params.itemDetails.length - 1) {
+        const currentItemTotal = item.price * item.quantity
+        const remainingAmount =
+          totalAmount -
+          params.itemDetails
+            .slice(0, -1)
+            .reduce((total, it) => total + it.price * it.quantity, 0) -
+          ppn
+
+        // Adjust the price of the last item to make the total exact
+        const adjustedPrice =
+          Math.round((remainingAmount / item.quantity) * 100) / 100
+
+        return {
+          ...item,
+          price: adjustedPrice,
+        }
+      }
+      return item
+    })
+
+    // Update order with calculated amounts
+    await prisma.order.update({
+      where: { id: params.orderId },
+      data: {
+        subtotalAmount: itemDetailsSum,
+        totalAmount: totalAmount,
+      },
+    })
+
+    // Update payment record with calculated amounts
+    await prisma.payment.updateMany({
+      where: {
+        orderId: params.orderId,
+        status: 'CONFIRMED',
+      },
+      data: {
+        amount: totalAmount,
+      },
+    })
+
     // Prepare transaction details untuk Midtrans
     const transactionDetails = {
       transaction_details: {
         order_id: transactionId,
-        gross_amount: params.amount,
+        gross_amount: totalAmount,
       },
       credit_card: {
         secure: true,
       },
       customer_details: params.customerDetails,
-      item_details: params.itemDetails,
+      item_details: adjustedItemDetails,
       callbacks: {
         finish: `http://localhost:3000/payment/success`,
         unfinish: `http://localhost:3000/payment/pending`,

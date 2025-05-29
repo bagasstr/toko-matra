@@ -16,6 +16,16 @@ interface ServerCartItem {
   quantity: number
 }
 
+export interface CartItemResponse {
+  success: boolean
+  message: string
+  data?: any[]
+  error?: string
+  subtotal?: number
+  ppn?: number
+  totalAmount?: number
+}
+
 export async function addToCart(item: ServerCartItem) {
   try {
     // Get or create cart for the user
@@ -170,83 +180,56 @@ export async function clearCart(userId: string) {
   }
 }
 
-export async function getCartItems() {
+export async function getCartItems(): Promise<CartItemResponse> {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('sessionToken')?.value
-    if (!token) {
+    const session = await validateSession()
+    if (!session?.user) {
       return {
         success: false,
-        message: 'No token found',
+        message: 'User not authenticated',
       }
     }
 
-    // Mengurangi log yang tidak perlu
-    // console.log('token 175', token)
-
-    try {
-      const session = await prisma.session.findUnique({
-        where: {
-          sessionToken: token,
-        },
-        select: {
-          user: {
-            select: {
-              id: true,
-            },
+    const cart = await prisma.cart.findFirst({
+      where: { userId: session.user.id },
+      include: {
+        items: {
+          include: {
+            product: true,
           },
         },
-      })
+      },
+    })
 
-      if (!session) {
-        return {
-          success: false,
-          message: 'Invalid session',
-        }
-      }
-
-      // Mengurangi log yang tidak perlu
-      // console.log('session 185', session)
-
-      const cart = await prisma.cart.findFirst({
-        where: {
-          userId: session.user.id,
-        },
-        include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      })
-
-      // Mengurangi log yang tidak perlu
-      // console.log('cart 190', cart)
-
+    if (!cart) {
       return {
-        success: true,
-        message: 'Cart items retrieved successfully',
-        data: cart?.items || [],
+        success: false,
+        message: 'Cart not found',
       }
-    } catch (error) {
-      // Tangani error koneksi database secara khusus
-      if (error.message && error.message.includes('too many clients already')) {
-        console.error('Database connection limit reached:', error)
-        return {
-          success: false,
-          message: 'Server sedang sibuk, silakan coba lagi nanti',
-          error: 'Too many database connections',
-        }
-      }
-      throw error // Lempar error lain untuk ditangani di catch luar
+    }
+
+    // Calculate totals
+    const subtotal = cart.items.reduce(
+      (total, item) => total + item.product.price * item.quantity,
+      0
+    )
+    const ppn = Math.round(subtotal * 0.11)
+    const totalAmount = subtotal + ppn
+
+    return {
+      success: true,
+      message: 'Cart retrieved successfully',
+      data: cart.items,
+      subtotal,
+      ppn,
+      totalAmount,
     }
   } catch (error) {
     console.error('Error getting cart items:', error)
     return {
       success: false,
       message: 'Failed to retrieve cart items',
-      error,
+      error: error instanceof Error ? error.message : 'Unknown error',
     }
   }
 }

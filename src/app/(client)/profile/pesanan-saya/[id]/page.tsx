@@ -8,7 +8,7 @@ import Image from 'next/image'
 export default async function OrderDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: { id: string } & Promise<any>
 }) {
   const id = params.id
 
@@ -28,6 +28,8 @@ export default async function OrderDetailPage({
   }
 
   const order = orderResult.data
+
+  console.log(order)
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -168,7 +170,7 @@ export default async function OrderDetailPage({
               <CardContent className='space-y-4'>
                 <div className='space-y-2'>
                   <h3 className='font-medium text-gray-900'>
-                    {order.Shipment.status}
+                    {order.Shipment?.map((shipment: any) => shipment.status)}
                   </h3>
                   <p className='text-sm text-gray-600'>
                     {order.address.address}
@@ -194,10 +196,18 @@ export default async function OrderDetailPage({
                   <div className='flex justify-between text-sm'>
                     <span className='text-gray-600'>Subtotal</span>
                     <span className='font-medium'>
-                      Rp {Number(order.totalAmount).toLocaleString('id-ID')}
+                      Rp {Number(order.subtotalAmount).toLocaleString('id-ID')}
                     </span>
                   </div>
-
+                  <div className='flex justify-between text-sm'>
+                    <span className='text-gray-600'>PPN (11%)</span>
+                    <span className='font-medium'>
+                      Rp{' '}
+                      {Number(order.subtotalAmount * 0.11).toLocaleString(
+                        'id-ID'
+                      )}
+                    </span>
+                  </div>
                   <div className='flex justify-between text-sm'>
                     <span className='text-gray-600'>Total</span>
                     <span className='font-medium'>

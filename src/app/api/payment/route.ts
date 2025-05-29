@@ -58,10 +58,29 @@ export async function POST(request: Request) {
     const transactionId = `${orderId}-${Date.now()}`
 
     // Prepare transaction details
+    const calculatedItemTotal = itemDetails.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    )
+    const roundedAmount = Math.round(calculatedItemTotal * 100) / 100
+
+    // Adjust the last item's price if needed to match the exact amount
+    if (roundedAmount !== amount) {
+      const lastItem = itemDetails[itemDetails.length - 1]
+      const currentLastItemTotal = lastItem.price * lastItem.quantity
+      const adjustedLastItemPrice =
+        lastItem.price + (amount - roundedAmount) / lastItem.quantity
+
+      itemDetails[itemDetails.length - 1] = {
+        ...lastItem,
+        price: Math.round(adjustedLastItemPrice * 100) / 100,
+      }
+    }
+
     const transactionDetails = {
       transaction_details: {
         order_id: transactionId,
-        gross_amount: amount,
+        gross_amount: amount, // Use the original amount
       },
       payment_type: paymentType,
       bank_transfer: {

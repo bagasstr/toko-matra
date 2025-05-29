@@ -65,7 +65,6 @@ export interface UserProfile {
   }
   address?: Address[]
   order?: any[]
-  review?: any[]
 }
 
 interface Address {

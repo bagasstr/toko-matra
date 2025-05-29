@@ -20,7 +20,14 @@ const Footer = () => {
         {/* Logo & Deskripsi */}
         <div>
           <div className='flex items-center gap-2 mb-2'>
-            <Image src='/assets/Logo.png' alt='Logo' width={40} height={40} />
+            <Link href='/' className='relative w-10 h-10'>
+              <Image
+                src='/assets/Logo.png'
+                alt='Logo'
+                fill
+                className='object-contain'
+              />
+            </Link>
             <span className='font-bold text-xl text-white'>TOKO MATRA</span>
           </div>
           <p className='text-sm text-gray-400 mb-2'>

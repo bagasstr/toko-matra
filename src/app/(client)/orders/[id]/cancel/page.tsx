@@ -11,12 +11,10 @@ export const dynamic = 'force-dynamic'
 interface CancelOrderPageProps {
   params: {
     id: string
-  }
+  } & Promise<any>
 }
 
-export default async function CancelOrderPage({
-  params,
-}: CancelOrderPageProps) {
+const CancelOrderPage = async ({ params }: CancelOrderPageProps) => {
   const orderId = params.id
   const orderResult = await getOrderById(orderId)
   const order = orderResult.success ? orderResult.data : null
@@ -57,7 +55,7 @@ export default async function CancelOrderPage({
   }
 
   // Check if order can be cancelled
-  if (order.status !== 'PENDING' && order.status !== 'PROCESSING') {
+  if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
     return (
       <div className='max-w-3xl mx-auto py-10 px-4'>
         <div className='flex items-center gap-2 mb-6'>
@@ -146,3 +144,5 @@ export default async function CancelOrderPage({
     </div>
   )
 }
+
+export default CancelOrderPage

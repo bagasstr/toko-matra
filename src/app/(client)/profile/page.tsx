@@ -61,7 +61,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       isActive: addr.isActive,
     })),
     order: userSession?.user?.order,
-    review: userSession?.user?.review,
   }
 
   return <ProfileClient user={userProfile} />

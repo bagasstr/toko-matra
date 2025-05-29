@@ -401,7 +401,7 @@ export default function SuratJalanDashboard() {
                                       <span className='font-medium'>
                                         Telepon:
                                       </span>{' '}
-                                      {item.receiptNumber}
+                                      {item.user.profile.phoneNumber}
                                     </div>
                                     <div>
                                       <span className='font-medium'>

@@ -45,51 +45,6 @@ export interface IOrder {
   paidAt?: string
 }
 
-export async function createOrder(order: IOrder) {
-  const result = await prisma.order.create({
-    data: {
-      id: generateCustomId('ORD'),
-      userId: order.userId,
-      addressId: order.addressId,
-      status: order.status,
-      totalAmount: order.totalAmount,
-      receiptNumber: order.receiptNumber,
-      items: {
-        create: order.items.map((item) => ({
-          id: crypto.randomUUID(),
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          product: {
-            connect: {
-              id: item.productId,
-            },
-          },
-        })),
-      },
-      Payment: {
-        create: order.Payment.map((paymentId) => ({
-          id: paymentId,
-          amount: order.totalAmount,
-          paymentMethod: 'bank_transfer', // Default payment method
-          status: 'PENDING', // Default status
-        })),
-      },
-      Shipment: order.Shipments
-        ? {
-            create: {
-              id: crypto.randomUUID(),
-              deliveryNumber: order.Shipments,
-              deliveryDate: new Date(),
-              status: 'PENDING',
-            },
-          }
-        : undefined,
-    },
-  })
-  return result
-}
-
 interface CheckoutFormData {
   addressId: string
   bank: string
@@ -129,15 +84,16 @@ export async function processCheckoutAndCreateOrder(
       price: Number(item.product.price),
     }))
 
-    const totalAmount = items.reduce(
+    const subtotal = items.reduce(
       (total, item) => total + item.price * item.quantity,
       0
     )
+    const totalAmount = subtotal + subtotal * 0.11
 
     // Create order
     const orderResult = await prisma.order.create({
       data: {
-        id: generateCustomId('ORD'),
+        id: generateCustomId('ord'),
         user: {
           connect: {
             id: session.user.id,
@@ -149,8 +105,8 @@ export async function processCheckoutAndCreateOrder(
           },
         },
         status: OrderStatus.PENDING,
-        totalAmount,
-        receiptNumber: null,
+        totalAmount: totalAmount,
+        subtotalAmount: subtotal,
         items: {
           create: items.map((item) => ({
             id: crypto.randomUUID(),
@@ -699,7 +655,7 @@ export async function updateOrderResi(orderId: string, receiptNumber: string) {
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: { receiptNumber, status: OrderStatus.SHIPPED },
+      data: { status: OrderStatus.SHIPPED },
     })
 
     return {

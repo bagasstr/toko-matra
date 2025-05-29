@@ -130,7 +130,6 @@ export async function getProductBySlug(slug: string) {
           },
         },
         brand: true,
-        review: true,
       },
     })
     return { success: true, product }

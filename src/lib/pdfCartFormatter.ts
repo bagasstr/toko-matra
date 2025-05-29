@@ -13,6 +13,8 @@ interface CartItem {
 
 export const generateCartPDF = (
   items: any[],
+  subtotal: number,
+  ppn: number,
   total: number,
   logoBase64: string
 ) => {
@@ -22,17 +24,6 @@ export const generateCartPDF = (
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`
-
-  const subtotal = items.reduce(
-    (sum, item) =>
-      sum + (item.product.priceExclPPN ?? item.product.price) * item.quantity,
-    0
-  )
-  const diskon = 0
-  const nilaiLain = 49000226
-  const ppn = Math.round((subtotal - diskon) * 0.11)
-  const biayaKirim = 0
-  const totalTagihan = subtotal + nilaiLain + ppn + biayaKirim - diskon
 
   const now = new Date()
   const tanggal = now.toLocaleDateString('id-ID', {
@@ -270,30 +261,12 @@ export const generateCartPDF = (
               <td class="value">${formatRupiah(subtotal)}</td>
             </tr>
             <tr>
-              <td class="label">Diskon</td>
-              <td class="value text-red">- ${formatRupiah(diskon)}</td>
-              
-            </tr>
-            <tr><td colspan="2"><div class="separator1"/></td></tr>
-            <tr>
-              <td class="label">Subtotal Setelah Diskon</td>
-              <td class="value">${formatRupiah(subtotal - diskon)}</td>
-            </tr>
-            <tr>
-              <td class="label">Nilai Lain</td>
-              <td class="value">${formatRupiah(nilaiLain)}</td>
-            </tr>
-            <tr>
               <td class="label">PPN (11%)</td>
               <td class="value">${formatRupiah(ppn)}</td>
             </tr>
-            <tr>
-              <td class="label">Biaya Kirim</td>
-              <td class="value">${formatRupiah(biayaKirim)}</td>
-            </tr>
             <tr class="border-top border-bottom">
-              <td class="label bold">Total Tagihan</td>
-              <td class="value bold">${formatRupiah(totalTagihan)}</td>
+              <td class="label bold">Total</td>
+              <td class="value bold">${formatRupiah(total)}</td>
             </tr>
           </tbody>
         </table>

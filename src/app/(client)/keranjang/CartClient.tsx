@@ -183,6 +183,19 @@ const CartClient = ({
       .reduce((total, item) => total + item.product.price * item.quantity, 0)
   }
 
+  // Calculate PPN (11%)
+  const calculatePPN = () => {
+    const subtotal = calculateSubtotal()
+    return Math.round(subtotal * 0.11)
+  }
+
+  // Calculate total including PPN
+  const calculateTotal = () => {
+    const subtotal = calculateSubtotal()
+    const ppn = calculatePPN()
+    return subtotal + ppn
+  }
+
   // Loading skeleton
   if (loading) {
     return (
@@ -219,15 +232,70 @@ const CartClient = ({
   const htmlContent = generateCartPDF(
     selectedProduct,
     calculateSubtotal(),
+    calculatePPN(),
+    calculateTotal(),
     logoBase64
   )
 
   return (
-    <div className=''>
-      <div className='flex justify-between items-start gap-6'>
-        {/* Kiri: Daftar Produk */}
-        <div className='bg-white rounded-lg shadow p-4 lg:w-2/3'>
-          <table className='w-full border text-sm'>
+    <div className='container mx-auto px-4 py-6'>
+      <div className='flex flex-col lg:flex-row gap-6'>
+        {/* Kiri: Daftar Produk - Mobile View */}
+        <div className='bg-white rounded-lg shadow p-4 lg:w-2/3 w-full'>
+          <div className='block lg:hidden mb-4'>
+            {cart.map((item) => (
+              <div
+                key={item.id}
+                className='border-b pb-4 mb-4 flex items-center space-x-4'>
+                <input
+                  type='checkbox'
+                  checked={selectedItems.includes(item.id)}
+                  onChange={() => handleSelectItem(item.id)}
+                  className='w-4 h-4 accent-primary'
+                />
+                <div className='flex-1'>
+                  <div className='font-medium text-sm'>{item.product.name}</div>
+                  <div className='text-xs text-gray-500'>
+                    Rp {Number(item.product.price).toLocaleString('id-ID')}
+                  </div>
+                </div>
+                <div className='flex items-center gap-2'>
+                  <Button
+                    size='icon'
+                    variant='outline'
+                    className='h-8 w-8'
+                    disabled={item.quantity === item.product.minOrder}
+                    onClick={() =>
+                      handleUpdateQuantity(
+                        item.id,
+                        Math.max(item.product.minOrder, item.quantity - 1)
+                      )
+                    }>
+                    -
+                  </Button>
+                  <span className='text-sm'>{item.quantity}</span>
+                  <Button
+                    size='icon'
+                    variant='outline'
+                    className='h-8 w-8'
+                    onClick={() =>
+                      handleUpdateQuantity(item.id, item.quantity + 1)
+                    }>
+                    +
+                  </Button>
+                </div>
+                <Button
+                  variant='ghost'
+                  size='icon'
+                  onClick={() => handleRemoveItem(item.id)}>
+                  <Trash2 className='h-4 w-4 text-red-500' />
+                </Button>
+              </div>
+            ))}
+          </div>
+
+          {/* Desktop Table View */}
+          <table className='w-full border text-sm hidden lg:table'>
             <thead>
               <tr className='bg-gray-100'>
                 <th className='p-2 text-center'>
@@ -309,8 +377,9 @@ const CartClient = ({
             </tbody>
           </table>
         </div>
-        {/* Kanan: Ringkasan Belanja */}
-        <div className='bg-white rounded-lg gap-4 shadow p-4 lg:w-2/4'>
+
+        {/* Kanan: Ringkasan Belanja - Responsive */}
+        <div className='bg-white rounded-lg gap-4 shadow p-4 lg:w-1/3 w-full'>
           <div className=''>
             <div className='font-semibold mb-2'>
               <div className='flex justify-between items-center'>
@@ -326,23 +395,39 @@ const CartClient = ({
             <div>
               <div className='space-y-2'>
                 {selectedProduct.map((item) => (
-                  <div key={item.id}>
+                  <div key={item.id} className='flex justify-between'>
                     <p className=''>
                       {item.product.name} ({item.quantity} {item.product.unit})
+                    </p>
+                    <p>
+                      Rp{' '}
+                      {(item.product.price * item.quantity).toLocaleString(
+                        'id-ID'
+                      )}
                     </p>
                   </div>
                 ))}
               </div>
             </div>
-            <div className='text-right mt-7'>
-              <div>{selectedItems.length} item</div>
-              <div>Rp {calculateSubtotal().toLocaleString('id-ID')}</div>
+            <div className='text-right mt-7 space-y-2'>
+              <div className='flex justify-between'>
+                <span>Subtotal</span>
+                <span>Rp {calculateSubtotal().toLocaleString('id-ID')}</span>
+              </div>
+              <div className='flex justify-between'>
+                <span>PPN (11%)</span>
+                <span>Rp {calculatePPN().toLocaleString('id-ID')}</span>
+              </div>
+              <div className='font-semibold flex justify-between border-t pt-2'>
+                <span>Total</span>
+                <span>Rp {calculateTotal().toLocaleString('id-ID')}</span>
+              </div>
             </div>
           </div>
           <div className='font-bold text-lg flex justify-between border-t pt-2 mt-2'>
             <span>Total Harga</span>
             <span className='text-primary'>
-              Rp {calculateSubtotal().toLocaleString('id-ID')}
+              Rp {calculateTotal().toLocaleString('id-ID')}
             </span>
           </div>
           <Button
@@ -351,45 +436,31 @@ const CartClient = ({
             className='w-full mt-4 bg-primary text-white py-2 rounded font-semibold'>
             Lanjutkan Ke Pembayaran
           </Button>
-          <div className='text-center text-sm text-gray-500 mt-4'>
-            <p>
-              Total harga yang tertera diatas sudah termasuk PPN sebesar 11%
-            </p>
+          <div className='text-center text-xs text-gray-500 mt-4'>
+            <p>Total harga sudah termasuk PPN 11%</p>
           </div>
         </div>
       </div>
-      {/* <div className=''>
-        {process.env.NODE_ENV === 'development' && (
-          <div
-            style={{
-              marginTop: 24,
-              border: '1px solid #ccc',
-              borderRadius: 8,
-              overflow: 'auto',
-              maxHeight: 600,
-            }}>
-            <div
-              style={{
-                background: '#eee',
-                padding: 8,
-                fontSize: 12,
-                fontWeight: 'bold',
-              }}>
-              Preview PDF HTML (Development Only)
+
+      {/* Fixed Bottom Bar for Mobile */}
+      <div className='lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4 z-50'>
+        <div className='flex justify-between items-center'>
+          <div>
+            <div className='text-sm text-gray-600'>
+              {selectedItems.length} Item
             </div>
-            <iframe
-              title='PDF Preview'
-              srcDoc={htmlContent}
-              style={{
-                width: '100%',
-                height: 600,
-                border: 'none',
-                background: '#fff',
-              }}
-            />
+            <div className='font-semibold text-primary'>
+              Rp {calculateTotal().toLocaleString('id-ID')}
+            </div>
           </div>
-        )}
-      </div> */}
+          <Button
+            onClick={handleCheckout}
+            disabled={selectedItems.length === 0}
+            className='bg-primary text-white px-6 py-2 rounded font-semibold'>
+            Lanjutkan
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

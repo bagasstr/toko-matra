@@ -28,7 +28,7 @@ const MobileNavbar = async () => {
     notifications?.filter((n) => !n.isRead).length || 0
 
   return (
-    <div className='lg:hidden bg-blue-100'>
+    <div className='lg:hidden'>
       <div className='h-28 w-full rounded-b-4xl absolute top-0 left-0 -z-10' />
       <div className='container p-4 mx-auto'>
         <div className='flex items-center gap-2 justify-between w-full'>

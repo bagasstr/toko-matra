@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Protect client routes that require authentication
-  const protectedRoutes = ['/wishlist', '/keranjang', '/notifikasi']
+  const protectedRoutes = ['/wishlist', '/keranjang', '/notifikasi', '/orders']
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     const sessionToken = request.cookies.get('sessionToken')?.value
 

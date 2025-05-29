@@ -6,15 +6,7 @@ import Image from 'next/image'
 import AuthSection from '@/components/ui/AuthSection'
 import { validateSession } from '@/app/actions/session'
 
-export const dynamic = 'force-dynamic'
-
-interface PesananSayaPageProps {
-  searchParams: { user?: string }
-}
-
-export default async function PesananSayaPage({
-  searchParams,
-}: PesananSayaPageProps) {
+export default async function PesananSayaPage() {
   let orderResult = { success: false, data: [] as any[] }
   const result = await getUserOrders()
   orderResult = { success: result.success, data: result.data || [] }

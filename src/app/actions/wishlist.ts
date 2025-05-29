@@ -129,10 +129,13 @@ export const getWishlist = async () => {
       select: {
         productId: true,
         id: true,
+
         product: {
           select: {
+            id: true,
             name: true,
             price: true,
+            slug: true,
             images: true,
             category: true,
           },

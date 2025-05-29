@@ -1,27 +1,41 @@
 import { getCartItems } from '@/app/actions/cartAction'
 import PaymentForm from './PaymentForm'
-import { Suspense } from 'react'
 import { validateSession } from '@/app/actions/session'
-
-export const dynamic = 'force-dynamic'
+import { redirect } from 'next/navigation'
+import { Metadata } from 'next'
 
 export default async function PaymentPage({
   searchParams,
 }: {
-  searchParams: { items?: string }
+  searchParams: { [key: string]: string | string[] | undefined } & Promise<any>
 }) {
-  const cartData = await getCartItems()
   const session = await validateSession()
+  if (!session?.user) {
+    redirect('/login')
+  }
 
-  const userId = session?.user?.profile.id.toLowerCase()
-  const customerProfile = session?.user?.profile || null
+  const cartData = await getCartItems()
 
   // Filter cart items based on selected items
   if (searchParams.items && cartData.success) {
-    const selectedItemIds = searchParams.items.split(',')
+    const selectedItemIds = Array.isArray(searchParams.items)
+      ? searchParams.items
+      : (searchParams.items as string).split(',')
     cartData.data = cartData.data.filter((item: any) =>
-      selectedItemIds.includes(item.id)
+      selectedItemIds.includes(item.id.toString())
     )
+
+    // Ensure total amount is calculated correctly for Midtrans
+    const subtotal = cartData.data.reduce(
+      (total, item) => total + item.product.price * item.quantity,
+      0
+    )
+    const ppn = Math.round(subtotal * 0.11)
+    const totalAmount = subtotal + ppn
+
+    cartData.subtotal = subtotal
+    cartData.ppn = ppn
+    cartData.totalAmount = totalAmount
   }
 
   return (
@@ -29,7 +43,7 @@ export default async function PaymentPage({
       <PaymentForm
         cookies={session}
         initialCartData={cartData}
-        customerProfile={customerProfile}
+        customerProfile={session?.user?.profile || null}
       />
     </div>
   )

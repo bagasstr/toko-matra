@@ -3,13 +3,19 @@
 import React, { useEffect } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { RiDeleteBinLine } from '@remixicon/react'
+import { RiArrowLeftLine, RiDeleteBinLine } from '@remixicon/react'
 import { removeFromWishlist } from '@/app/actions/wishlist'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
-const WishlistComp = ({ wishlist }: { wishlist: any }) => {
+const WishlistComp = ({
+  wishlist,
+  categories,
+}: {
+  wishlist: any
+  categories: any
+}) => {
   const router = useRouter()
   const handleRemoveFromWishlist = async (id: string) => {
     const res = await removeFromWishlist(id)
@@ -21,11 +27,26 @@ const WishlistComp = ({ wishlist }: { wishlist: any }) => {
     }
   }
   console.log(wishlist)
+  console.log(categories)
+  const categorySlug = categories?.categorie?.find((item) =>
+    wishlist.some(
+      (wishlistItem) => item.id === wishlistItem.product.category.parentId
+    )
+  )?.slug // ambil slug dari kategori yang memiliki parentId yang sama dengan wishlist
+  console.log(categorySlug)
   return (
     <div className='p-4'>
+      <div className='flex items-center gap-2 mb-4'>
+        <Link href={`/kategori/${categorySlug}`}>
+          <Button variant='ghost' size='icon'>
+            <RiArrowLeftLine size={20} />
+          </Button>
+        </Link>
+        <h1 className='text-xl font-bold'>Wishlist</h1>
+      </div>
       {wishlist.map((item) => (
         <Link
-          href={`/kategori/${item.product.category.slug}/${item.product.slug}`}
+          href={`/kategori/${categorySlug}/${item.product.category.slug}/${item.product.slug}`}
           key={item.id}
           className='flex items-center gap-4 py-3 px-2 bg-white hover:bg-gray-50 transition border rounded-md'>
           <Image
