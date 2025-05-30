@@ -23,6 +23,8 @@ export async function middleware(request: NextRequest) {
   if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     const sessionToken = request.cookies.get('sessionToken')?.value
 
+    console.log(sessionToken)
+
     // If no session token, redirect to login
     if (!sessionToken) {
       const loginUrl = new URL('/login', request.url)
