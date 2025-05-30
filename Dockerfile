@@ -41,5 +41,5 @@
     EXPOSE 3000
     
     # Start the server (with migration)
-    CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
+    CMD ["sh", "-c", "npx prisma migrate deploy && npm run seed && node server.js"]
     

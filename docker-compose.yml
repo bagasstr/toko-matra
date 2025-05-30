@@ -25,12 +25,6 @@ services:
       - /mnt/nas/docker-data/toko_matra:/app/public
     networks:
       - ix-cloudflared_default
-    command: >
-      sh -c "
-        npx prisma migrate deploy &&
-        npm run seed &&
-        node server.js
-      "
 
   postgres:
     image: postgres:15-alpine
