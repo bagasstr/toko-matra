@@ -33,6 +33,9 @@
     COPY --from=builder /app/public ./public
     COPY --from=builder /app/.next/static .next/static
     COPY --from=builder /app/prisma ./prisma
+    COPY --from=builder /app/adminSeed.ts ./
+    COPY --from=builder /app/categorySeed.ts ./
+    COPY --from=builder /app/tsconfig.seed.json ./
     
     # Expose the port
     EXPOSE 3000
