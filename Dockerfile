@@ -10,6 +10,8 @@
     # Copy entire project
     COPY . .
     
+
+   
     # Generate Prisma Client
     RUN npx prisma generate
     
@@ -19,8 +21,7 @@
     
     # --- Production Image ---
     FROM node:20-alpine
-    
-    ENV NODE_ENV=production
+
     
     WORKDIR /app
     
