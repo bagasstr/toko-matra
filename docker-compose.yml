@@ -26,8 +26,6 @@ services:
       - postgres
     volumes:
       - /mnt/nas/docker-data/toko_matra/toko_matra_app:/app
-      - /app/node_modules
-      - /app/.next
       - /mnt/nas/docker-data/toko_matra:/app/public
     networks:
       - ix-cloudflared_default
