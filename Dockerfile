@@ -1,44 +1,42 @@
-# --- Base Image ---
-FROM node:20-alpine AS base
-WORKDIR /app
-
-# Install dependencies only
-COPY package.json package-lock.json* ./
-RUN npm ci --omit=dev
-
-# --- Builder Image ---
-FROM node:20-alpine AS builder
-WORKDIR /app
-
-# Copy everything
-COPY . .
-
-# Install all dependencies (dev & prod)
-RUN npm ci
-
-# Generate Prisma Client
-RUN npx prisma generate
-
-# Build Next.js standalone app
-RUN npm run build
-
-# --- Runner Image ---
-FROM node:20-alpine AS runner
-WORKDIR /app
-
-# Copy only the standalone output and necessary files
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/static .next/static
-
-# Optionally, copy the prisma folder if needed for runtime
-COPY --from=builder /app/prisma ./prisma
-
-# Copy node_modules from standalone if required
-# Not needed if using standalone mode correctly
-
-# Copy .env if needed
-# COPY .env .env
-
-# Jalankan migrasi dan aplikasi
-CMD sh -c "npx prisma migrate deploy && node server.js"
+# --- Base Image (Install only production deps) ---
+    FROM node:20-alpine AS base
+    WORKDIR /app
+    COPY package.json package-lock.json ./
+    RUN npm ci --omit=dev
+    
+    
+    # --- Builder (Full deps + Prisma generate + build Next.js) ---
+    FROM node:20-alpine AS builder
+    WORKDIR /app
+    
+    # Salin semua file (termasuk prisma/)
+    COPY . .
+    
+    # Install semua dependency (termasuk dev)
+    RUN npm ci
+    
+    # Generate Prisma Client
+    RUN npx prisma generate
+    
+    # Build Next.js standalone
+    RUN npm run build
+    
+    
+    # --- Runner Image ---
+    FROM node:20-alpine AS runner
+    WORKDIR /app
+    
+    # Copy hasil build dari builder
+    COPY --from=builder /app/.next/standalone ./
+    COPY --from=builder /app/public ./public
+    COPY --from=builder /app/.next/static .next/static
+    
+    # Copy prisma folder (untuk schema dan hasil generate)
+    COPY --from=builder /app/prisma ./prisma
+    
+    # Copy generated node_modules (opsional, jika standalone tidak menyertakan semua)
+    COPY --from=builder /app/node_modules ./node_modules
+    
+    # Jalankan migrate & server
+    CMD sh -c "npx prisma migrate deploy && npm run seed && node server.js"
+    
