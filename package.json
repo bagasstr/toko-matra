@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev && tsc --project tsconfig.seed.json",
     "build": "next build",
     "start": "node .next/standalone/server.js",
     "lint": "next lint",
-    "seed": "ts-node --project tsconfig.seed.json adminSeed.ts && ts-node --project tsconfig.seed.json categorySeed.ts"
+    "build:seed": "tsc --project tsconfig.seed.json",
+    "seed": "node dist/adminSeed.js && node dist/categorySeed.js"
   },
   "dependencies": {
     "@develoka/angka-rupiah-js": "^1.0.3",

@@ -3,7 +3,8 @@
     "compilerOptions": {
       "module": "CommonJS",
       "moduleResolution": "node",
-      "noEmit": false
+      "noEmit": false,
+      "outDir": "./dist"
     },
     "include": ["adminSeed.ts", "categorySeed.ts"]
   }

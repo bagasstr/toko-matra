@@ -199,10 +199,10 @@ CREATE TABLE "cart_items" (
 CREATE TABLE "orders" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "addressId" TEXT NOT NULL,
     "status" "OrderStatus" NOT NULL DEFAULT 'PENDING',
     "totalAmount" INTEGER NOT NULL,
-    "receiptNumber" TEXT,
+    "subtotalAmount" INTEGER,
+    "addressId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -292,6 +292,7 @@ CREATE TABLE "invoices" (
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
     "createdBy" TEXT NOT NULL,
+    "orderId" TEXT,
 
     CONSTRAINT "invoices_pkey" PRIMARY KEY ("id")
 );
@@ -332,6 +333,7 @@ CREATE TABLE "proforma_invoices" (
     "convertedToInvoice" BOOLEAN NOT NULL DEFAULT false,
     "convertedInvoiceId" TEXT,
     "downloadedAt" TIMESTAMP(3),
+    "orderId" TEXT,
 
     CONSTRAINT "proforma_invoices_pkey" PRIMARY KEY ("id")
 );
@@ -356,7 +358,6 @@ CREATE TABLE "wishlists" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "productId" TEXT NOT NULL,
-    "categoryId" TEXT NOT NULL,
 
     CONSTRAINT "wishlists_pkey" PRIMARY KEY ("id")
 );
@@ -408,6 +409,9 @@ CREATE UNIQUE INDEX "invoices_invoiceNumber_key" ON "invoices"("invoiceNumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "proforma_invoices_invoiceNumber_key" ON "proforma_invoices"("invoiceNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "wishlists_productId_key" ON "wishlists"("productId");
 
 -- AddForeignKey
 ALTER TABLE "profile" ADD CONSTRAINT "profile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -473,6 +477,9 @@ ALTER TABLE "shipment_items" ADD CONSTRAINT "shipment_items_productId_fkey" FORE
 ALTER TABLE "invoices" ADD CONSTRAINT "invoices_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "invoices" ADD CONSTRAINT "invoices_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "invoice_items" ADD CONSTRAINT "invoice_items_invoiceId_fkey" FOREIGN KEY ("invoiceId") REFERENCES "invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -485,6 +492,9 @@ ALTER TABLE "proforma_invoices" ADD CONSTRAINT "proforma_invoices_createdBy_fkey
 ALTER TABLE "proforma_invoices" ADD CONSTRAINT "proforma_invoices_convertedInvoiceId_fkey" FOREIGN KEY ("convertedInvoiceId") REFERENCES "invoices"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "proforma_invoices" ADD CONSTRAINT "proforma_invoices_orderId_fkey" FOREIGN KEY ("orderId") REFERENCES "orders"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "proforma_invoice_items" ADD CONSTRAINT "proforma_invoice_items_proformaInvoiceId_fkey" FOREIGN KEY ("proformaInvoiceId") REFERENCES "proforma_invoices"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -492,9 +502,6 @@ ALTER TABLE "proforma_invoice_items" ADD CONSTRAINT "proforma_invoice_items_prod
 
 -- AddForeignKey
 ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "categories"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "wishlists" ADD CONSTRAINT "wishlists_productId_fkey" FOREIGN KEY ("productId") REFERENCES "Product"("id") ON DELETE CASCADE ON UPDATE CASCADE;

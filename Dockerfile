@@ -36,10 +36,11 @@
     COPY --from=builder /app/adminSeed.ts ./
     COPY --from=builder /app/categorySeed.ts ./
     COPY --from=builder /app/tsconfig.seed.json ./
-    
+    COPY --from=builder /app/dist ./dist
+
     # Expose the port
     EXPOSE 3000
     
     # Start the server (with migration)
-    CMD ["sh", "-c", "npx prisma migrate deploy && npm run seed && node server.js"]
+    CMD ["sh", "-c", "npx prisma migrate deploy && npm run build:seed && npm run seed && node server.js"]
     
