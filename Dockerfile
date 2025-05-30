@@ -38,6 +38,7 @@
     COPY --from=builder /app/adminSeed.ts ./
     COPY --from=builder /app/categorySeed.ts ./
     COPY --from=builder /app/tsconfig.seed.json ./
+    COPY --from=builder /app/tsconfig.json ./
     COPY --from=builder /app/dist ./dist
 
     # Expose the port
