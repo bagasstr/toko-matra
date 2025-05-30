@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
-import { OrderStatus } from '@prisma/client'
+
+enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
 
 export async function POST(request: Request) {
   try {
@@ -48,25 +55,25 @@ export async function POST(request: Request) {
 
     // Update status based on notification
     let paymentStatus = 'PENDING'
-    let orderStatus: OrderStatus = 'PENDING'
+    let orderStatus: OrderStatus = OrderStatus.PENDING
 
     if (transaction_status === 'capture') {
       if (fraud_status === 'challenge') {
         paymentStatus = 'CHALLENGE'
       } else if (fraud_status === 'accept') {
         paymentStatus = 'SUCCESS'
-        orderStatus = 'CONFIRMED'
+        orderStatus = OrderStatus.CONFIRMED
       }
     } else if (transaction_status === 'settlement') {
       paymentStatus = 'SUCCESS'
-      orderStatus = 'CONFIRMED'
+      orderStatus = OrderStatus.CONFIRMED
     } else if (
       transaction_status === 'cancel' ||
       transaction_status === 'deny' ||
       transaction_status === 'expire'
     ) {
       paymentStatus = 'FAILED'
-      orderStatus = 'CANCELLED'
+      orderStatus = OrderStatus.CANCELLED
     } else if (transaction_status === 'pending') {
       paymentStatus = 'PENDING'
     }

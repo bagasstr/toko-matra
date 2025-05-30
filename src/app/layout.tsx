@@ -4,7 +4,6 @@ import './globals.css'
 import ThemesProvider from '@/components/ui/ThemesProvider'
 import { Toaster } from 'sonner'
 import QueryClientProvider from '@/components/QueryClient'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const poppins = Poppins({
   subsets: ['latin'],

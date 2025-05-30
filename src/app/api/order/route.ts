@@ -2,7 +2,14 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { validateSession } from '@/app/actions/session'
 import { generateCustomId } from '@/lib/helpper'
-import { OrderStatus } from '@prisma/client'
+
+enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
 
 export async function POST(request: Request) {
   try {

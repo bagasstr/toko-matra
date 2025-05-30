@@ -2,7 +2,6 @@
 
 import { generateCustomId } from '@/lib/helpper'
 import { prisma } from '@/lib/prisma'
-import { OrderItem } from '@prisma/client'
 import { validateSession } from './session'
 import { getCartItems } from './cartAction'
 import { revalidatePath } from 'next/cache'

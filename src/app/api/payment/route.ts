@@ -1,9 +1,16 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 
 import { validateSession } from '@/app/actions/session'
-import { OrderStatus } from '@prisma/client'
 import { checkTransaction, createTransaction } from '@/lib/midtransClient'
+import { prisma } from '@/lib/prisma'
+
+enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
 
 // POST /api/payment/create
 export async function POST(request: Request) {
@@ -193,25 +200,25 @@ export async function GET(request: Request) {
 
     // Update payment and order status
     let paymentStatus = 'PENDING'
-    let orderStatus: OrderStatus = 'PENDING'
+    let orderStatus: OrderStatus = OrderStatus.PENDING
 
     if (transactionStatus === 'capture') {
       if (fraudStatus === 'challenge') {
         paymentStatus = 'CHALLENGE'
       } else if (fraudStatus === 'accept') {
         paymentStatus = 'SUCCESS'
-        orderStatus = 'CONFIRMED'
+        orderStatus = OrderStatus.CONFIRMED
       }
     } else if (transactionStatus === 'settlement') {
       paymentStatus = 'SUCCESS'
-      orderStatus = 'CONFIRMED'
+      orderStatus = OrderStatus.CONFIRMED
     } else if (
       transactionStatus === 'cancel' ||
       transactionStatus === 'deny' ||
       transactionStatus === 'expire'
     ) {
       paymentStatus = 'FAILED'
-      orderStatus = 'CANCELLED'
+      orderStatus = OrderStatus.CANCELLED
     }
 
     // Update payment and order

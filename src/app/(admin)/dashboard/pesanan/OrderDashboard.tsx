@@ -7,7 +7,6 @@ import {
   updateOrderResi,
 } from '@/app/actions/orderAction'
 import { formatCurrency } from '@/lib/helpper'
-import { OrderStatus } from '@prisma/client'
 import { MoreHorizontal, Filter, Download } from 'lucide-react'
 import {
   DropdownMenu,
@@ -26,6 +25,13 @@ import Image from 'next/image'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
+enum OrderStatus {
+  PENDING = 'PENDING',
+  CONFIRMED = 'CONFIRMED',
+  SHIPPED = 'SHIPPED',
+  DELIVERED = 'DELIVERED',
+  CANCELLED = 'CANCELLED',
+}
 export default function OrderDashboard({
   initialOrders,
 }: {

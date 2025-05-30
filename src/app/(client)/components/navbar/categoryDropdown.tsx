@@ -44,22 +44,28 @@ export function CategoryDropdown() {
   })
 
   // Group categories based on predefined groups
-  const groupedCategories = categories.reduce<GroupedCategories>(
-    (acc, category) => {
+  const groupedCategories = categories.reduce(
+    (acc: GroupedCategories, category: Category) => {
       const group =
-        Object.keys(categoryGroups).find((group) =>
-          categoryGroups[group].some((name) =>
+        (
+          Object.keys(categoryGroups) as Array<keyof typeof categoryGroups>
+        ).find((groupKey) =>
+          categoryGroups[groupKey].some((name) =>
             category.name.toLowerCase().includes(name.toLowerCase())
           )
         ) || 'other'
 
-      if (!acc[group]) {
-        acc[group] = []
+      // Ensure the group exists in the accumulator
+      if (!acc[group as keyof GroupedCategories]) {
+        acc[group as keyof GroupedCategories] = []
       }
-      acc[group]?.push(category)
+
+      // Push the category to the appropriate group
+      ;(acc[group as keyof GroupedCategories] as Category[]).push(category)
+
       return acc
     },
-    {}
+    {} as GroupedCategories
   )
 
   return (

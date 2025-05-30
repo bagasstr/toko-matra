@@ -1,48 +1,44 @@
-# Use official Node.js LTS image as the base
-FROM node:18-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
+# --- Base Image ---
+FROM node:20-alpine AS base
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies only
 COPY package.json package-lock.json* ./
-RUN npm ci
+RUN npm ci --omit=dev
 
-# Build the application
-FROM base AS builder
+# --- Builder Image ---
+FROM node:20-alpine AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+
+# Copy everything
 COPY . .
 
-RUN npm run build
-
-# Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
-
-ENV NODE_ENV production
-
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy Prisma schema separately (for prisma generate step)
-COPY prisma ./prisma
+# Install all dependencies (dev & prod)
+RUN npm ci
 
 # Generate Prisma Client
 RUN npx prisma generate
 
-# Copy hasil build dari builder
+# Build Next.js standalone app
+RUN npm run build
+
+# --- Runner Image ---
+FROM node:20-alpine AS runner
+WORKDIR /app
+
+# Copy only the standalone output and necessary files
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/static .next/static
 
-USER nextjs
+# Optionally, copy the prisma folder if needed for runtime
+COPY --from=builder /app/prisma ./prisma
 
-EXPOSE 3001
+# Copy node_modules from standalone if required
+# Not needed if using standalone mode correctly
 
-ENV PORT 3001
-ENV HOSTNAME localhost
+# Copy .env if needed
+# COPY .env .env
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node server.js "]
+# Jalankan migrasi dan aplikasi
+CMD sh -c "npx prisma migrate deploy && node server.js"
