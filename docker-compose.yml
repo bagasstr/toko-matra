@@ -28,8 +28,7 @@ services:
       - .:/app
       - /app/node_modules
       - /app/.next
-      - /mnt/nas/docker-data/toko_matra/files_uploads/image:/app/public/upload/image
-      - /mnt/nas/docker-data/toko_matra/files_uploads/document:/app/public/upload/document
+      - /mnt/nas/docker-data/toko_matra:/app/public
     networks:
       - ix-cloudflared_default
 
