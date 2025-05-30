@@ -28,6 +28,7 @@
     RUN apk add --no-cache openssl
     
     # Copy necessary files from builder
+    COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
     COPY --from=builder /app/package.json ./
     COPY --from=builder /app/node_modules ./node_modules
     COPY --from=builder /app/.next/standalone ./
@@ -41,7 +42,7 @@
 
     # Expose the port
     EXPOSE 3000
-    
+    RUN chmod +x entrypoint.sh
     # Start the server (with migration)
-    CMD ["sh", "-c", "npx prisma migrate deploy && npm run build:seed && npm run seed && node server.js"]
+    CMD ["./entrypoint.sh"]
     
