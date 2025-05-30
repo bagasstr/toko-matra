@@ -1,36 +1,42 @@
-# --- Base Image (Install only production deps) ---
-    FROM node:20-alpine AS base
-    WORKDIR /app
-    COPY package.json package-lock.json ./
-    RUN npm ci --omit=dev
-    
-    # --- Builder (Full deps + Prisma + Build + Seed) ---
+# --- Builder stage ---
     FROM node:20-alpine AS builder
+
     WORKDIR /app
     
-    # Copy semua file
+    # Copy only necessary files
+    COPY package.json package-lock.json ./
+    RUN npm install
+    
+    # Copy entire project
     COPY . .
     
-    # Install semua dependencies
-    RUN npm ci
-    
-    # Generate Prisma client
+    # Generate Prisma Client
     RUN npx prisma generate
-
-    # Build Next.js app dengan output standalone
+    
+    # Build Next.js
     RUN npm run build
     
-    # --- Runner (Lightweight container) ---
-    FROM node:20-alpine AS runner
+    
+    # --- Production Image ---
+    FROM node:20-alpine
+    
+    ENV NODE_ENV=production
+    
     WORKDIR /app
     
-    # Copy hasil build standalone dari builder
+    RUN apk add --no-cache openssl
+    
+    # Copy necessary files from builder
+    COPY --from=builder /app/package.json ./
+    COPY --from=builder /app/node_modules ./node_modules
     COPY --from=builder /app/.next/standalone ./
     COPY --from=builder /app/public ./public
     COPY --from=builder /app/.next/static .next/static
     COPY --from=builder /app/prisma ./prisma
-    COPY --from=builder /app/node_modules ./node_modules
     
-    # Jalankan aplikasi
-    CMD ["node", "server.js"]
+    # Expose the port
+    EXPOSE 3000
+    
+    # Start the server (with migration)
+    CMD ["sh", "-c", "npx prisma migrate deploy && node server.js"]
     
