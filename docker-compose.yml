@@ -25,7 +25,7 @@ services:
     depends_on:
       - postgres
     volumes:
-      - .:/app
+      - /mnt/nas/docker-data/toko_matra/toko_matra_app:/app
       - /app/node_modules
       - /app/.next
       - /mnt/nas/docker-data/toko_matra:/app/public
