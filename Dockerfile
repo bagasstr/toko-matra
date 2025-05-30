@@ -4,39 +4,33 @@
     COPY package.json package-lock.json ./
     RUN npm ci --omit=dev
     
-    
-    # --- Builder (Full deps + Prisma generate + build Next.js) ---
+    # --- Builder (Full deps + Prisma + Build + Seed) ---
     FROM node:20-alpine AS builder
     WORKDIR /app
     
-    # Salin semua file (termasuk prisma/)
+    # Copy semua file
     COPY . .
     
-    # Install semua dependency (termasuk dev)
+    # Install semua dependencies
     RUN npm ci
     
-    # Generate Prisma Client
+    # Generate Prisma client
     RUN npx prisma generate
-    
-    # Build Next.js standalone
+
+    # Build Next.js app dengan output standalone
     RUN npm run build
     
-    
-    # --- Runner Image ---
+    # --- Runner (Lightweight container) ---
     FROM node:20-alpine AS runner
     WORKDIR /app
     
-    # Copy hasil build dari builder
+    # Copy hasil build standalone dari builder
     COPY --from=builder /app/.next/standalone ./
     COPY --from=builder /app/public ./public
     COPY --from=builder /app/.next/static .next/static
-    
-    # Copy prisma folder (untuk schema dan hasil generate)
     COPY --from=builder /app/prisma ./prisma
-    
-    # Copy generated node_modules (opsional, jika standalone tidak menyertakan semua)
     COPY --from=builder /app/node_modules ./node_modules
     
-    # Jalankan migrate & server
-    CMD sh -c "npx prisma migrate deploy && npm run seed && node server.js"
+    # Jalankan aplikasi
+    CMD ["node", "server.js"]
     
