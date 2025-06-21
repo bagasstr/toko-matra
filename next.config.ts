@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
 
   output: 'standalone',
   images: {
-    unoptimized: true, // Bypass Next.js optimization karena kita handle sendiri
+    unoptimized: false, // Enable Next.js optimization untuk performa
     domains: ['localhost', 'DESKTOP-02S3AEE'],
     remotePatterns: [
       {

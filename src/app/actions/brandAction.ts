@@ -182,10 +182,11 @@ export async function uploadBrandImage(formData: FormData) {
     const extension = file.name.split('.').pop()
     const filename = `merek/${uniqueId}.${extension}`
 
-    // Upload to Vercel Blob
+    // Upload to Vercel Blob with optimization
     const blob = await put(filename, file, {
       access: 'public',
       token: process.env.BLOB_READ_WRITE_TOKEN,
+      cacheControlMaxAge: 31536000, // 1 year cache
     })
 
     return { success: true, url: blob.url }

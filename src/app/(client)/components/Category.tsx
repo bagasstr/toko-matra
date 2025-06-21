@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { ChevronRight } from 'lucide-react'
-import Image from 'next/image'
+import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'

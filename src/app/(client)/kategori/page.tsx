@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+import OptimizedImage from '@/components/OptimizedImage'
 import { redirect, usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'

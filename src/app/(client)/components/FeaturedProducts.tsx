@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
-import Image from 'next/image'
+import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -149,12 +149,14 @@ const FeaturedProducts = () => {
                               {product.label}
                             </Badge>
                           )}
-                          <Image
+                          <OptimizedImage
                             src={product.images[0]}
                             alt={product.name}
-                            fill
-                            className='object-contain p-2'
+                            width={160}
+                            height={107}
+                            className='w-full h-full object-contain p-2'
                             sizes='160px'
+                            priority={false}
                           />
                         </div>
                         <div className='flex-1 flex flex-col p-2'>
@@ -198,12 +200,14 @@ const FeaturedProducts = () => {
                             {product.label}
                           </Badge>
                         )}
-                        <Image
+                        <OptimizedImage
                           src={product.images[0]}
                           alt={product.name}
-                          fill
-                          className='object-contain p-3'
+                          width={300}
+                          height={200}
+                          className='w-full h-full object-contain p-3'
                           sizes='(max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw'
+                          priority={false}
                         />
                       </div>
                       <div className='flex-1 flex flex-col p-3'>
