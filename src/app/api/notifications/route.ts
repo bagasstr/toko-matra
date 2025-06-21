@@ -21,14 +21,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Get notifications for the user
-    const result = await getNotifications()
+    const result = await getNotifications(userId)
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 500 })
     }
 
     return NextResponse.json({
-      notifications: result.notifications || [],
+      notifications: result.data || [],
     })
   } catch (error) {
     console.error('Error in notifications API:', error)
