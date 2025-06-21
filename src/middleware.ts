@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { dynamicRoutes } from './app/config'
+import { stat } from 'fs/promises'
+import { join } from 'path'
 
 // middleware.ts
 export async function middleware(request: NextRequest) {
@@ -41,20 +43,20 @@ export async function middleware(request: NextRequest) {
   }
 
   // Check if the route is in our dynamic routes list
-  const isDynamicRoute = dynamicRoutes.some((route) => {
-    // Convert route pattern to regex
-    const pattern = route.replace(/\[.*?\]/g, '[^/]+')
-    return new RegExp(`^${pattern}$`).test(pathname)
-  })
+  // const isDynamicRoute = dynamicRoutes.some((route) => {
+  //   // Convert route pattern to regex
+  //   const pattern = route.replace(/\[.*?\]/g, '[^/]+')
+  //   return new RegExp(`^${pattern}$`).test(pathname)
+  // })
 
-  if (isDynamicRoute) {
-    // Add headers to indicate this is a dynamic route
-    const response = NextResponse.next()
-    response.headers.set('x-middleware-cache', 'no-cache')
-    response.headers.set('x-is-dynamic-route', 'true')
-    response.headers.set('Cache-Control', 'no-store, must-revalidate')
-    return response
-  }
+  // if (isDynamicRoute) {
+  //   // Add headers to indicate this is a dynamic route
+  //   const response = NextResponse.next()
+  //   response.headers.set('x-middleware-cache', 'no-cache')
+  //   response.headers.set('x-is-dynamic-route', 'true')
+  //   response.headers.set('Cache-Control', 'no-store, must-revalidate')
+  //   return response
+  // }
 
   return NextResponse.next()
 }

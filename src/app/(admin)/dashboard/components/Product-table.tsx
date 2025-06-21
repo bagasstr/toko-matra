@@ -54,6 +54,7 @@ import {
 import { useDebounce } from '@/hooks/useDebounce'
 import { Checkbox } from '@/components/ui/checkbox'
 import Image from 'next/image'
+import ProductPagination from '@/components/ProductPagination'
 
 function TableSkeleton() {
   return (
@@ -130,6 +131,8 @@ export default function ProductsTable() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedProducts, setSelectedProducts] = useState<string[]>([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   useEffect(() => {
     fetchProducts()
@@ -207,6 +210,18 @@ export default function ProductsTable() {
       }
       return sortDirection === 'asc' ? comparison : -comparison
     })
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage)
+  const paginatedProducts = filteredAndSortedProducts.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  // Reset to page 1 if filter/search changes and currentPage out of range
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1)
+  }, [debouncedSearchTerm, statusFilter, totalPages])
 
   const handleDeleteProduct = (id: string) => {
     setDeleteProductId(id)
@@ -402,7 +417,7 @@ export default function ProductsTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedProducts.map((product) => {
+                {paginatedProducts.map((product) => {
                   const stockStatus = getStockStatus(
                     product?.stock || 0,
                     product.isActive
@@ -421,7 +436,7 @@ export default function ProductsTable() {
                       <TableCell className='text-center'>
                         {product.images ? (
                           <Image
-                            src={product.images[0]}
+                            src={`${product.images[0]}`}
                             alt={product.name}
                             className='rounded-md object-cover'
                             width={100}
@@ -544,6 +559,12 @@ export default function ProductsTable() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ProductPagination
+        currentPage={currentPage}
+        totalPages={totalPages || 1}
+        onPageChange={(page) => setCurrentPage(page)}
+      />
     </div>
   )
 }

@@ -15,11 +15,27 @@ if (existsSync(envPath)) {
 const nextConfig: NextConfig = {
   /* config options here */
 
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
+  // compiler: {
+  //   removeConsole: process.env.NODE_ENV === 'production',
+  // },
+
+  output: 'standalone',
   images: {
+    unoptimized: true, // Bypass Next.js optimization karena kita handle sendiri
+    domains: ['localhost', 'DESKTOP-02S3AEE'],
     remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '3000',
+        pathname: '/api/images/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'DESKTOP-02S3AEE',
+        port: '3000',
+        pathname: '/api/images/**',
+      },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
@@ -27,21 +43,18 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'toko.matrakosala.com',
+        pathname: '/api/images/**',
       },
       {
         protocol: 'https',
         hostname: 'toko-matra-k4ms5ei2w-bagasstrs-projects.vercel.app',
+        pathname: '/api/images/**',
       },
     ],
   },
 
   devIndicators: false,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '10mb',
-      allowedOrigins: ['localhost:3000'],
-    },
-  },
+
   // Configure for server-side rendering
 
   // Set runtime to be server-side for routes that use cookies

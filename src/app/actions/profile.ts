@@ -7,6 +7,8 @@ import { revalidatePath } from 'next/cache'
 import { writeFile } from 'fs/promises'
 import path from 'path'
 import { generateCustomId } from '@/lib/helpper'
+import { join } from 'path'
+import { v4 as uuidv4 } from 'uuid'
 
 interface ProfileData {
   fullName: string
@@ -30,8 +32,8 @@ async function saveImage(base64Image: string, userId: string): Promise<string> {
     const uploadDir = path.join(process.cwd(), 'public', 'assets', 'avatar')
     await writeFile(path.join(uploadDir, `${userId}.jpg`), buffer)
 
-    // Return the public URL
-    return `/assets/avatar/${userId}.jpg`
+    // Return the API route URL
+    return `/api/images/assets/avatar/${userId}.jpg`
   } catch (error) {
     console.error('Error saving image:', error)
     throw new Error('Failed to save image')
@@ -158,5 +160,39 @@ export async function getProfile(userId: string) {
       success: false,
       error: 'Failed to get profile',
     }
+  }
+}
+
+export async function uploadProfileImage(formData: FormData) {
+  try {
+    const file = formData.get('file') as File
+    if (!file) {
+      return { success: false, error: 'No file provided' }
+    }
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    // Generate unique filename
+    const uniqueId = uuidv4()
+    const extension = file.name.split('.').pop()
+    const filename = `${uniqueId}.${extension}`
+
+    // Ensure directory exists
+    const uploadDir = join(process.cwd(), 'public', 'assets', 'avatar')
+    const fs = require('fs')
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+    }
+
+    // Save to public/assets/avatar directory
+    const path = join(uploadDir, filename)
+    await writeFile(path, buffer)
+
+    // Return API route URL
+    return { success: true, url: `/api/images/assets/avatar/${filename}` }
+  } catch (error) {
+    console.error('Error uploading profile image:', error)
+    return { success: false, error: 'Gagal mengupload gambar profile' }
   }
 }

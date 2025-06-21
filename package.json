@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "start": "next start",
+    "build": "prisma generate && next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "start": "node .next/standalone/server.js",
     "build:seed": "tsc --project tsconfig.seed.json",
     "seed": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/brandSeed.js"
   },

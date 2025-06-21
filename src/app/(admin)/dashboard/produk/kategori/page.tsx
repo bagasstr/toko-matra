@@ -27,6 +27,7 @@ import {
   deleteCategory,
 } from '@/app/actions/categoryAction'
 import React from 'react'
+import ProductPagination from '@/components/ProductPagination'
 
 interface Category {
   id: string
@@ -49,6 +50,15 @@ export default function CategoryPage() {
   const [isAddingSubCategory, setIsAddingSubCategory] = useState(false)
   const [isLoadingAdd, setIsLoadingAdd] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Pagination logic for root categories
+  const totalPages = Math.ceil(categories.length / itemsPerPage)
+  const paginatedCategories = categories.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   useEffect(() => {
     fetchCategories()
@@ -68,6 +78,10 @@ export default function CategoryPage() {
       setCategories(result.treeCategory)
     }
   }
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1)
+  }, [categories, totalPages])
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) => {
@@ -283,10 +297,15 @@ export default function CategoryPage() {
               </TableCell>
             </TableRow>
           ) : (
-            categories.map((category) => renderCategoryRow(category))
+            paginatedCategories.map((category) => renderCategoryRow(category))
           )}
         </TableBody>
       </Table>
+      <ProductPagination
+        currentPage={currentPage}
+        totalPages={totalPages || 1}
+        onPageChange={setCurrentPage}
+      />
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
