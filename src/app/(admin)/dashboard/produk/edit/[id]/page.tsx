@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
+  FormControl,
 } from '@/components/ui/form'
 import {
   Popover,
@@ -155,6 +156,80 @@ function ImageUpload({
   )
 }
 
+// Add DimensionsInput component (copy from tambah-produk/page.tsx)
+interface DimensionsInputProps {
+  control: any
+  field: any
+}
+
+const DimensionsInput: React.FC<DimensionsInputProps> = ({
+  control,
+  field,
+}) => {
+  const parseDimensions = (value: string) => {
+    const [panjang = '', lebar = '', tinggi = ''] = (value || '').split('x')
+    return { panjang, lebar, tinggi }
+  }
+
+  const handleDimensionChange = (
+    type: 'panjang' | 'lebar' | 'tinggi',
+    newValue: string
+  ) => {
+    const currentDimensions = parseDimensions(field.value || '')
+    const updatedDimensions = {
+      ...currentDimensions,
+      [type]: newValue.trim(),
+    }
+
+    // Format: Panjang cm x Lebar cm x Tinggi cm
+    const dimensionsString = `${updatedDimensions.panjang}x${updatedDimensions.lebar}x${updatedDimensions.tinggi}`
+    field.onChange(dimensionsString)
+  }
+
+  const { panjang, lebar, tinggi } = parseDimensions(field.value || '')
+
+  return (
+    <FormItem>
+      <FormLabel>Dimensi (PxLxT)</FormLabel>
+      <div className='flex space-x-2'>
+        <FormControl>
+          <Input
+            value={panjang}
+            onChange={(e) => handleDimensionChange('panjang', e.target.value)}
+            placeholder='Panjang'
+            className='w-1/3'
+          />
+        </FormControl>
+        <FormControl>
+          <Input
+            value={lebar}
+            onChange={(e) => handleDimensionChange('lebar', e.target.value)}
+            placeholder='Lebar'
+            className='w-1/3'
+          />
+        </FormControl>
+        <FormControl>
+          <Input
+            value={tinggi}
+            onChange={(e) => handleDimensionChange('tinggi', e.target.value)}
+            placeholder='Tinggi'
+            className='w-1/3'
+          />
+        </FormControl>
+      </div>
+      <FormDescription>
+        Format: Panjang cm x Lebar cm x Tinggi cm
+      </FormDescription>
+      <FormMessage />
+    </FormItem>
+  )
+}
+
+const LABEL_OPTIONS = [
+  { value: 'ready_stock', label: 'Ready Stock' },
+  { value: 'suplier', label: 'Suplier' },
+]
+
 export default function Page() {
   const router = useRouter()
   const params = useParams()
@@ -200,12 +275,6 @@ export default function Page() {
     },
   })
 
-  const labels = [
-    { value: 'ready_stock', label: 'Ready Stock' },
-    { value: 'suplier', label: 'Suplier' },
-    { value: 'indent', label: 'Indent' },
-  ]
-
   function generateSlug(text: string) {
     return text
       .toLowerCase()
@@ -242,6 +311,7 @@ export default function Page() {
       const result = await getProductById(String(params.id))
       if (result.success && result.product) {
         const product = result.product
+        console.log('LABEL VALUE:', product.label)
         form.reset({
           name: product.name,
           slug: product.slug,
@@ -467,14 +537,12 @@ export default function Page() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Label Produk</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <SelectTrigger>
                     <SelectValue placeholder='Pilih label produk' />
                   </SelectTrigger>
                   <SelectContent>
-                    {labels.map((label) => (
+                    {LABEL_OPTIONS.map((label) => (
                       <SelectItem key={label.value} value={label.value}>
                         {label.label}
                       </SelectItem>
@@ -545,14 +613,7 @@ export default function Page() {
               control={form.control}
               name='dimensions'
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dimensi (PxLxT)</FormLabel>
-                  <Input {...field} placeholder='10x5x3' />
-                  <FormDescription>
-                    Format: Panjang x Lebar x Tinggi
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
+                <DimensionsInput control={form.control} field={field} />
               )}
             />
           </div>
