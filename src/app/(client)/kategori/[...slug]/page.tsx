@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, Heart, Share2, X } from 'lucide-react'
 import { addToCart, getCartItems } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { validateSession } from '@/app/actions/session'
 import { RiHeartAddLine, RiHeartFill, RiWhatsappLine } from '@remixicon/react'
 import toRupiah from '@develoka/angka-rupiah-js'
@@ -325,6 +325,45 @@ function SubCategoryPage({
   allProducts: Product[]
   loading: boolean
 }) {
+  const queryClient = useQueryClient()
+  const [session, setSession] = useState<any>(null)
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const userSession = await validateSession()
+      setSession(userSession)
+    }
+    fetchSession()
+  }, [])
+
+  const { mutate: addToCartMutation, isPending: isAddingToCart } = useMutation({
+    mutationFn: addToCart,
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success('Produk ditambahkan ke keranjang')
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
+      } else {
+        toast.error(result.error || 'Gagal menambahkan produk')
+      }
+    },
+    onError: (error) => {
+      toast.error('Terjadi kesalahan: ' + error.message)
+    },
+  })
+
+  // Handler for adding to cart (if needed in this component)
+  const handleAddToCart = (product: Product) => {
+    if (!session?.user?.id) {
+      toast.error('Silakan login terlebih dahulu')
+      return
+    }
+    addToCartMutation({
+      userId: session.user.id,
+      productId: product.id,
+      quantity: product.minOrder || 1,
+    })
+  }
+
   if (loading) {
     return (
       <div className='grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6'>
@@ -408,6 +447,44 @@ function ProductPage({
   parentCategory: Category
   loading: boolean
 }) {
+  const queryClient = useQueryClient()
+  const [session, setSession] = useState<any>(null)
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const userSession = await validateSession()
+      setSession(userSession)
+    }
+    fetchSession()
+  }, [])
+
+  const { mutate: addToCartMutation, isPending: isAddingToCart } = useMutation({
+    mutationFn: addToCart,
+    onSuccess: (result) => {
+      if (result.success) {
+        toast.success('Produk ditambahkan ke keranjang')
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
+      } else {
+        toast.error(result.error || 'Gagal menambahkan produk')
+      }
+    },
+    onError: (error) => {
+      toast.error('Terjadi kesalahan: ' + error.message)
+    },
+  })
+
+  const handleAddToCart = (product: Product) => {
+    if (!session?.user?.id) {
+      toast.error('Silakan login terlebih dahulu')
+      return
+    }
+    addToCartMutation({
+      userId: session.user.id,
+      productId: product.id,
+      quantity: product.minOrder || 1,
+    })
+  }
+
   if (loading) {
     return (
       <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4'>
@@ -494,7 +571,8 @@ function calculateTotalAmount(
 }
 
 function ProductDetailPage({
-  product,
+  product: safeProduct,
+  parentCategory,
   loading,
   allProducts,
 }: {
@@ -504,8 +582,8 @@ function ProductDetailPage({
   allProducts: Product[]
 }) {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [quantity, setQuantity] = useState(1)
-  const [isAddingToCart, setIsAddingToCart] = useState(false)
   const [isBuyingNow, setIsBuyingNow] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
   const [isReadMore, setIsReadMore] = useState(false)
@@ -516,22 +594,46 @@ function ProductDetailPage({
     message: string
   } | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { addToCart: addToCartStore, fetchCart } = useCartStore()
+  const [session, setSession] = useState<any>(null)
+  const [wishlist, setWishlist] = useState<any[]>([])
+
+  useEffect(() => {
+    const fetchSession = async () => {
+      const userSession = await validateSession()
+      setSession(userSession)
+    }
+    fetchSession()
+  }, [])
+
+  const { mutate: addToCartMutation, isPending: isAddingToCart } = useMutation({
+    mutationFn: addToCart,
+    onSuccess: (result) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
+        toast.success('Produk ditambahkan ke keranjang')
+      } else {
+        toast.error(result.error || 'Gagal memproses permintaan')
+      }
+    },
+    onError: (error) => {
+      toast.error('Terjadi kesalahan: ' + error.message)
+    },
+  })
 
   // Wishlist check moved up to ensure consistent hook order
   useEffect(() => {
     const fetchWishlist = async () => {
-      if (!product) return
+      if (!safeProduct) return
 
       const res = await getWishlist()
       console.log('Wishlist:', res)
-      setIsWishlistMarked(res.some((item) => item.productId === product.id))
+      setIsWishlistMarked(res.some((item) => item.productId === safeProduct.id))
     }
     fetchWishlist()
-  }, [product?.id])
+  }, [safeProduct?.id])
 
   // Validate product data
-  if (loading || !product) {
+  if (loading || !safeProduct) {
     return (
       <div className='animate-pulse'>
         <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
@@ -548,30 +650,6 @@ function ProductDetailPage({
     )
   }
 
-  // Ensure all required product properties exist
-  const safeProduct = {
-    id: product.id || '',
-    name: product.name || 'Produk Tidak Dikenal',
-    brand: product.brand
-      ? {
-          id: product.brand.id || '',
-          name: product.brand.name || 'No Brand',
-        }
-      : { id: '', name: 'No Brand' },
-    label: product.label || null,
-    price: product.price || 0,
-    unit: product.unit || '',
-    minOrder: product.minOrder || 1,
-    multiOrder: product.multiOrder || 1,
-    dimensions: product.dimensions || '',
-    description: product.description || '',
-    images:
-      product.images && product.images.length > 0
-        ? product.images
-        : ['/placeholder.png'],
-    category: product.category || { name: 'Tidak Dikategorikan', slug: '' },
-  }
-
   // Calculate actual quantity based on minOrder and multiOrder
   const calculateActualQuantity = (inputQuantity: number) => {
     if (inputQuantity <= 0) return 0
@@ -579,70 +657,17 @@ function ProductDetailPage({
     return safeProduct.minOrder + safeProduct.multiOrder * (inputQuantity - 1)
   }
 
-  const handleBuyNow = async () => {
-    if (!safeProduct) return
-
-    try {
-      setIsBuyingNow(true)
-
-      const session = await validateSession()
-      if (!session) {
-        toast.error('Silakan login terlebih dahulu')
-        return
-      }
-
-      // Check if cart has existing data
-      const cartResult = await getCartItems()
-      const hasCartData =
-        cartResult.success && cartResult.data && cartResult.data.length > 0
-
-      // Determine quantity to add based on cart status
-      let quantityToAdd: number
-      if (hasCartData) {
-        // If cart has data, add with multiOrder
-        quantityToAdd = safeProduct.multiOrder
-      } else {
-        // If cart is empty, add with minOrder
-        quantityToAdd = safeProduct.minOrder
-      }
-
-      console.log('Buy now - adding to cart:', {
-        hasCartData,
-        quantityToAdd,
-        minOrder: safeProduct.minOrder,
-        multiOrder: safeProduct.multiOrder,
-      })
-
-      const result = await addToCart({
-        userId: session.user.id,
-        productId: safeProduct.id,
-        quantity: quantityToAdd,
-      })
-
-      if (result.success) {
-        addToCartStore({
-          id: safeProduct.id,
-          product: {
-            id: safeProduct.id,
-            name: safeProduct.name,
-            images: safeProduct.images,
-            price: safeProduct.price,
-            minOrder: safeProduct.minOrder,
-            unit: safeProduct.unit,
-          },
-          quantity: quantityToAdd,
-        })
-
-        // Navigate to checkout page
-        router.push('/keranjang/pembayaran')
-      } else {
-        toast.error('Gagal menambahkan produk ke keranjang')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan saat menambahkan ke keranjang')
-    } finally {
-      setIsBuyingNow(false)
+  const handleBuyNow = () => {
+    if (!safeProduct || !session?.user?.id) {
+      toast.error('Silakan login terlebih dahulu')
+      return
     }
+    const actualQuantity = calculateActualQuantity(quantity)
+    addToCartMutation({
+      userId: session.user.id,
+      productId: safeProduct.id,
+      quantity: actualQuantity,
+    })
   }
 
   const handleAddToWishlist = async () => {
@@ -662,74 +687,20 @@ function ProductDetailPage({
     }
   }
 
-  const handleAddToCart = async () => {
-    if (!safeProduct) return
-
-    try {
-      setIsAddingToCart(true)
-
-      const session = await validateSession()
-      if (!session) {
-        toast.error('Silakan login terlebih dahulu')
-        return
-      }
-
-      // Check if cart has existing data
-      const cartResult = await getCartItems()
-      const hasCartData =
-        cartResult.success && cartResult.data && cartResult.data.length > 0
-
-      // Determine quantity to add based on cart status
-      let quantityToAdd: number
-      if (hasCartData) {
-        // If cart has data, add with multiOrder
-        quantityToAdd = safeProduct.multiOrder
-      } else {
-        // If cart is empty, add with minOrder
-        quantityToAdd = safeProduct.minOrder
-      }
-
-      console.log('Adding to cart:', {
-        hasCartData,
-        quantityToAdd,
-        minOrder: safeProduct.minOrder,
-        multiOrder: safeProduct.multiOrder,
-      })
-
-      const result = await addToCart({
-        userId: session.user.id,
-        productId: safeProduct.id,
-        quantity: quantityToAdd,
-      })
-
-      if (result.success) {
-        addToCartStore({
-          id: safeProduct.id,
-          product: {
-            id: safeProduct.id,
-            name: safeProduct.name,
-            images: safeProduct.images,
-            price: safeProduct.price,
-            minOrder: safeProduct.minOrder,
-            unit: safeProduct.unit,
-          },
-          quantity: quantityToAdd,
-        })
-
-        await fetchCart()
-
-        toast.success('Produk berhasil ditambahkan ke keranjang')
-      } else {
-        toast.error('Gagal menambahkan produk ke keranjang')
-      }
-    } catch (error) {
-      toast.error('Terjadi kesalahan saat menambahkan ke keranjang')
-    } finally {
-      setIsAddingToCart(false)
+  const handleAddToCart = () => {
+    if (!safeProduct || !session?.user?.id) {
+      toast.error('Silakan login terlebih dahulu')
+      return
     }
+    const actualQuantity = calculateActualQuantity(quantity)
+    addToCartMutation({
+      userId: session.user.id,
+      productId: safeProduct.id,
+      quantity: actualQuantity,
+    })
   }
 
-  if (product === null) {
+  if (safeProduct === null) {
     return (
       <div className='text-center text-gray-400 py-10'>
         Produk tidak ditemukan.

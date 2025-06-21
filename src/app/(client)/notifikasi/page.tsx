@@ -5,8 +5,9 @@ import { Bell } from 'lucide-react'
 import { getNotifications } from '@/app/actions/notificationAction'
 import NotificationItem from './components/NotificationItem'
 import NotificationBadge from './components/NotificationBadge'
-import { useSSE } from '@/app/context/SseProvidet'
 import { useEffect, useState } from 'react'
+import { validateSession } from '@/app/actions/session'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface Notification {
   id: string
@@ -17,53 +18,63 @@ interface Notification {
 }
 
 const NotificationsPage = () => {
-  const { notifications: sseNotifications } = useSSE()
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const queryClient = useQueryClient()
   const [error, setError] = useState<string | null>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
+  // Get user ID on component mount
   useEffect(() => {
-    const fetchInitialNotifications = async () => {
+    const getUserId = async () => {
       try {
-        const result = await getNotifications()
-        if (result.error) {
-          setError(result.error)
-        } else if (result.notifications) {
-          setNotifications(result.notifications)
+        const session = await validateSession()
+        if (session?.user?.id) {
+          setUserId(session.user.id)
+        } else {
+          setError('User not authenticated')
         }
       } catch (err) {
-        setError('Failed to fetch notifications')
-        console.error('Error fetching notifications:', err)
+        setError('Failed to authenticate user')
+        console.error('Error getting user ID:', err)
       }
     }
 
-    fetchInitialNotifications()
+    getUserId()
   }, [])
 
-  // Merge SSE notifications with existing notifications
-  useEffect(() => {
-    if (sseNotifications.length > 0) {
-      setNotifications((prevNotifications) => {
-        const merged = [...prevNotifications]
-        sseNotifications.forEach((sseNotif) => {
-          const existingIndex = merged.findIndex((n) => n.id === sseNotif.id)
-          if (existingIndex !== -1) {
-            // Update existing notification
-            merged[existingIndex] = {
-              ...merged[existingIndex],
-              isRead: sseNotif.isRead,
-            }
-          } else {
-            // Add new notification at the beginning
-            merged.unshift({
-              ...sseNotif,
-              createdAt: new Date(sseNotif.createdAt),
-            })
-          }
-        })
-        return merged
-      })
-    }
-  }, [sseNotifications])
+  // TanStack Query for notifications
+  const {
+    data: notifications = [],
+    isLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['notifications', userId],
+    queryFn: async () => {
+      if (!userId) throw new Error('User ID not available')
+      const result = await getNotifications(userId)
+      if (result.success && result.data) {
+        return result.data
+      } else {
+        throw new Error(result.error || 'Failed to fetch notifications')
+      }
+    },
+    enabled: !!userId,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 30000, // 30 seconds
+    gcTime: 5 * 60 * 1000, // 5 minutes
+  })
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className='max-w-2xl mx-auto py-10 px-4'>
+        <div className='text-center py-10'>
+          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto'></div>
+          <p className='mt-2 text-gray-600'>Loading notifications...</p>
+        </div>
+      </div>
+    )
+  }
 
   if (error) {
     return (

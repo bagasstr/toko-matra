@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { validateSession } from '@/app/actions/session'
 import { generateCartPDF } from '@/lib/pdfCartFormatter'
 import dynamic from 'next/dynamic'
+import { useQueryClient } from '@tanstack/react-query'
 
 // Dynamic import untuk menghindari SSR error
 const PdfCartButton = dynamic(
@@ -34,6 +35,7 @@ const CartClient = ({
   validate,
 }: CartClientProps) => {
   const router = useRouter()
+  const queryClient = useQueryClient()
   const [cartData, setCartData] = useState(initialCartData)
   const cart = cartData?.data || []
   const {
@@ -209,6 +211,7 @@ const CartClient = ({
             item.id === itemId ? { ...item, quantity: validQuantity } : item
           ),
         }))
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
       } else {
         console.error('Failed to update quantity:', result.error)
       }
@@ -227,6 +230,7 @@ const CartClient = ({
         }))
         // Remove from selected items if present
         setSelectedItems((prev) => prev.filter((id) => id !== itemId))
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
       }
     } catch (error) {
       console.error('Error removing item:', error)

@@ -183,14 +183,14 @@ export default function OrderPage() {
             orderData.payment.order.userId,
             'Pembayaran Terverifikasi',
             'Pembayaran kamu sudah kami terima. Terima kasih!',
-            false
+            'false'
           )
 
           await createNotification(
             orderData.payment.order.userId,
             'Pesanan Dikonfirmasi',
             `Pesanan #${orderData.payment.order.id} telah dikonfirmasi dan sedang diproses.`,
-            false
+            'false'
           )
 
           // Redirect to success page with transaction ID
@@ -246,7 +246,7 @@ export default function OrderPage() {
               orderData.payment.order.userId,
               title,
               message,
-              false
+              'false'
             )
           } catch (error) {
             console.error('Error creating status notification:', error)

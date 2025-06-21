@@ -1,12 +1,11 @@
 'use client'
 
-import { Bell, CheckCircle } from 'lucide-react'
+import React from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
-import { markNotificationAsRead } from '@/app/actions/notificationAction'
-import { useRouter } from 'next/navigation'
-import { useSSE } from '@/app/context/SseProvidet'
-import { useEffect, useState } from 'react'
+import { updateNotificationStatus } from '@/app/actions/notificationAction'
+import { useQueryClient } from '@tanstack/react-query'
+import { validateSession } from '@/app/actions/session'
 
 interface NotificationItemProps {
   id: string
@@ -16,57 +15,63 @@ interface NotificationItemProps {
   isRead: boolean
 }
 
-const NotificationItem = ({
+const NotificationItem: React.FC<NotificationItemProps> = ({
   id,
   title,
   message,
   createdAt,
-  isRead: initialIsRead,
-}: NotificationItemProps) => {
-  const router = useRouter()
-  const { updateNotificationStatus } = useSSE()
-  const [isRead, setIsRead] = useState(initialIsRead)
+  isRead,
+}) => {
+  const queryClient = useQueryClient()
 
   const handleClick = async () => {
     if (!isRead) {
       try {
-        const result = await markNotificationAsRead(id)
-        if (!result.error) {
-          setIsRead(true)
-          updateNotificationStatus(id, true)
+        const session = await validateSession()
+        if (session?.user?.id) {
+          await updateNotificationStatus(id, true)
+          // Invalidate and refetch notifications
+          queryClient.invalidateQueries({
+            queryKey: ['notifications', session.user.id],
+          })
         }
       } catch (error) {
-        console.error('Error marking notification as read:', error)
+        console.error('Error updating notification status:', error)
       }
     }
   }
 
   return (
     <div
-      onClick={handleClick}
-      className={`flex gap-3 items-start p-4 rounded-xl border shadow-sm bg-white relative cursor-pointer hover:bg-gray-50 transition-colors ${
-        isRead ? 'opacity-70' : 'bg-primary/5 border-primary/30'
-      }`}>
-      <div className='pt-1'>
-        {isRead ? (
-          <CheckCircle className='text-green-400' size={24} />
-        ) : (
-          <Bell className='text-primary' size={24} />
+      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+        isRead
+          ? 'bg-white border-gray-200 hover:bg-gray-50'
+          : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+      }`}
+      onClick={handleClick}>
+      <div className='flex justify-between items-start mb-2'>
+        <h3
+          className={`font-semibold ${
+            isRead ? 'text-gray-800' : 'text-blue-800'
+          }`}>
+          {title}
+        </h3>
+        {!isRead && (
+          <div className='w-2 h-2 bg-blue-500 rounded-full flex-shrink-0 mt-1'></div>
         )}
       </div>
-      <div className='flex-1'>
-        <div className='font-semibold mb-1 text-base'>{title}</div>
-        <div className='text-sm text-gray-600 mb-1'>{message}</div>
-        <div className='text-xs text-gray-400'>
-          {formatDistanceToNow(new Date(createdAt), {
-            addSuffix: true,
-            locale: idLocale,
-          })}
-        </div>
-      </div>
-      {!isRead && (
-        <span className='absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse' />
-      )}
+      <p
+        className={`text-sm mb-2 ${
+          isRead ? 'text-gray-600' : 'text-blue-700'
+        }`}>
+        {message}
+      </p>
+      <p className='text-xs text-gray-500'>
+        {formatDistanceToNow(new Date(createdAt), {
+          addSuffix: true,
+          locale: idLocale,
+        })}
+      </p>
     </div>
   )
 }
