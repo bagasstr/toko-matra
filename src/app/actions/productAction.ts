@@ -209,8 +209,10 @@ export async function updateProduct(id: string, data: any) {
       const deleteImagePromises = data.deletedImages.map(
         async (imagePath: string) => {
           try {
-            // Remove /produk/ from the path to get the filename
-            const filename = imagePath.replace('/produk/', '')
+            // Remove API route prefix to get the filename
+            const filename = imagePath
+              .replace('/api/images/produk/', '')
+              .replace('/produk/', '')
             const filePath = join(process.cwd(), 'public', 'produk', filename)
 
             // Check if file exists before trying to delete
@@ -297,8 +299,10 @@ export async function deleteProduct(id: string) {
     // Delete images from filesystem
     const deleteImagePromises = product.images.map(async (imagePath) => {
       try {
-        // Remove /produk/ from the path to get the filename
-        const filename = imagePath.replace('/produk/', '')
+        // Remove API route prefix to get the filename
+        const filename = imagePath
+          .replace('/api/images/produk/', '')
+          .replace('/produk/', '')
         const filePath = join(process.cwd(), 'public', 'produk', filename)
 
         // Check if file exists before trying to delete
@@ -358,8 +362,8 @@ export async function uploadProductImages(formData: FormData) {
       const path = join(process.cwd(), 'public', 'produk', filename)
       await writeFile(path, buffer)
 
-      // Return the public URL
-      return `/produk/${filename}`
+      // Return API route URL instead of direct path
+      return `/api/images/produk/${filename}`
     })
 
     const urls = await Promise.all(uploadPromises)

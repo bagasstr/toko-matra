@@ -25,7 +25,7 @@ export const createSession = async (id: string) => {
     })
     ;(await cookies()).set('sessionToken', sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       path: '/',
       expires,

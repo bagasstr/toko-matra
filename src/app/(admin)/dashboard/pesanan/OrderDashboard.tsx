@@ -65,6 +65,7 @@ import {
   sendOrderDeliveredNotification,
   sendOrderCancelledNotification,
 } from '@/app/actions/orderStatusNotification'
+import ProductPagination from '@/components/ProductPagination'
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -120,6 +121,8 @@ export default function OrderDashboard({
   const [resi, setResi] = useState('')
   const [showSupplierAlert, setShowSupplierAlert] = useState(false)
   const [currentOrderId, setCurrentOrderId] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const { data: orders = initialOrders, isLoading } = useQuery({
     queryKey: ['orders'],
@@ -151,6 +154,17 @@ export default function OrderDashboard({
     statusFilter === 'Semua Status'
       ? orders
       : orders.filter((order) => order.status === statusFilter)
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredOrders.length / itemsPerPage)
+  const paginatedOrders = filteredOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1)
+  }, [filteredOrders, totalPages])
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     console.log('Starting handleStatusChange:', { orderId, newStatus })
@@ -436,7 +450,7 @@ export default function OrderDashboard({
                   </div>
                 </td>
               </tr>
-            ) : filteredOrders.length === 0 ? (
+            ) : paginatedOrders.length === 0 ? (
               <tr>
                 <td
                   colSpan={6}
@@ -445,7 +459,7 @@ export default function OrderDashboard({
                 </td>
               </tr>
             ) : (
-              filteredOrders.map((order) => (
+              paginatedOrders.map((order) => (
                 <tr
                   key={order.id}
                   className={
@@ -778,6 +792,11 @@ export default function OrderDashboard({
             )}
           </tbody>
         </table>
+        <ProductPagination
+          currentPage={currentPage}
+          totalPages={totalPages || 1}
+          onPageChange={setCurrentPage}
+        />
       </div>
     </div>
   )

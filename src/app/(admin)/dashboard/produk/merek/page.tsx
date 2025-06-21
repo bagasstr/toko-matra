@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/dialog'
 import { Pencil, Trash2 } from 'lucide-react'
 import Image from 'next/image'
+import ProductPagination from '@/components/ProductPagination'
 
 export default function BrandPage() {
   const [brands, setBrands] = useState<any[]>([])
@@ -41,10 +42,23 @@ export default function BrandPage() {
   const [editLogo, setEditLogo] = useState<string>('')
   const [previewNewLogo, setPreviewNewLogo] = useState<string>('')
   const [previewEditLogo, setPreviewEditLogo] = useState<string>('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+
+  // Pagination logic
+  const totalPages = Math.ceil(brands.length / itemsPerPage)
+  const paginatedBrands = brands.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  )
 
   useEffect(() => {
     fetchBrands()
   }, [])
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(1)
+  }, [brands, totalPages])
 
   async function fetchBrands() {
     try {
@@ -218,7 +232,7 @@ export default function BrandPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {brands.map((brand) => (
+          {paginatedBrands.map((brand) => (
             <TableRow key={brand.id}>
               <TableCell>
                 {brand.logo && (
@@ -303,6 +317,11 @@ export default function BrandPage() {
           ))}
         </TableBody>
       </Table>
+      <ProductPagination
+        currentPage={currentPage}
+        totalPages={totalPages || 1}
+        onPageChange={setCurrentPage}
+      />
     </div>
   )
 }

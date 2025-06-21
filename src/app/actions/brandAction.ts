@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma'
 import { revalidatePath } from 'next/cache'
 import { generateBrandId, generateCustomId } from '@/lib/helpper'
+import { writeFile } from 'fs/promises'
+import { join } from 'path'
+import { v4 as uuidv4 } from 'uuid'
 
 type CreateBrandInput = {
   name: string
@@ -49,7 +52,7 @@ export async function createBrand(data: CreateBrandInput) {
 
       // Write file
       fs.writeFileSync(path.join(process.cwd(), logoFilePath), logoBuffer)
-      logoPath = `/merek/${logoFileName}`
+      logoPath = `/api/images/merek/${logoFileName}`
     }
 
     const brand = await prisma.brand.create({
@@ -97,7 +100,7 @@ export async function updateBrand(
 
       // Write file
       fs.writeFileSync(path.join(process.cwd(), logoFilePath), logoBuffer)
-      logoPath = `/merek/${logoFileName}`
+      logoPath = `/api/images/merek/${logoFileName}`
     }
 
     const brand = await prisma.brand.update({
@@ -163,5 +166,39 @@ export async function deleteBrand(id: string) {
   } catch (error) {
     console.error('Failed to delete brand:', error)
     return { success: false, error: 'Failed to delete brand' }
+  }
+}
+
+export async function uploadBrandImage(formData: FormData) {
+  try {
+    const file = formData.get('file') as File
+    if (!file) {
+      return { success: false, error: 'No file provided' }
+    }
+
+    const bytes = await file.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+
+    // Generate unique filename
+    const uniqueId = uuidv4()
+    const extension = file.name.split('.').pop()
+    const filename = `${uniqueId}.${extension}`
+
+    // Ensure directory exists
+    const uploadDir = join(process.cwd(), 'public', 'merek')
+    const fs = require('fs')
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true })
+    }
+
+    // Save to public/merek directory
+    const path = join(uploadDir, filename)
+    await writeFile(path, buffer)
+
+    // Return API route URL
+    return { success: true, url: `/api/images/merek/${filename}` }
+  } catch (error) {
+    console.error('Error uploading brand image:', error)
+    return { success: false, error: 'Gagal mengupload gambar brand' }
   }
 }
