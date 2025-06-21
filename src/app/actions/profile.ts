@@ -9,6 +9,7 @@ import path from 'path'
 import { generateCustomId } from '@/lib/helpper'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { put } from '@vercel/blob'
 
 interface ProfileData {
   fullName: string
@@ -28,12 +29,19 @@ async function saveImage(base64Image: string, userId: string): Promise<string> {
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '')
     const buffer = Buffer.from(base64Data, 'base64')
 
-    // Create directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'assets', 'avatar')
-    await writeFile(path.join(uploadDir, `${userId}.jpg`), buffer)
+    // Create file from buffer for Vercel Blob
+    const filename = `assets/avatar/${userId}.jpg`
+    const file = new File([buffer], `${userId}.jpg`, {
+      type: 'image/jpeg',
+    })
 
-    // Return the API route URL
-    return `/api/images/assets/avatar/${userId}.jpg`
+    // Upload to Vercel Blob
+    const blob = await put(filename, file, {
+      access: 'public',
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    })
+
+    return blob.url
   } catch (error) {
     console.error('Error saving image:', error)
     throw new Error('Failed to save image')
@@ -170,27 +178,18 @@ export async function uploadProfileImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
     // Generate unique filename
     const uniqueId = uuidv4()
     const extension = file.name.split('.').pop()
-    const filename = `${uniqueId}.${extension}`
+    const filename = `assets/avatar/${uniqueId}.${extension}`
 
-    // Ensure directory exists
-    const uploadDir = join(process.cwd(), 'public', 'assets', 'avatar')
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
+    // Upload to Vercel Blob
+    const blob = await put(filename, file, {
+      access: 'public',
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    })
 
-    // Save to public/assets/avatar directory
-    const path = join(uploadDir, filename)
-    await writeFile(path, buffer)
-
-    // Return API route URL
-    return { success: true, url: `/api/images/assets/avatar/${filename}` }
+    return { success: true, url: blob.url }
   } catch (error) {
     console.error('Error uploading profile image:', error)
     return { success: false, error: 'Gagal mengupload gambar profile' }

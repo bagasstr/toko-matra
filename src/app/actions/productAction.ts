@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { writeFile, unlink, access } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { put } from '@vercel/blob'
 import { generateCustomId, generateProductId } from '@/lib/helpper'
 import { cookies } from 'next/headers'
 import { validateSession } from './session'
@@ -350,20 +351,18 @@ export async function uploadProductImages(formData: FormData) {
     }
 
     const uploadPromises = files.map(async (file) => {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
-
       // Generate unique filename
       const uniqueId = uuidv4()
       const extension = file.name.split('.').pop()
-      const filename = `${uniqueId}.${extension}`
+      const filename = `produk/${uniqueId}.${extension}`
 
-      // Save to public/produk directory
-      const path = join(process.cwd(), 'public', 'produk', filename)
-      await writeFile(path, buffer)
+      // Upload to Vercel Blob
+      const blob = await put(filename, file, {
+        access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      })
 
-      // Return API route URL instead of direct path
-      return `/api/images/produk/${filename}`
+      return blob.url
     })
 
     const urls = await Promise.all(uploadPromises)
