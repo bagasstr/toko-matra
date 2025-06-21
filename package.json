@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma build && next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
+    "build": "prisma generate && next build && cp -r public .next/standalone/ && cp -r .next/static .next/standalone/.next/",
     "start": "tsc --project tsconfig.seed.json && node dist/adminSeed.js && node dist/categorySeed.js && node dist/subcategorySeed.js && node dist/brandSeed.js && node dist/productSeed.js && node .next/standalone/server.js",
     "lint": "next lint",
     "build:seed": "tsc --project tsconfig.seed.json",
