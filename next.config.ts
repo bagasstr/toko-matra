@@ -28,6 +28,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'toko.matrakosala.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'toko-matra-k4ms5ei2w-bagasstrs-projects.vercel.app',
+      },
     ],
   },
 
