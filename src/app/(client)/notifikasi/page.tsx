@@ -1,70 +1,103 @@
+'use client'
+
 import React from 'react'
-import { Bell, CheckCircle } from 'lucide-react'
+import { Bell } from 'lucide-react'
+import { getNotifications } from '@/app/actions/notificationAction'
+import NotificationItem from './components/NotificationItem'
+import NotificationBadge from './components/NotificationBadge'
+import { useSSE } from '@/app/context/SseProvidet'
+import { useEffect, useState } from 'react'
 
-export const dynamic = 'force-dynamic'
+interface Notification {
+  id: string
+  title: string
+  message: string
+  createdAt: Date
+  isRead: boolean
+}
 
-const notifications = [
-  {
-    id: 1,
-    title: 'Pesanan Dikirim',
-    message: 'Pesanan #INV123456 telah dikirim dan sedang dalam perjalanan.',
-    time: '2 jam lalu',
-    read: false,
-  },
-  {
-    id: 2,
-    title: 'Promo Spesial',
-    message: 'Dapatkan diskon 10% untuk pembelian semen minggu ini!',
-    time: '1 hari lalu',
-    read: true,
-  },
-  {
-    id: 3,
-    title: 'Pesanan Selesai',
-    message: 'Pesanan #INV123123 telah selesai. Terima kasih telah berbelanja!',
-    time: '3 hari lalu',
-    read: true,
-  },
-]
+const NotificationsPage = () => {
+  const { notifications: sseNotifications } = useSSE()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [error, setError] = useState<string | null>(null)
 
-const page = () => {
+  useEffect(() => {
+    const fetchInitialNotifications = async () => {
+      try {
+        const result = await getNotifications()
+        if (result.error) {
+          setError(result.error)
+        } else if (result.notifications) {
+          setNotifications(result.notifications)
+        }
+      } catch (err) {
+        setError('Failed to fetch notifications')
+        console.error('Error fetching notifications:', err)
+      }
+    }
+
+    fetchInitialNotifications()
+  }, [])
+
+  // Merge SSE notifications with existing notifications
+  useEffect(() => {
+    if (sseNotifications.length > 0) {
+      setNotifications((prevNotifications) => {
+        const merged = [...prevNotifications]
+        sseNotifications.forEach((sseNotif) => {
+          const existingIndex = merged.findIndex((n) => n.id === sseNotif.id)
+          if (existingIndex !== -1) {
+            // Update existing notification
+            merged[existingIndex] = {
+              ...merged[existingIndex],
+              isRead: sseNotif.isRead,
+            }
+          } else {
+            // Add new notification at the beginning
+            merged.unshift({
+              ...sseNotif,
+              createdAt: new Date(sseNotif.createdAt),
+            })
+          }
+        })
+        return merged
+      })
+    }
+  }, [sseNotifications])
+
+  if (error) {
+    return (
+      <div className='max-w-2xl mx-auto py-10 px-4'>
+        <div className='text-red-500 text-center py-10'>{error}</div>
+      </div>
+    )
+  }
+
+  const unreadCount = notifications?.filter((n) => !n.isRead).length || 0
+
   return (
     <div className='max-w-2xl mx-auto py-10 px-4'>
-      <h1 className='text-2xl font-bold mb-6 flex items-center gap-2'>
-        <Bell /> Notifikasi
-      </h1>
-      {notifications.length === 0 ? (
+      <div className='flex items-center justify-between mb-6'>
+        <h1 className='text-2xl font-bold flex items-center gap-2'>
+          <Bell /> Notifikasi
+        </h1>
+        <NotificationBadge count={unreadCount} />
+      </div>
+      {!notifications || notifications.length === 0 ? (
         <div className='text-gray-400 text-center py-10'>
           Tidak ada notifikasi.
         </div>
       ) : (
         <div className='space-y-4'>
           {notifications.map((notif) => (
-            <div
+            <NotificationItem
               key={notif.id}
-              className={`flex gap-3 items-start p-4 rounded-xl border shadow-sm bg-white relative ${
-                notif.read ? 'opacity-70' : 'bg-primary/5 border-primary/30'
-              }`}>
-              <div className='pt-1'>
-                {notif.read ? (
-                  <CheckCircle className='text-green-400' size={24} />
-                ) : (
-                  <Bell className='text-primary' size={24} />
-                )}
-              </div>
-              <div className='flex-1'>
-                <div className='font-semibold mb-1 text-base'>
-                  {notif.title}
-                </div>
-                <div className='text-sm text-gray-600 mb-1'>
-                  {notif.message}
-                </div>
-                <div className='text-xs text-gray-400'>{notif.time}</div>
-              </div>
-              {!notif.read && (
-                <span className='absolute top-3 right-3 w-2 h-2 rounded-full bg-primary animate-pulse' />
-              )}
-            </div>
+              id={notif.id}
+              title={notif.title}
+              message={notif.message}
+              createdAt={notif.createdAt}
+              isRead={notif.isRead}
+            />
           ))}
         </div>
       )}
@@ -72,4 +105,4 @@ const page = () => {
   )
 }
 
-export default page
+export default NotificationsPage

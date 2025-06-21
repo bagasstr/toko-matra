@@ -98,6 +98,7 @@ export const createProductSchema = z.object({
       })
     }
   }),
+  label: z.string(),
 })
 
 export type CreateProductSchema = z.infer<typeof createProductSchema>

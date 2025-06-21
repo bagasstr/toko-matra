@@ -15,6 +15,7 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
+  FormControl,
 } from '@/components/ui/form'
 import {
   Popover,
@@ -48,6 +49,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import { Badge } from '@/components/ui/badge'
+import { Control, ControllerRenderProps } from 'react-hook-form'
 
 // Komponen upload gambar sederhana
 function ImageUpload({
@@ -129,6 +131,74 @@ function ImageUpload({
   )
 }
 
+interface DimensionsInputProps {
+  control: Control<any>
+  field: ControllerRenderProps<any, 'dimensions'>
+}
+
+const DimensionsInput: React.FC<DimensionsInputProps> = ({
+  control,
+  field,
+}) => {
+  const parseDimensions = (value: string) => {
+    const [panjang = '', lebar = '', tinggi = ''] = (value || '').split('x')
+    return { panjang, lebar, tinggi }
+  }
+
+  const handleDimensionChange = (
+    type: 'panjang' | 'lebar' | 'tinggi',
+    newValue: string
+  ) => {
+    const currentDimensions = parseDimensions(field.value || '')
+    const updatedDimensions = {
+      ...currentDimensions,
+      [type]: newValue.trim(),
+    }
+
+    // Format: Panjang cm x Lebar cm x Tinggi cm
+    const dimensionsString = `${updatedDimensions.panjang}x${updatedDimensions.lebar}x${updatedDimensions.tinggi}`
+    field.onChange(dimensionsString)
+  }
+
+  const { panjang, lebar, tinggi } = parseDimensions(field.value || '')
+
+  return (
+    <FormItem>
+      <FormLabel>Dimensi (PxLxT)</FormLabel>
+      <div className='flex space-x-2'>
+        <FormControl>
+          <Input
+            value={panjang}
+            onChange={(e) => handleDimensionChange('panjang', e.target.value)}
+            placeholder='Panjang'
+            className='w-1/3'
+          />
+        </FormControl>
+        <FormControl>
+          <Input
+            value={lebar}
+            onChange={(e) => handleDimensionChange('lebar', e.target.value)}
+            placeholder='Lebar'
+            className='w-1/3'
+          />
+        </FormControl>
+        <FormControl>
+          <Input
+            value={tinggi}
+            onChange={(e) => handleDimensionChange('tinggi', e.target.value)}
+            placeholder='Tinggi'
+            className='w-1/3'
+          />
+        </FormControl>
+      </div>
+      <FormDescription>
+        Format: Panjang cm x Lebar cm x Tinggi cm
+      </FormDescription>
+      <FormMessage />
+    </FormItem>
+  )
+}
+
 export default function Page() {
   const router = useRouter()
   const [categories, setCategories] = React.useState<any[]>([])
@@ -139,6 +209,10 @@ export default function Page() {
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([])
   const [isInitialized, setIsInitialized] = React.useState(false)
 
+  const labels = [
+    { value: 'ready_stock', label: 'Ready Stock' },
+    { value: 'suplier', label: 'Suplier' },
+  ]
   const form = useForm<CreateProductSchema>({
     resolver: zodResolver(createProductSchema),
     mode: 'onChange',
@@ -149,13 +223,14 @@ export default function Page() {
       description: '',
       images: [],
       price: '',
+      label: '',
       unit: '',
       weight: '',
-      dimensions: '',
+      dimensions: 'x x',
       isFeatured: false,
       isActive: true,
       categoryId: '',
-      brandId: undefined,
+      brandId: '',
       stock: '',
       minOrder: '',
       multiOrder: '',
@@ -276,6 +351,7 @@ export default function Page() {
         dimensions: values.dimensions || undefined,
         isFeatured: values.isFeatured,
         isActive: values.isActive,
+        label: values.label,
         categoryId: values.categoryId,
         brandId: values.brandId,
         stock: Number(values.stock),
@@ -374,6 +450,33 @@ export default function Page() {
             />
             <FormField
               control={form.control}
+              name='label'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Label Produk</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value}>
+                    <SelectTrigger>
+                      <SelectValue placeholder='Pilih label produk' />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {labels.map((label) => (
+                        <SelectItem key={label.value} value={label.value}>
+                          {label.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Pilih label untuk menandai status produk
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
               name='images'
               render={({ field }) => (
                 <FormItem>
@@ -429,14 +532,7 @@ export default function Page() {
                 control={form.control}
                 name='dimensions'
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Dimensi (PxLxT)</FormLabel>
-                    <Input {...field} placeholder='10x5x3' />
-                    <FormDescription>
-                      Format: Panjang x Lebar x Tinggi
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
+                  <DimensionsInput control={form.control} field={field} />
                 )}
               />
             </div>

@@ -4,8 +4,6 @@ import AuthSection from '@/components/ui/AuthSection'
 import ProfileClient, { UserProfile } from './ProfileClient'
 import { headers } from 'next/headers'
 
-export const dynamic = 'force-dynamic'
-
 type PageProps = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
@@ -13,6 +11,7 @@ type PageProps = {
 export default async function ProfilePage({ searchParams }: PageProps) {
   const params = await searchParams
   const { user } = params
+  console.log(user)
 
   const userSession = await validateSession()
 
@@ -22,7 +21,9 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
   const userId = userSession?.user?.profile.id
 
-  if (userId.toLowerCase() !== user) {
+  console.log(userId)
+
+  if (userId !== user) {
     return <AuthSection />
   }
 
@@ -61,7 +62,6 @@ export default async function ProfilePage({ searchParams }: PageProps) {
       isActive: addr.isActive,
     })),
     order: userSession?.user?.order,
-    review: userSession?.user?.review,
   }
 
   return <ProfileClient user={userProfile} />

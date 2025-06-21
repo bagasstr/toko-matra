@@ -1,23 +1,16 @@
-import React, { useEffect, useState } from 'react'
-import { Bell, Search, ShoppingCart, User } from 'lucide-react'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
+import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { validateSession } from '@/app/actions/session'
-import { redirect } from 'next/navigation'
-import { useCartStore } from '@/hooks/zustandStore'
-import { Badge } from '@/components/ui/badge'
-import { getCartItems } from '@/app/actions/cartAction'
-import { useQuery } from '@tanstack/react-query'
+import { NavbarActions } from './navbarActions'
+import { CategoryDropdown } from './categoryDropdown'
 
 export const dynamic = 'force-dynamic'
 
 const DesktopNavbar = async () => {
-  const { data: cartData } = await getCartItems()
-  const items = cartData || []
   const session = await validateSession()
   const userId = session?.user?.profile.id.toLowerCase()
+
   return (
     <div className='hidden lg:block'>
       {/* Background with gradient */}
@@ -53,59 +46,8 @@ const DesktopNavbar = async () => {
             </Link>
           </nav>
 
-          {/* Search Bar */}
-          <div className='flex-1 max-w-xl mx-4 xl:mx-8'>
-            <div className='relative w-full'>
-              <span className='absolute left-3 top-1/2 -translate-y-1/2 text-gray-400'>
-                <Search size={20} />
-              </span>
-              <Input
-                type='search'
-                placeholder='Cari produk...'
-                className='pl-10 pr-4 py-2 h-10 w-full rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition bg-background'
-              />
-            </div>
-          </div>
-
-          {/* User Actions */}
-          <div className='flex items-center gap-2 xl:gap-4 shrink-0'>
-            <Button size='icon' variant='ghost' className=''>
-              <Link href='/notifikasi'>
-                <Bell size={20} className='text-foreground' />
-              </Link>
-            </Button>
-            {items ? (
-              <Link href='/keranjang'>
-                <Button size='icon' variant='ghost' className='relative'>
-                  <ShoppingCart size={20} className='text-foreground' />
-                  {items.length > 0 && (
-                    <Badge
-                      variant='destructive'
-                      className='absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0'>
-                      {items.length}
-                    </Badge>
-                  )}
-                </Button>
-              </Link>
-            ) : (
-              <Link href='/keranjang'>
-                <Button size='icon' variant='ghost' className='relative'>
-                  <ShoppingCart size={20} className='text-foreground' />
-                </Button>
-              </Link>
-            )}
-            <Button size='icon' variant='ghost' className=''>
-              <Link
-                href={{
-                  pathname: '/profile',
-                  query: {
-                    user: userId,
-                  },
-                }}>
-                <User size={20} className='text-foreground' />
-              </Link>
-            </Button>
-          </div>
+          {/* Navbar Actions (Search, Cart, etc) */}
+          <NavbarActions userId={userId} />
         </div>
       </div>
     </div>

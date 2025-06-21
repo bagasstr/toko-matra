@@ -3,20 +3,15 @@ import Image from 'next/image'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import {
+  getAllBrands,
+  createBrand,
+  updateBrand,
+  deleteBrand,
+} from '@/app/actions/brandAction'
 
-const brands = [
-  { name: 'Tiga Roda', logo: '/assets/brands/tigaroda.png' },
-  { name: 'Holcim', logo: '/assets/brands/holcim.png' },
-  { name: 'Roman', logo: '/assets/brands/roman.png' },
-  { name: 'Wavin', logo: '/assets/brands/wavin.png' },
-  { name: 'Dulux', logo: '/assets/brands/dulux.png' },
-  { name: 'Toto', logo: '/assets/brands/toto.png' },
-  { name: 'Spandek', logo: '/assets/brands/spandek.png' },
-  { name: 'Gunung Garuda', logo: '/assets/brands/gununggaruda.png' },
-  { name: 'Sika', logo: '/assets/brands/sika.png' },
-]
-
-const Brand = () => {
+const Brand = async () => {
+  const { brands } = await getAllBrands()
   return (
     <section className=''>
       <div className='container mx-auto px-4'>

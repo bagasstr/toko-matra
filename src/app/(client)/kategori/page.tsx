@@ -14,7 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 const Breadcrumb = () => {
   return (
-    <div className='flex items-center mb-6'>
+    <div className='flex items-center mb-16'>
       <nav
         className='text-sm text-gray-500 flex gap-2 items-center'
         aria-label='Breadcrumb'>

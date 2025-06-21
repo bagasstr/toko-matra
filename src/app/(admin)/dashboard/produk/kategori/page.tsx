@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Table,
@@ -26,6 +26,7 @@ import {
   getAllCategories,
   deleteCategory,
 } from '@/app/actions/categoryAction'
+import React from 'react'
 
 interface Category {
   id: string
@@ -46,10 +47,20 @@ export default function CategoryPage() {
     new Set()
   )
   const [isAddingSubCategory, setIsAddingSubCategory] = useState(false)
+  const [isLoadingAdd, setIsLoadingAdd] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchCategories()
   }, [])
+
+  useEffect(() => {
+    if (isAddDialogOpen) {
+      setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+    }
+  }, [isAddDialogOpen])
 
   const fetchCategories = async () => {
     const result = await getAllCategories()
@@ -75,12 +86,12 @@ export default function CategoryPage() {
       toast.error('Nama kategori tidak boleh kosong')
       return
     }
-
+    setIsLoadingAdd(true)
     const result = await createCategory({
       name: newCategoryName,
       parentId: isAddingSubCategory ? selectedCategory?.id : undefined,
     })
-
+    setIsLoadingAdd(false)
     if (result.success) {
       toast.success('Kategori berhasil ditambahkan')
       setNewCategoryName('')
@@ -106,7 +117,6 @@ export default function CategoryPage() {
 
   const confirmDelete = async () => {
     if (!selectedCategory) return
-
     const result = await deleteCategory(selectedCategory.id)
     if (result.success) {
       toast.success('Kategori berhasil dihapus')
@@ -121,21 +131,25 @@ export default function CategoryPage() {
   const renderCategoryRow = (category: Category, level: number = 0) => {
     const hasChildren = category.children && category.children.length > 0
     const isExpanded = expandedCategories.has(category.id)
-    const isParent = level === 0
-
     return (
-      <>
-        <TableRow key={category.id}>
+      <React.Fragment key={category.id}>
+        <TableRow
+          className={hasChildren ? 'cursor-pointer hover:bg-muted/40' : ''}
+          onClick={() => hasChildren && toggleCategory(category.id)}>
           <TableCell>{level === 0 ? category.id : ''}</TableCell>
           <TableCell>
             <div
-              className='flex items-center gap-2'
-              style={{ paddingLeft: `${level * 20}px` }}>
+              className='flex items-center gap-1'
+              style={{ paddingLeft: `${level * 24}px` }}>
               {hasChildren && (
                 <Button
                   variant='ghost'
                   size='icon'
-                  onClick={() => toggleCategory(category.id)}>
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    toggleCategory(category.id)
+                  }}
+                  className='cursor-pointer p-0 w-5 h-5'>
                   {isExpanded ? (
                     <ChevronDown className='h-4 w-4' />
                   ) : (
@@ -143,28 +157,35 @@ export default function CategoryPage() {
                   )}
                 </Button>
               )}
-              {category.name}
+              <span>{category.name}</span>
             </div>
           </TableCell>
           <TableCell className='text-right'>
             <div className='flex justify-end gap-2'>
-              {isParent && (
-                <Button
-                  variant='outline'
-                  size='icon'
-                  onClick={() => handleAddSubCategory(category)}>
-                  <Plus className='h-4 w-4' />
-                </Button>
-              )}
-              {!category.children && (
-                <Button variant='outline' size='icon'>
-                  <Pencil className='h-4 w-4' />
-                </Button>
-              )}
               <Button
                 variant='outline'
                 size='icon'
-                onClick={() => handleDeleteCategory(category)}>
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleAddSubCategory(category)
+                }}>
+                <Plus className='h-4 w-4' />
+              </Button>
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={(e) => {
+                  e.stopPropagation() /* TODO: handleEditCategory(category) */
+                }}>
+                <Pencil className='h-4 w-4' />
+              </Button>
+              <Button
+                variant='outline'
+                size='icon'
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleDeleteCategory(category)
+                }}>
                 <Trash2 className='h-4 w-4' />
               </Button>
             </div>
@@ -175,7 +196,7 @@ export default function CategoryPage() {
           category.children?.map((child) =>
             renderCategoryRow(child, level + 1)
           )}
-      </>
+      </React.Fragment>
     )
   }
 
@@ -194,7 +215,9 @@ export default function CategoryPage() {
             <DialogHeader>
               <DialogTitle>
                 {isAddingSubCategory
-                  ? 'Tambah Sub Kategori'
+                  ? `Tambah Sub Kategori untuk "${
+                      selectedCategory?.name ?? ''
+                    }"`
                   : 'Tambah Kategori'}
               </DialogTitle>
             </DialogHeader>
@@ -203,13 +226,39 @@ export default function CategoryPage() {
                 <Label htmlFor='name'>Nama Kategori</Label>
                 <Input
                   id='name'
+                  ref={inputRef}
                   value={newCategoryName}
                   onChange={(e) => setNewCategoryName(e.target.value)}
                   placeholder='Masukkan nama kategori'
                 />
               </div>
-              <Button onClick={handleAddCategory} className='w-full'>
-                Simpan
+              <Button
+                onClick={handleAddCategory}
+                className='w-full'
+                disabled={isLoadingAdd}>
+                {isLoadingAdd ? (
+                  <span className='flex items-center gap-2'>
+                    <svg className='animate-spin h-4 w-4' viewBox='0 0 24 24'>
+                      <circle
+                        className='opacity-25'
+                        cx='12'
+                        cy='12'
+                        r='10'
+                        stroke='currentColor'
+                        strokeWidth='4'
+                        fill='none'
+                      />
+                      <path
+                        className='opacity-75'
+                        fill='currentColor'
+                        d='M4 12a8 8 0 018-8v8z'
+                      />
+                    </svg>
+                    Menyimpan...
+                  </span>
+                ) : (
+                  'Simpan'
+                )}
               </Button>
             </div>
           </DialogContent>
@@ -225,7 +274,17 @@ export default function CategoryPage() {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {categories.map((category) => renderCategoryRow(category))}
+          {categories.length === 0 ? (
+            <TableRow>
+              <TableCell
+                colSpan={3}
+                className='text-center text-muted-foreground'>
+                Belum ada kategori
+              </TableCell>
+            </TableRow>
+          ) : (
+            categories.map((category) => renderCategoryRow(category))
+          )}
         </TableBody>
       </Table>
 

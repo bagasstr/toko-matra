@@ -176,7 +176,6 @@ export default function Page() {
   const [selectedFiles, setSelectedFiles] = React.useState<File[]>([])
   const [isInitialized, setIsInitialized] = React.useState(false)
   const [deletedImages, setDeletedImages] = React.useState<string[]>([])
-  console.log(selectedFiles)
   const form = useForm<CreateProductSchema>({
     resolver: zodResolver(createProductSchema),
     mode: 'onChange',
@@ -197,8 +196,15 @@ export default function Page() {
       stock: '',
       minOrder: '',
       multiOrder: '',
+      label: '',
     },
   })
+
+  const labels = [
+    { value: 'ready_stock', label: 'Ready Stock' },
+    { value: 'suplier', label: 'Suplier' },
+    { value: 'indent', label: 'Indent' },
+  ]
 
   function generateSlug(text: string) {
     return text
@@ -253,6 +259,7 @@ export default function Page() {
           stock: product.stock.toString(),
           minOrder: product.minOrder.toString(),
           multiOrder: product.multiOrder.toString(),
+          label: product.label,
         })
         setPreviews(product.images)
       } else {
@@ -317,6 +324,8 @@ export default function Page() {
     }
   }
 
+  console.log(form.getValues('brandId'))
+
   async function onSubmit(values: CreateProductSchema) {
     if (selectedFiles.length === 0 && previews.length === 0) {
       toast.error('Harap upload minimal 1 gambar produk')
@@ -357,10 +366,11 @@ export default function Page() {
         isFeatured: values.isFeatured,
         isActive: values.isActive,
         categoryId: Number(values.categoryId),
-        brandId: values.brandId ? Number(values.brandId) : undefined,
+        brandId: values.brandId,
         stock: Number(values.stock),
         minOrder: Number(values.minOrder),
         multiOrder: Number(values.multiOrder),
+        label: values.label,
         deletedImages: deletedImages,
       }
 
@@ -447,6 +457,33 @@ export default function Page() {
               <FormItem>
                 <FormLabel>Deskripsi</FormLabel>
                 <Textarea {...field} placeholder='Deskripsi produk' />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name='label'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Label Produk</FormLabel>
+                <Select
+                  onValueChange={field.onChange}
+                  defaultValue={field.value}>
+                  <SelectTrigger>
+                    <SelectValue placeholder='Pilih label produk' />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {labels.map((label) => (
+                      <SelectItem key={label.value} value={label.value}>
+                        {label.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormDescription>
+                  Pilih label untuk menandai status produk
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

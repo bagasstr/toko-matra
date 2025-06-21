@@ -12,7 +12,6 @@ export const getUser = async (id: string) => {
       emailVerified: true,
       profile: true,
       address: true,
-      review: true,
       cart: true,
       order: true,
       typeUser: true,

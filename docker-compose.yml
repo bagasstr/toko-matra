@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  nextjs:
+    container_name: tokomatra_nextjs
+    restart: always
+    image: ghcr.io/bagasstr/toko-matrakosala:0.2
+    ports:
+      - '4000:3000'
+    environment:
+      - NODE_ENV=production
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=root
+      - POSTGRES_DB=tokomatra
+      - DATABASE_URL=${DATABASE_URL}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EMAIL=${EMAIL}
+      - NEXT_PUBLIC_MERCHANT_ID=${NEXT_PUBLIC_MERCHANT_ID}
+      - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
+      - NEXT_PUBLIC_LOGO_BASE64=${NEXT_PUBLIC_LOGO_BASE64}
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your_secret
+      - GITHUB_ID=your_github_id
+    depends_on:
+      - db
+    volumes:
+      - /mnt/nas/docker-data/toko_matra/merek:/app/public/merek
+      - /mnt/nas/docker-data/toko_matra/produk:/app/public/produk
+
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db_tokomatra
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: tokomatra
+    ports:
+      - '5432:5432'
+    volumes:
+      - /mnt/nas/docker-data/postgres_tokomatra:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
+    driver: local

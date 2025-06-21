@@ -4,18 +4,19 @@ import { prisma } from '@/lib/prisma'
 import { AddressFormValues } from '@/types/address'
 import { revalidatePath } from 'next/cache'
 import { generateCustomId } from '@/lib/helpper'
+import { validateSession } from './session'
 
 // Fungsi untuk menambah alamat baru
-export async function addAddress(userId: string, data: AddressFormValues) {
+export async function addAddress(data: AddressFormValues) {
   try {
-    console.log('addAddress', userId, data)
-
-    // Validasi input
-    if (!userId || !data || Object.values(data).some((val) => !val)) {
+    const session = await validateSession()
+    const userId = session?.user?.id
+    if (!userId) {
+      return { success: false, error: 'User belum login' }
+    }
+    if (!data || Object.values(data).some((val) => !val)) {
       return { success: false, error: 'Data tidak lengkap' }
     }
-
-    console.log('addAddress', userId, data)
 
     // Cek apakah pengguna ada menggunakan transaction untuk konsistensi
     const existsAddr = await prisma.address.findMany({
@@ -31,7 +32,7 @@ export async function addAddress(userId: string, data: AddressFormValues) {
     // Tambah alamat baru
     await prisma.address.create({
       data: {
-        id: generateCustomId('ADR'),
+        id: generateCustomId('adr'),
         userId,
         labelAddress: data.labelAddress,
         recipientName: data.recipientName,
@@ -165,38 +166,71 @@ export async function getAddress(addressId: string) {
 
 export async function activeAddress(userId: string, addressId: string) {
   try {
+    // Validasi input
     if (!userId || !addressId) {
-      return { success: false, error: 'Data tidak lengkap' }
+      return {
+        success: false,
+        error: 'ID pengguna dan ID alamat diperlukan',
+      }
     }
 
-    await prisma.$transaction(async (tx) => {
-      const address = await tx.address.findUnique({
-        where: { id: addressId },
-      })
+    // Cek apakah alamat ada dan milik pengguna yang benar
+    const address = await prisma.address.findUnique({
+      where: {
+        id: addressId,
+      },
+    })
 
-      if (!address || address.userId !== userId) {
-        throw new Error('Alamat tidak valid')
+    if (!address) {
+      return {
+        success: false,
+        error: 'Alamat tidak ditemukan',
       }
+    }
+    const userID = await prisma.profile.findUnique({
+      where: {
+        id: userId,
+      },
+    })
+    if (address.userId !== userID.userId) {
+      return {
+        success: false,
+        error: 'Alamat tidak valid untuk pengguna ini',
+      }
+    }
 
+    // Gunakan transaksi untuk memastikan konsistensi data
+    const result = await prisma.$transaction(async (tx) => {
+      // Nonaktifkan semua alamat pengguna
       await tx.address.updateMany({
-        where: { userId },
-        data: { isActive: false },
+        where: {
+          userId: userID.userId,
+          isActive: true,
+        },
+        data: {
+          isActive: false,
+        },
       })
 
+      // Aktifkan alamat yang dipilih
       await tx.address.update({
-        where: { id: addressId },
-        data: { isActive: true },
+        where: {
+          id: addressId,
+        },
+        data: {
+          isActive: true,
+        },
       })
     })
 
-    revalidatePath('/')
-    return { success: true }
+    return {
+      success: true,
+    }
   } catch (error) {
     console.error('Error mengaktifkan alamat:', error)
     return {
       success: false,
-      error:
-        error instanceof Error ? error.message : 'Gagal mengaktifkan alamat',
+      error: 'Gagal mengaktifkan alamat',
     }
   }
 }
@@ -277,6 +311,54 @@ export async function setActiveAddress(addressId: string) {
       success: false,
       error:
         error instanceof Error ? error.message : 'Gagal mengaktifkan alamat',
+    }
+  }
+}
+
+// Get all addresses for the current user
+export async function getUserAddresses() {
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+      }
+    }
+
+    const userId = session.user.id
+
+    const addresses = await prisma.address.findMany({
+      where: {
+        userId,
+      },
+      orderBy: [{ isPrimary: 'desc' }, { createdAt: 'desc' }],
+    })
+
+    // Safely convert any Decimal objects and format dates
+    const formattedAddresses = addresses.map((address) => {
+      // Convert to plain object with ISO date strings
+      const plainAddress = {
+        ...address,
+        createdAt: address.createdAt.toISOString(),
+        updatedAt: address.updatedAt.toISOString(),
+      }
+
+      // Stringify and parse to remove any non-serializable values
+      return JSON.parse(JSON.stringify(plainAddress))
+    })
+
+    return {
+      success: true,
+      message: 'Addresses retrieved successfully',
+      data: formattedAddresses,
+    }
+  } catch (error) {
+    console.error('Error fetching addresses:', error)
+    return {
+      success: false,
+      message: 'Failed to retrieve addresses',
+      error,
     }
   }
 }

@@ -6,7 +6,7 @@ import { cookies } from 'next/headers'
 import { generateCustomId } from '@/lib/helpper'
 
 export const createSession = async (id: string) => {
-  const expires = new Date(Date.now() + 60 * 60 * 24 * 30 * 1000)
+  const expires = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days
   const sessionToken = randomUUID()
 
   const exists = await prisma.account.findFirst({
@@ -17,7 +17,7 @@ export const createSession = async (id: string) => {
   if (exists?.provider === 'credentials') {
     const session = await prisma.session.create({
       data: {
-        id: generateCustomId('SES'),
+        id: generateCustomId('ses'),
         sessionToken,
         userId: id,
         expires,
@@ -43,8 +43,6 @@ export const validateSession = async () => {
   if (!sessionToken) {
     return null
   }
-  console.log('sessionToken 106', sessionToken)
-
   const session = await prisma.session.findUnique({
     where: { sessionToken },
     select: {
@@ -56,7 +54,6 @@ export const validateSession = async () => {
           emailVerified: true,
           profile: true,
           address: true,
-          review: true,
           cart: true,
           order: true,
           typeUser: true,
@@ -64,8 +61,10 @@ export const validateSession = async () => {
       },
     },
   })
-  console.log('session 107', session)
-  return session
+
+  // Convert any Decimal objects to plain JavaScript numbers/strings
+  // by serializing and deserializing the session object
+  return session ? JSON.parse(JSON.stringify(session)) : null
 }
 
 export const destroySession = async () => {

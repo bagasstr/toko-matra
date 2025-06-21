@@ -147,7 +147,7 @@ export default function AddAddressPage({
 
   const onSubmit = async (data: AddressFormValues) => {
     try {
-      const result = await addAddress(addressId, data)
+      const result = await addAddress(data)
 
       if (result.success) {
         toast.success('Alamat berhasil diperbarui')

@@ -14,20 +14,27 @@ import { Skeleton } from '@/components/ui/skeleton'
 interface IDataProducts {
   id: string
   name: string
-  images: string
+  images: string[]
   price: number
   isActive: boolean
+  label: string
   isFeatured: boolean
   category: {
     name: string
     parentId: string
     slug: string
   }
-  brand: string
+  brand: {
+    name: string
+    id: string
+    createdAt: Date
+    updatedAt: Date
+    slug: string
+    logo: string
+  }
   stock: number
   description: string
   slug: string
-  url: string
 }
 
 interface IDataCategories {
@@ -46,7 +53,7 @@ const FeaturedProductsSkeleton = () => {
           {[...Array(6)].map((_, i) => (
             <div key={i} className='w-[160px] flex-shrink-0'>
               <Card className='flex flex-col items-stretch justify-between p-2 h-full'>
-                <div className='relative w-full aspect-[3/2] bg-gray-50'>
+                <div className='relative w-full aspect-[3/2]'>
                   <Skeleton className='w-full h-full' />
                 </div>
                 <div className='flex-1 flex flex-col p-2'>
@@ -65,7 +72,7 @@ const FeaturedProductsSkeleton = () => {
         {[...Array(6)].map((_, i) => (
           <div key={i}>
             <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full'>
-              <div className='relative w-full aspect-[3/2] bg-gray-50'>
+              <div className='relative w-full aspect-[3/2]'>
                 <Skeleton className='w-full h-full' />
               </div>
               <div className='flex-1 flex flex-col p-3'>
@@ -105,6 +112,7 @@ const FeaturedProducts = () => {
   )
 
   const isLoading = isLoadingProducts || isLoadingCategories
+  console.log(featuredProducts)
 
   return (
     <section className=''>
@@ -135,7 +143,12 @@ const FeaturedProducts = () => {
                       href={`/kategori/${parentCategory.slug}/${product.category.slug}/${product.slug}`}
                       className='group w-[160px] flex-shrink-0'>
                       <Card className='flex flex-col items-stretch justify-between p-2 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
-                        <div className='relative w-full aspect-[3/2] bg-gray-50'>
+                        <div className='relative w-full aspect-[3/2]'>
+                          {product.label && (
+                            <Badge className='absolute top-2 left-2 z-10'>
+                              {product.label}
+                            </Badge>
+                          )}
                           <Image
                             src={product.images[0]}
                             alt={product.name}
@@ -146,7 +159,9 @@ const FeaturedProducts = () => {
                         </div>
                         <div className='flex-1 flex flex-col p-2'>
                           <div className='text-xs text-gray-400 mb-1'>
-                            {product.brand || 'No Brand'}
+                            {product.brand === null
+                              ? 'No Brand'
+                              : product.brand.name}
                           </div>
                           <div className='font-semibold text-sm line-clamp-2 min-h-[40px] mb-1 text-gray-900'>
                             {product.name}
@@ -177,7 +192,12 @@ const FeaturedProducts = () => {
                     href={`/kategori/${parentCategory.slug}/${product.category.slug}/${product.slug}`}
                     className='group'>
                     <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
-                      <div className='relative w-full aspect-[3/2] bg-gray-50'>
+                      <div className='relative w-full aspect-[3/2]'>
+                        {product.label && (
+                          <Badge className='absolute top-2 left-2 z-10'>
+                            {product.label}
+                          </Badge>
+                        )}
                         <Image
                           src={product.images[0]}
                           alt={product.name}
@@ -188,7 +208,9 @@ const FeaturedProducts = () => {
                       </div>
                       <div className='flex-1 flex flex-col p-3'>
                         <div className='text-sm text-gray-400 mb-1'>
-                          {product.brand || 'No Brand'}
+                          {product.brand === null
+                            ? 'No Brand'
+                            : product.brand.name}
                         </div>
                         <div className='font-semibold text-base line-clamp-2 min-h-[48px] mb-1 text-gray-900'>
                           {product.name}

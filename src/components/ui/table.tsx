@@ -77,13 +77,18 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
   )
 }
 
-function TableCell({ className, ...props }: React.ComponentProps<'td'>) {
+function TableCell({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<'td'>) {
   return (
     <td
       data-slot='table-cell'
       className={cn('p-2 align-middle whitespace-nowrap', className)}
-      {...props}
-    />
+      {...props}>
+      {children ?? ''}
+    </td>
   )
 }
 

@@ -15,7 +15,7 @@ export default function KategoriLayout({
         <Button
           onClick={() => router.back()}
           size='icon'
-          className='mb-6'
+          className='mb-2'
           variant='ghost'>
           <ArrowLeft />
         </Button>

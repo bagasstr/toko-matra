@@ -54,7 +54,7 @@ export async function createBrand(data: CreateBrandInput) {
 
     const brand = await prisma.brand.create({
       data: {
-        id: generateCustomId('BRD'),
+        id: generateCustomId('brd'),
         name: data.name,
         logo: logoPath,
         slug,
@@ -135,12 +135,30 @@ export async function deleteBrand(id: string) {
       }
     }
 
+    // Delete logo file from filesystem if exists
+    if (brand.logo) {
+      try {
+        const fs = require('fs')
+        const path = require('path')
+        const logoPath = path.join(
+          process.cwd(),
+          'public',
+          brand.logo.replace(/^\//, '')
+        )
+        if (fs.existsSync(logoPath)) {
+          fs.unlinkSync(logoPath)
+        }
+      } catch (fsError) {
+        console.warn('Failed to delete logo file:', fsError)
+        // Lanjutkan proses meskipun gagal hapus file
+      }
+    }
+
     // Delete the brand
     await prisma.brand.delete({
       where: { id },
     })
 
-    revalidatePath('/dashboard/produk')
     return { success: true }
   } catch (error) {
     console.error('Failed to delete brand:', error)

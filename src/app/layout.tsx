@@ -4,7 +4,6 @@ import './globals.css'
 import ThemesProvider from '@/components/ui/ThemesProvider'
 import { Toaster } from 'sonner'
 import QueryClientProvider from '@/components/QueryClient'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -71,7 +70,7 @@ export default function RootLayout({
         <QueryClientProvider>
           <ThemesProvider forcedTheme='light'>
             <main>{children}</main>
-            <Toaster />
+            <Toaster position='top-center' offset={100} />
           </ThemesProvider>
           {/* <ReactQueryDevtools initialIsOpen={false} /> */}
         </QueryClientProvider>

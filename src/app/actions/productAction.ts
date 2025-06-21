@@ -5,11 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { writeFile, unlink, access } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import {
-  convertDecimalToNumber,
-  generateCustomId,
-  generateProductId,
-} from '@/lib/helpper'
+import { generateCustomId, generateProductId } from '@/lib/helpper'
 import { cookies } from 'next/headers'
 import { validateSession } from './session'
 
@@ -25,6 +21,7 @@ export async function createProduct(data: {
   weight?: number
   dimensions?: string
   isFeatured: boolean
+  label: string
   isActive: boolean
   categoryId: string
   brandId?: string
@@ -66,6 +63,7 @@ export async function createProduct(data: {
         slug: uniqueSlug,
         sku: data.sku,
         description: data.description,
+        label: data.label,
         images: data.images,
         price: data.price,
         category: {
@@ -95,7 +93,7 @@ export async function createProduct(data: {
     })
 
     revalidatePath('/dashboard/produk')
-    return { success: true, product: convertDecimalToNumber(product) }
+    return { success: true, product }
   } catch (error) {
     console.error('Error creating product:', error)
     return { success: false, error: 'Gagal membuat produk' }
@@ -114,7 +112,7 @@ export async function getAllProducts() {
         createdAt: 'desc',
       },
     })
-    return { success: true, products: convertDecimalToNumber(products) }
+    return { success: true, products }
   } catch (error) {
     console.error('Error fetching products:', error)
     return { success: false, error: 'Gagal mengambil data produk' }
@@ -132,10 +130,9 @@ export async function getProductBySlug(slug: string) {
           },
         },
         brand: true,
-        review: true,
       },
     })
-    return { success: true, product: convertDecimalToNumber(product) }
+    return { success: true, product }
   } catch (error) {
     console.error('Error fetching product:', error)
     return { success: false, error: 'Gagal mengambil data produk' }
@@ -151,7 +148,7 @@ export async function getProductById(id: string) {
         brand: true,
       },
     })
-    return { success: true, product: convertDecimalToNumber(product) }
+    return { success: true, product }
   } catch (error) {
     console.error('Error fetching product:', error)
     return { success: false, error: 'Gagal mengambil data produk' }
@@ -244,6 +241,7 @@ export async function updateProduct(id: string, data: any) {
         slug: data.slug,
         sku: data.sku,
         description: data.description,
+        label: data.label,
         images: data.images,
         price: data.price,
         unit: data.unit,
@@ -274,7 +272,7 @@ export async function updateProduct(id: string, data: any) {
     })
 
     revalidatePath('/dashboard/produk')
-    return { success: true, product: convertDecimalToNumber(updatedProduct) }
+    return { success: true, product: updatedProduct }
   } catch (error) {
     console.error('Error updating product:', error)
     return { success: false, error: 'Gagal mengupdate produk' }

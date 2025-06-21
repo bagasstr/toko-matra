@@ -48,20 +48,19 @@ export async function updateProfile(userId: string, data: ProfileData) {
       }
     }
 
-    // Check if the user is updating their own profile
-    if (session.user.id !== userId) {
-      return {
-        success: false,
-        error: 'Unauthorized to update this profile',
-      }
-    }
+    // Check if profile exists
+    const existingProfile = await prisma.profile.findUnique({
+      where: {
+        id: userId,
+      },
+    })
 
     // Check if phone number is already taken by another user
     if (data.phoneNumber) {
       const existingUser = await prisma.profile.findFirst({
         where: {
           phoneNumber: data.phoneNumber,
-          userId: {
+          id: {
             not: userId,
           },
         },
@@ -85,7 +84,7 @@ export async function updateProfile(userId: string, data: ProfileData) {
     // Update or create profile
     const profile = await prisma.profile.upsert({
       where: {
-        userId: userId,
+        id: userId,
       },
       update: {
         fullName: data.fullName,
@@ -99,8 +98,8 @@ export async function updateProfile(userId: string, data: ProfileData) {
         imageUrl: imageUrl,
       },
       create: {
-        id: generateCustomId('PRF'),
-        userId: userId,
+        id: userId,
+        userId: session.user.id, // Use the authenticated user's ID
         fullName: data.fullName,
         userName: data.userName,
         phoneNumber: data.phoneNumber,
@@ -113,7 +112,6 @@ export async function updateProfile(userId: string, data: ProfileData) {
       },
     })
 
-    revalidatePath('/profile')
     return {
       success: true,
       data: profile,

@@ -7,16 +7,27 @@ import { usePathname } from 'next/navigation'
 
 const Footer = () => {
   const pathname = usePathname()
-  if (pathname.startsWith('/profile') || pathname.startsWith('/login') || pathname.startsWith('/daftar'))
+  if (
+    pathname.startsWith('/profile') ||
+    pathname.startsWith('/login') ||
+    pathname.startsWith('/daftar')
+  )
     return null
 
   return (
-    <footer className='bg-gray-900 text-gray-200 pt-10 pb-4 mt-10'>
+    <footer className='bg-gray-900 text-gray-200 pt-10 pb-20 mt-10'>
       <div className='max-w-6xl mx-auto px-4 grid grid-cols-1 md:grid-cols-4 gap-8'>
         {/* Logo & Deskripsi */}
         <div>
           <div className='flex items-center gap-2 mb-2'>
-            <Image src='/assets/Logo.png' alt='Logo' width={40} height={40} />
+            <Link href='/' className='relative w-10 h-10'>
+              <Image
+                src='/assets/Logo.png'
+                alt='Logo'
+                fill
+                className='object-contain'
+              />
+            </Link>
             <span className='font-bold text-xl text-white'>TOKO MATRA</span>
           </div>
           <p className='text-sm text-gray-400 mb-2'>
@@ -89,6 +100,15 @@ const Footer = () => {
         </div>
       </div>
       <div className='mt-8 border-t border-gray-700 pt-4 text-center text-xs text-gray-400'>
+        <div className='mb-2 flex flex-wrap justify-center gap-4'>
+          <Link href='/syarat-ketentuan' className='hover:underline'>
+            Syarat & Ketentuan
+          </Link>
+          <span>|</span>
+          <Link href='/kebijakan-privasi' className='hover:underline'>
+            Kebijakan Privasi
+          </Link>
+        </div>
         &copy; {new Date().getFullYear()} TOKO MATRA. All rights reserved.
       </div>
     </footer>

@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
+import { useQuery } from '@tanstack/react-query'
 import {
   BarChart3,
   Building2,
@@ -22,6 +23,10 @@ import {
   Users,
   Warehouse,
   ChevronDown,
+  Truck,
+  Badge,
+  CircleSmall,
+  UserCog,
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -35,6 +40,10 @@ const DashboardNav = () => {
     users: false,
     settings: false,
   })
+  const { data: user } = useQuery({
+    queryKey: ['user'],
+    queryFn: () => fetch('/api/user').then((res) => res.json()),
+  })
 
   const toggleGroup = (group: string) => {
     setOpenGroups((prev) => ({
@@ -42,6 +51,21 @@ const DashboardNav = () => {
       [group]: !prev[group],
     }))
   }
+
+  const fetchDashboardStats = async () => {
+    const res = await fetch('/api/dashboard-stats')
+    if (!res.ok) throw new Error('Failed to fetch stats')
+    return res.json()
+  }
+
+  const { data: stats } = useQuery({
+    queryKey: ['dashboard-stats'],
+    queryFn: fetchDashboardStats,
+    refetchInterval: 1000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: Infinity,
+  })
 
   return (
     <div className=''>
@@ -56,6 +80,7 @@ const DashboardNav = () => {
           <SidebarGroupContent>
             <SidebarGroupLabel>Menu Utama</SidebarGroupLabel>
             <SidebarMenu>
+              {/* Dashboard */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   variant={'default'}
@@ -68,7 +93,47 @@ const DashboardNav = () => {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Products Group */}
+              {/* Pesanan */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  variant={'default'}
+                  asChild
+                  isActive={pathname === '/dashboard/pesanan'}>
+                  <Link
+                    href='/dashboard/pesanan'
+                    className={cn(
+                      'flex justify-between items-center gap-2 w-full'
+                    )}>
+                    <div className='flex items-center gap-2'>
+                      <ShoppingCart className='h-4 w-4' />
+                      <span>Pesanan</span>
+                    </div>
+                    {stats?.data?.newOrders >= 1 && (
+                      <div
+                        className={cn(
+                          'h-2 w-2 mr-4 bg-primary rounded-full animate-pulse',
+                          pathname === '/dashboard/pesanan' && 'bg-secondary'
+                        )}
+                      />
+                    )}
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Surat Jalan
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  variant={'default'}
+                  asChild
+                  isActive={pathname === '/dashboard/surat-jalan'}>
+                  <Link href='/dashboard/surat-jalan'>
+                    <Truck className='h-4 w-4' />
+                    <span>Surat Jalan</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem> */}
+
+              {/* Produk Group */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   variant={'default'}
@@ -118,20 +183,22 @@ const DashboardNav = () => {
                 )}
               </SidebarMenuItem>
 
-              {/* Orders Group */}
+              {/* Pelanggan */}
+
+              {/* Statistik */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   variant={'default'}
                   asChild
-                  isActive={pathname === '/pesanan'}>
-                  <Link href='/dashboard/pesanan'>
-                    <ShoppingCart className='h-4 w-4' />
-                    <span>Pesanan</span>
+                  isActive={pathname === '/dashboard/statistik'}>
+                  <Link href='/dashboard/statistik'>
+                    <BarChart3 className='h-4 w-4' />
+                    <span>Statistik</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Users Group */}
+              {/* Pengguna Group */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   variant={'default'}
@@ -147,74 +214,28 @@ const DashboardNav = () => {
                 </SidebarMenuButton>
                 {openGroups.users && (
                   <div className='pl-8 mt-2 space-y-2'>
-                    <Link
-                      href='/dashboard/pelanggan'
-                      className='block text-sm hover:text-primary'>
-                      Pelanggan
-                    </Link>
-                    <Link
-                      href='/dashboard/admin'
-                      className='block text-sm hover:text-primary'>
-                      Admin
-                    </Link>
-                  </div>
-                )}
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  variant={'default'}
-                  asChild
-                  isActive={pathname === '/dashboard/inventaris'}>
-                  <Link href='/dashboard/inventaris'>
-                    <Warehouse className='h-4 w-4' />
-                    <span>Inventaris</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  variant={'default'}
-                  asChild
-                  isActive={pathname === '/dashboard/analitik'}>
-                  <Link href='/dashboard/analitik'>
-                    <BarChart3 className='h-4 w-4' />
-                    <span>Analitik</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-
-          <SidebarGroupContent>
-            <SidebarGroupLabel>Pengaturan</SidebarGroupLabel>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  variant={'default'}
-                  onClick={() => toggleGroup('settings')}>
-                  <Settings className='h-4 w-4' />
-                  <span>Pengaturan</span>
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 ml-auto transition-transform',
-                      openGroups.settings ? 'rotate-180' : ''
+                    {user?.role === 'SUPER_ADMIN' && (
+                      <SidebarMenuButton
+                        variant={'default'}
+                        asChild
+                        isActive={pathname === '/dashboard/admin'}>
+                        <Link
+                          href='/dashboard/admin'
+                          className='block text-sm hover:text-primary'>
+                          <UserCog className='h-4 w-4' />
+                          <span>Admin</span>
+                        </Link>
+                      </SidebarMenuButton>
                     )}
-                  />
-                </SidebarMenuButton>
-                {openGroups.settings && (
-                  <div className='pl-8 mt-2 space-y-2'>
-                    <Link
-                      href='/dashboard/pengaturan'
-                      className='block text-sm hover:text-primary'>
-                      Umum
-                    </Link>
-                    <Link
-                      href='/dashboard/pengaturan/profil'
-                      className='block text-sm hover:text-primary'>
-                      Profil
-                    </Link>
+                    <SidebarMenuButton
+                      variant={'default'}
+                      asChild
+                      isActive={pathname === '/dashboard/pelanggan'}>
+                      <Link href='/dashboard/pelanggan'>
+                        <User className='h-4 w-4' />
+                        <span>Pelanggan</span>
+                      </Link>
+                    </SidebarMenuButton>
                   </div>
                 )}
               </SidebarMenuItem>

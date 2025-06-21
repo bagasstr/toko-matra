@@ -7,7 +7,7 @@ import { addMinutes } from 'date-fns'
 import { sendOTPEmail } from '@/lib/sendmailerTransport'
 import { generateCustomId } from '@/lib/helpper'
 
-// Tipe respons yang konsisten
+// tipe respons yang konsisten
 type RegistrationResponse = {
   success: boolean
   error?: string
@@ -21,11 +21,11 @@ export const registrasi = async (
   formData: FormData
 ): Promise<RegistrationResponse> => {
   try {
-    // Validasi data form
+    // validasi data form
     const data = Object.fromEntries(formData.entries())
     const parseResult = regisSchema.safeParse(data)
 
-    // Jika validasi gagal, kembalikan error
+    // validasi parse form data
     if (!parseResult.success) {
       return {
         success: false,
@@ -37,7 +37,7 @@ export const registrasi = async (
 
     const { name, email, password, typeUser } = parseResult.data
 
-    // Periksa apakah email sudah terdaftar
+    // cek apakah email sudah terdaftar
     const userExists = await prisma.user.findUnique({
       where: { email },
     })
@@ -46,24 +46,24 @@ export const registrasi = async (
       return { success: false, error: 'Email sudah terdaftar' }
     }
 
-    // Hash password dan buat token OTP
+    // hash password dan buat token OTP
     const passwordHash = await bcrypt.hash(password, 10)
     const token = Math.floor(100000 + Math.random() * 900000).toString()
     const expired = addMinutes(new Date(), 5)
 
-    // Jalankan transaksi database
+    // jalankan transaksi database
     const result = await prisma.$transaction(async (tx) => {
       try {
-        // Buat user baru
+        // buat user baru
         const user = await tx.user.create({
           data: {
-            id: generateCustomId('USR'),
+            id: generateCustomId('usr'),
             email,
             password: passwordHash,
             typeUser,
             profile: {
               create: {
-                id: generateCustomId('PRF'),
+                id: generateCustomId('prf'),
                 fullName: name,
                 email,
                 userName: `@${email.split('@')[0]}`,
@@ -73,10 +73,10 @@ export const registrasi = async (
           },
         })
 
-        // Buat akun credentials
+        // buat akun credentials
         await tx.account.create({
           data: {
-            id: generateCustomId('ACC'),
+            id: generateCustomId('acc'),
             userId: user.id,
             type: 'credentials',
             provider: 'credentials',
@@ -84,24 +84,24 @@ export const registrasi = async (
           },
         })
 
-        // Buat token verifikasi
+        // buat token verifikasi
         await tx.verificationToken.create({
           data: {
-            id: generateCustomId('VFT'),
+            id: generateCustomId('vft'),
             identifier: email,
             token,
             expires: expired,
           },
         })
 
-        // Kirim email OTP
+        // kirim email OTP
         await sendOTPEmail(email, Number(token))
 
         return { id: user.id, email }
       } catch (txError) {
-        // Log error transaksi untuk debugging
+        // log error transaksi untuk debugging
         console.error('Transaction error:', txError)
-        throw txError // Re-throw untuk ditangkap oleh catch di luar
+        throw txError // re-throw untuk ditangkap oleh catch di luar
       }
     })
 

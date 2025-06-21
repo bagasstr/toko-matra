@@ -289,19 +289,18 @@ export default function ProductsTable() {
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-2'>
           <div className='relative w-64'>
-            <Search className='absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground' />
+            <Search className='absolute left-2 top-2.5 h-4 w-4 text-muted-foreground' />
             <Input
-              type='search'
               placeholder='Cari produk...'
-              className='pl-8 pr-8'
-              value={searchTerm}
+              value={searchTerm || ''}
               onChange={(e) => setSearchTerm(e.target.value)}
+              className='pl-8'
             />
             {searchTerm && (
               <button
-                onClick={clearSearch}
-                className='absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground'>
-                <X className='h-4 w-4' />
+                onClick={() => setSearchTerm('')}
+                className='absolute right-2 top-2.5'>
+                <X className='h-4 w-4 text-muted-foreground' />
               </button>
             )}
           </div>

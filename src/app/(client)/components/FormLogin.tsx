@@ -99,12 +99,19 @@ const FormLogin = () => {
 
           {formError && <p className='text-sm text-red-500'>{formError}</p>}
 
-          <span className='text-sm text-muted-foreground/85'>
-            Belum punya akun?{' '}
-            <Link href='/daftar' className='underline'>
-              Daftar
+          <div className='flex justify-between items-center text-sm'>
+            <Link
+              href='/lupa-password'
+              className='text-blue-600 hover:underline'>
+              Lupa Password?
             </Link>
-          </span>
+            <span className='text-muted-foreground'>
+              Belum punya akun?{' '}
+              <Link href='/daftar' className='underline'>
+                Daftar
+              </Link>
+            </span>
+          </div>
 
           <Button type='submit' className='w-full mt-4' disabled={isSubmitting}>
             {isSubmitting ? 'Memproses...' : 'Masuk'}

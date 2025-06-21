@@ -1,98 +1,74 @@
-import { Decimal } from '@prisma/client/runtime/library'
-
-// Helper function to convert Decimal to number
-export function convertDecimalToNumber(data: any): any {
-  if (data === null || data === undefined) return data
-
-  // Handle Decimal type
-  if (
-    data instanceof Decimal ||
-    (typeof data === 'object' && data !== null && 'toNumber' in data)
-  ) {
-    return String(data)
-  }
-
-  // Handle arrays
-  if (Array.isArray(data)) {
-    return data.map(convertDecimalToNumber)
-  }
-
-  // Handle objects
-  if (typeof data === 'object' && data !== null) {
-    const result: any = {}
-    for (const key in data) {
-      // Skip prototype properties
-      if (Object.prototype.hasOwnProperty.call(data, key)) {
-        result[key] = convertDecimalToNumber(data[key])
-      }
-    }
-    return result
-  }
-
-  return data
+// Format currency in Indonesian Rupiah
+export function formatCurrency(amount: number | string): string {
+  const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount
+  return new Intl.NumberFormat('id-ID', {
+    style: 'currency',
+    currency: 'IDR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(numAmount)
 }
 
 export function generateProductId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `PRD-${Date.now()}-${randomNum}`
+  return `PRD-${Date.now()}`
 }
 
 export function generateCartId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `CRT-${Date.now()}-${randomNum}`
+  return `CRT-${Date.now()}`
 }
 
 export function generateCartItemId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `CIT-${Date.now()}-${randomNum}`
+  return `CIT-${Date.now()}`
 }
 
 export function generateOrderId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `ORD-${Date.now()}-${randomNum}`
+  return `ORD-${Date.now()}`
 }
 
 export function generateAddressId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `ADR-${Date.now()}-${randomNum}`
+  return `ADR-${Date.now()}`
 }
 
 export function generateCategoryId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `CAT-${Date.now()}-${randomNum}`
+  return `CAT-${Date.now()}`
 }
 
 export function generateBrandId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `BRD-${Date.now()}-${randomNum}`
+  return `BRD-${Date.now()}`
 }
 
 export function generateUserId(): string {
   const randomNum = Math.floor(Math.random() * 1000)
     .toString()
     .padStart(3, '0')
-  return `USR-${Date.now()}-${randomNum}`
+  return `USR-${Date.now()}`
 }
 
 function generateRandomSegment(length: number = 4): string {
-  return Math.random()
-    .toString(36)
-    .substring(2, 2 + length)
-    .toUpperCase()
+  return Math.floor(Math.random() * Math.pow(10, length))
+    .toString()
+    .padStart(length, '0')
 }
 
 function padRandomNumber(): string {
@@ -103,7 +79,12 @@ function padRandomNumber(): string {
 
 export function generateCustomId(prefix: string): string {
   const timestamp = Date.now() // milliseconds
-  const randStr = generateRandomSegment()
-  const randNum = padRandomNumber()
-  return `${prefix}-${timestamp}-${randStr}${randNum}`
+  const randomSegment = generateRandomSegment(6)
+  return `${prefix}-${randomSegment}`
+}
+
+export function generateFakturNumber(prefix: string): string {
+  const timestamp = Date.now() // milliseconds
+  const randomSegment = generateRandomSegment(6)
+  return `${prefix}${randomSegment}`
 }
