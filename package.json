@@ -6,7 +6,6 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
     "build:seed": "tsc --project tsconfig.seed.json",
     "seed": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/brandSeed.js"
   },
