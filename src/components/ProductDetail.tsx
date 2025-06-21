@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Plus, Minus } from 'lucide-react'
-import Image from 'next/image'
+import OptimizedImage from './OptimizedImage'
 import { formatPrice } from '@/lib/utils'
 
 interface ProductDetailProps {
@@ -27,13 +27,14 @@ const ProductDetail: React.FC<ProductDetailProps> = ({
       <div className='grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8'>
         {/* Product Image */}
         <div className='relative aspect-square w-full overflow-hidden rounded-lg'>
-          <Image
+          <OptimizedImage
             src={product.image}
             alt={product.name}
-            fill
-            className='object-cover'
+            width={600}
+            height={600}
+            className='w-full h-full object-cover'
             sizes='(max-width: 768px) 100vw, 50vw'
-            priority
+            priority={true}
           />
         </div>
 

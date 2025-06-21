@@ -1,5 +1,4 @@
 import React from 'react'
-import Image from 'next/image'
 import { ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
