@@ -4,16 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && tsc --project tsconfig.seed.json && next build",
-    "start": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/subcategorySeed.js && node dist/brandSeed.js && node dist/productSeed.js && next start",
+    "build": "prisma generate && next build",
+    "start": "next start",
     "lint": "next lint",
     "build:seed": "tsc --project tsconfig.seed.json",
-    "seed": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/subcategorySeed.js && node dist/brandSeed.js && node dist/productSeed.js",
-    "cron:health": "node cronjob.js",
-    "cron:start": "bash start-cron.sh start",
-    "cron:stop": "bash start-cron.sh stop",
-    "cron:restart": "bash start-cron.sh restart",
-    "cron:status": "bash start-cron.sh status"
+    "seed": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/subcategorySeed.js && node dist/brandSeed.js && node dist/productSeed.js"
   },
   "dependencies": {
     "@develoka/angka-rupiah-js": "^1.0.3",
