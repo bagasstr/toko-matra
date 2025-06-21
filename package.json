@@ -6,9 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
     "build:seed": "tsc --project tsconfig.seed.json",
-    "seed": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/subcategorySeed.js && node dist/brandSeed.js && node dist/productSeed.js"
+    "seed": "node dist/adminSeed.js && node dist/categorySeed.js && node dist/brandSeed.js"
   },
   "dependencies": {
     "@develoka/angka-rupiah-js": "^1.0.3",
