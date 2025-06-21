@@ -1,9 +1,16 @@
 import { getOrderById } from '@/app/actions/orderAction'
+import {
+  checkMidtransTransaction,
+  getPaymentByOrderId,
+} from '@/app/actions/midtransAction'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
+import CopyButton from '@/app/(client)/components/CopyButton'
+import { checkTransaction } from '@/lib/midtransClient'
+import { PdfFakturButton } from '@/app/(client)/components/DownloadPdfButton'
 
 export default async function OrderDetailPage({
   params,
@@ -14,7 +21,6 @@ export default async function OrderDetailPage({
 
   // Get order details
   const orderResult = await getOrderById(id)
-  console.log('Order Result:', orderResult)
 
   if (!orderResult.success || !orderResult.data) {
     return (
@@ -28,8 +34,28 @@ export default async function OrderDetailPage({
   }
 
   const order = orderResult.data
-
   console.log(order)
+
+  const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
+
+  // Jika status PENDING, ambil detail pembayaran
+  let paymentDetail = null
+  let paymentStatus = order.status
+  if (order.status === 'PENDING') {
+    const paymentRes = await getPaymentByOrderId(order.id)
+    if (paymentRes.success && paymentRes.data) {
+      paymentDetail = paymentRes.data
+      // Cek status Midtrans jika ada transactionId
+      if (paymentDetail.transactionId) {
+        const midtransStatusRes = await checkMidtransTransaction(
+          paymentDetail.transactionId
+        )
+        if (midtransStatusRes.success && midtransStatusRes.data) {
+          paymentStatus = midtransStatusRes.data.order_status || order.status
+        }
+      }
+    }
+  }
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -49,13 +75,13 @@ export default async function OrderDetailPage({
 
         <div className='grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8'>
           {/* Main Content */}
-          <div className='lg:col-span-2 space-y-6'>
+          <div className='lg:col-span-2 space-y-6 lg:w-[98%]'>
             {/* Order Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Informasi Pesanan</CardTitle>
               </CardHeader>
-              <CardContent className='space-y-4'>
+              <CardContent className='space-y-8 w-full'>
                 <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
                   <div className='space-y-3'>
                     <div className='flex flex-col sm:flex-row sm:items-center gap-1'>
@@ -70,23 +96,23 @@ export default async function OrderDetailPage({
                       </span>
                       <span
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          order.status === 'PENDING'
+                          paymentStatus === 'PENDING'
                             ? 'bg-yellow-100 text-yellow-800'
-                            : order.status === 'CONFIRMED'
+                            : paymentStatus === 'CONFIRMED'
                             ? 'bg-blue-100 text-blue-800'
-                            : order.status === 'SHIPPED'
+                            : paymentStatus === 'SHIPPED'
                             ? 'bg-indigo-100 text-indigo-800'
-                            : order.status === 'DELIVERED'
+                            : paymentStatus === 'DELIVERED'
                             ? 'bg-green-100 text-green-800'
                             : 'bg-red-100 text-red-800'
                         }`}>
-                        {order.status === 'PENDING'
+                        {paymentStatus === 'PENDING'
                           ? 'Menunggu Pembayaran'
-                          : order.status === 'CONFIRMED'
+                          : paymentStatus === 'CONFIRMED'
                           ? 'Diproses'
-                          : order.status === 'SHIPPED'
+                          : paymentStatus === 'SHIPPED'
                           ? 'Dikirim'
-                          : order.status === 'DELIVERED'
+                          : paymentStatus === 'DELIVERED'
                           ? 'Diterima'
                           : 'Dibatalkan'}
                       </span>
@@ -114,6 +140,34 @@ export default async function OrderDetailPage({
                       </span>
                     </div>
                   </div>
+                </div>
+                <div className='w-full flex justify-end'>
+                  <PdfFakturButton
+                    items={order.items.map((item: any) => ({
+                      product: {
+                        name: item.product.name,
+                        price: item.price,
+                        unit: item.product.unit || 'pcs',
+                        sku: item.product.sku,
+                        priceExclPPN: item.price,
+                      },
+                      quantity: item.quantity,
+                    }))}
+                    subtotal={order.subtotalAmount}
+                    ppn={Math.round(order.subtotalAmount * 0.11)}
+                    total={order.totalAmount}
+                    logoBase64={logoBase64}
+                    customerName={order.user?.profile?.fullName || '-'}
+                    customerCompany={order.user?.profile?.companyName || '-'}
+                    customerAddress={`${order.address?.address || '-'}, ${
+                      order.address?.city || '-'
+                    }, ${order.address?.province || '-'} ${
+                      order.address?.postalCode || ''
+                    }`}
+                    customerEmail={order.user?.profile?.email || '-'}
+                    customerPhone={order.user?.profile?.phoneNumber || '-'}
+                    disabled={false}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -161,7 +215,7 @@ export default async function OrderDetailPage({
           </div>
 
           {/* Sidebar */}
-          <div className='space-y-6'>
+          <div className='space-y-6 lg:justify-self-end'>
             {/* Shipping Information */}
             <Card>
               <CardHeader>
@@ -170,7 +224,7 @@ export default async function OrderDetailPage({
               <CardContent className='space-y-4'>
                 <div className='space-y-2'>
                   <h3 className='font-medium text-gray-900'>
-                    {order.Shipment?.map((shipment: any) => shipment.status)}
+                    {order.shipment?.map((shipment: any) => shipment.status)}
                   </h3>
                   <p className='text-sm text-gray-600'>
                     {order.address.address}
@@ -193,6 +247,63 @@ export default async function OrderDetailPage({
               </CardHeader>
               <CardContent className='space-y-4'>
                 <div className='space-y-2'>
+                  {paymentStatus === 'PENDING' && paymentDetail && (
+                    <div className='space-y-3 p-4 rounded-lg border border-yellow-300 bg-yellow-50'>
+                      <div className='flex items-center gap-2 mb-2'>
+                        <span className='font-bold text-yellow-800'>
+                          Menunggu Pembayaran
+                        </span>
+                        <span className='text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded'>
+                          Segera lakukan pembayaran
+                        </span>
+                      </div>
+                      <div className='space-y-2 text-sm'>
+                        <div className='flex items-start flex-col  gap-2'>
+                          <span className='font-medium'>
+                            Metode:{' '}
+                            {paymentDetail.paymentType
+                              .replace(/_/g, ' ')
+                              .toLowerCase() || '-'}
+                          </span>{' '}
+                          <span className='text-base'>
+                            Bank:{' '}
+                            <b>{paymentDetail.bank?.toUpperCase() || '-'}</b>
+                          </span>
+                        </div>
+                        {paymentDetail.vaNumber && (
+                          <div>
+                            <span className='font-medium'>
+                              Virtual Account:
+                            </span>{' '}
+                            <div className='flex items-center gap-2 mt-1 w-fit'>
+                              <span className='px-2 py-1 bg-white border rounded font-mono tracking-wider text-base'>
+                                {paymentDetail.vaNumber}
+                              </span>
+                              <CopyButton value={paymentDetail.vaNumber} />
+                            </div>
+                          </div>
+                        )}
+                        {paymentDetail.redirect_url && (
+                          <div>
+                            <a
+                              href={paymentDetail.redirect_url}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              className='inline-block mt-2 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-xs font-semibold'>
+                              Bayar Sekarang via Midtrans
+                            </a>
+                          </div>
+                        )}
+                        <div className='text-xs text-gray-600 mt-2'>
+                          Setelah melakukan pembayaran, status pesanan akan
+                          otomatis diperbarui.
+                          <br />
+                          Jika sudah membayar namun status belum berubah,
+                          silakan refresh halaman ini.
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className='flex justify-between text-sm'>
                     <span className='text-gray-600'>Subtotal</span>
                     <span className='font-medium'>

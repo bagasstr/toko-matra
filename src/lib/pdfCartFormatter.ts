@@ -11,12 +11,21 @@ interface CartItem {
   quantity: number
 }
 
+interface CustomerInfo {
+  name?: string
+  email?: string
+  phone?: string
+  address?: string
+  company?: string
+}
+
 export const generateCartPDF = (
   items: any[],
   subtotal: number,
   ppn: number,
   total: number,
-  logoBase64: string
+  logoBase64: string,
+  customerInfo?: CustomerInfo
 ) => {
   // Helper
   const formatRupiah = (num: number) =>
@@ -115,8 +124,42 @@ export const generateCartPDF = (
         .download-date {
           font-size: 13px;
           font-weight: 500;
-          margin-bottom: 3rem;
+          margin-bottom: 2rem;
           font-family: Arial, sans-serif;
+        }
+        .customer-info {
+          margin: 2rem 0;
+          font-size: 13px;
+          font-family: Arial, sans-serif;
+          padding: 15px;
+          background: #f8f9fa;
+          border-radius: 4px;
+          border-left: 4px solid #2a1f9d;
+        }
+        .customer-info h3 {
+          margin: 0 0 1rem 0;
+          font-size: 14px;
+          font-weight: bold;
+          color: #2a1f9d;
+        }
+        .customer-details {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
+        }
+        .customer-row {
+          display: flex;
+          align-items: flex-start;
+        }
+        .customer-row .label {
+          width: 100px;
+          font-weight: 600;
+          color: #4a5568;
+          flex-shrink: 0;
+        }
+        .customer-row .value {
+          flex: 1;
+          color: #2d3748;
         }
         table {
           width: 100%;
@@ -216,6 +259,69 @@ export const generateCartPDF = (
         </div>
         <div class="judul">Daftar Keranjang</div>
         <div class="download-date">Diunduh Pada ${tanggal} ${jam}</div>
+        
+        ${
+          customerInfo
+            ? `
+        <div class="customer-info">
+          <h3>Informasi Pelanggan</h3>
+          <div class="customer-details">
+            ${
+              customerInfo.name
+                ? `
+            <div class="customer-row">
+              <span class="label">Nama</span>
+              <span class="value">${customerInfo.name}</span>
+            </div>
+            `
+                : ''
+            }
+            ${
+              customerInfo.company
+                ? `
+            <div class="customer-row">
+              <span class="label">Perusahaan</span>
+              <span class="value">${customerInfo.company}</span>
+            </div>
+            `
+                : ''
+            }
+            ${
+              customerInfo.email
+                ? `
+            <div class="customer-row">
+              <span class="label">Email</span>
+              <span class="value">${customerInfo.email}</span>
+            </div>
+            `
+                : ''
+            }
+            ${
+              customerInfo.phone
+                ? `
+            <div class="customer-row">
+              <span class="label">Telepon</span>
+              <span class="value">${customerInfo.phone}</span>
+            </div>
+            `
+                : ''
+            }
+            ${
+              customerInfo.address
+                ? `
+            <div class="customer-row">
+              <span class="label">Alamat</span>
+              <span class="value">${customerInfo.address}</span>
+            </div>
+            `
+                : ''
+            }
+          </div>
+        </div>
+        `
+            : ''
+        }
+        
         <table>
           <thead>
             <tr>

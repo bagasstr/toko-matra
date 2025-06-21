@@ -106,7 +106,7 @@ export async function createMidtransPayment(
         userId: session.user.id,
       },
       include: {
-        Payment: true,
+        payment: true,
         address: true,
       },
     })
@@ -119,7 +119,7 @@ export async function createMidtransPayment(
     }
 
     // Cek apakah sudah ada payment yang berhasil
-    if (order.Payment?.some((p) => p.status === 'SUCCESS')) {
+    if (order.payment?.some((p) => p.status === 'SUCCESS')) {
       return {
         success: false,
         message: 'Order sudah dibayar',

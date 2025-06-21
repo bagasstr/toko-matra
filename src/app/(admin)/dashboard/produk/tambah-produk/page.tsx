@@ -141,7 +141,7 @@ const DimensionsInput: React.FC<DimensionsInputProps> = ({
   field,
 }) => {
   const parseDimensions = (value: string) => {
-    const [panjang = '', lebar = '', tinggi = ''] = value.split('x')
+    const [panjang = '', lebar = '', tinggi = ''] = (value || '').split('x')
     return { panjang, lebar, tinggi }
   }
 
@@ -149,7 +149,7 @@ const DimensionsInput: React.FC<DimensionsInputProps> = ({
     type: 'panjang' | 'lebar' | 'tinggi',
     newValue: string
   ) => {
-    const currentDimensions = parseDimensions(field.value)
+    const currentDimensions = parseDimensions(field.value || '')
     const updatedDimensions = {
       ...currentDimensions,
       [type]: newValue.trim(),
@@ -160,7 +160,7 @@ const DimensionsInput: React.FC<DimensionsInputProps> = ({
     field.onChange(dimensionsString)
   }
 
-  const { panjang, lebar, tinggi } = parseDimensions(field.value)
+  const { panjang, lebar, tinggi } = parseDimensions(field.value || '')
 
   return (
     <FormItem>
@@ -212,7 +212,6 @@ export default function Page() {
   const labels = [
     { value: 'ready_stock', label: 'Ready Stock' },
     { value: 'suplier', label: 'Suplier' },
-    { value: 'indent', label: 'Indent' },
   ]
   const form = useForm<CreateProductSchema>({
     resolver: zodResolver(createProductSchema),
@@ -227,11 +226,11 @@ export default function Page() {
       label: '',
       unit: '',
       weight: '',
-      dimensions: '',
+      dimensions: 'x x',
       isFeatured: false,
       isActive: true,
       categoryId: '',
-      brandId: undefined,
+      brandId: '',
       stock: '',
       minOrder: '',
       multiOrder: '',

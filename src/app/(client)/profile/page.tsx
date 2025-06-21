@@ -23,7 +23,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
 
   console.log(userId)
 
-  if (userId.toLowerCase() !== user) {
+  if (userId !== user) {
     return <AuthSection />
   }
 

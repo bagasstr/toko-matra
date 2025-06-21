@@ -13,6 +13,7 @@ import {
   UserCheck,
   Star,
   Truck,
+  Bell,
 } from 'lucide-react'
 import {
   getDashboardStats,
@@ -24,11 +25,6 @@ import {
 export const dynamic = 'force-dynamic'
 
 const page = async () => {
-  const user = await validateSession()
-  if (!user || user?.user.role !== 'ADMIN') {
-    redirect('/login-admin')
-  }
-
   const [
     statsResponse,
     bestProductsResponse,
@@ -65,6 +61,21 @@ const page = async () => {
           })}
         </p>
       </div>
+      {stats?.newOrders > 0 && (
+        <div
+          className={cn(
+            'mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center'
+          )}>
+          <Bell className='h-6 w-6 text-blue-600 mr-3' />
+          <div>
+            <h3 className='font-semibold text-blue-800'>Pesanan Baru</h3>
+            <p className='text-sm text-blue-700'>
+              Anda memiliki {stats.newOrders || '0'} pesanan baru yang perlu
+              diproses
+            </p>
+          </div>
+        </div>
+      )}
       <div className={cn('mb-6 grid grid-cols-1 md:grid-cols-4 gap-4')}>
         <DashboardCard
           title='Pesanan Baru'

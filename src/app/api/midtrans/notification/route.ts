@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
+import {
+  sendPaymentSuccessNotification,
+  sendPaymentWaitingNotification,
+} from '@/app/actions/paymentNotification'
 
 enum OrderStatus {
   PENDING = 'PENDING',
@@ -24,11 +28,36 @@ export async function POST(request: Request) {
     const {
       order_id,
       transaction_status,
+      transaction_time,
+      fraud_status,
+      transaction_id,
+      status_message,
+      signature_key,
+      settlement_time,
+      payment_type,
+      merchant_id,
+      currency,
+      status_code,
+      va_numbers,
+      gross_amount,
+    } = body
+
+    console.log(
+      transaction_status,
       fraud_status,
       signature_key,
       status_code,
       gross_amount,
-    } = body
+      transaction_time,
+      settlement_time,
+      payment_type,
+      merchant_id,
+      currency,
+      status_message,
+      order_id,
+      transaction_id,
+      va_numbers
+    )
 
     if (!order_id || !transaction_status) {
       return NextResponse.json(
@@ -102,6 +131,14 @@ export async function POST(request: Request) {
           data: { status: orderStatus },
         })
       })
+
+      // Send payment success notification if payment is successful
+
+      if (paymentStatus === 'SUCCESS') {
+        await sendPaymentSuccessNotification(payment.orderId)
+      } else if (paymentStatus === 'PENDING') {
+        await sendPaymentWaitingNotification(payment.orderId, va_numbers)
+      }
     }
 
     return NextResponse.json({

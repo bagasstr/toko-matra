@@ -6,6 +6,7 @@ interface DashboardCardProps {
   value: string
   icon: React.ReactNode
   info?: string
+  infoColor?: string
   iconBg?: string // opsional, untuk warna background icon
 }
 
@@ -15,6 +16,7 @@ const DashboardCard = ({
   icon,
   info,
   iconBg = 'bg-blue-100 text-blue-600', // default biru
+  infoColor = 'text-gray-600',
 }: DashboardCardProps) => {
   return (
     <Card className='transition-all duration-200 hover:scale-[1.03] hover:shadow-lg shadow border-0'>
@@ -31,7 +33,7 @@ const DashboardCard = ({
       </CardHeader>
       <CardContent>
         <div className='text-3xl font-bold text-gray-800'>{value}</div>
-        {info && <p className='text-xs text-gray-400 mt-1'>{info}</p>}
+        {info && <p className={`text-xs ${infoColor} mt-1`}>{info}</p>}
       </CardContent>
     </Card>
   )

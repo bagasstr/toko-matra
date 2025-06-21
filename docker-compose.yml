@@ -19,14 +19,17 @@ services:
       - MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
       - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
       - NEXT_PUBLIC_LOGO_BASE64=${NEXT_PUBLIC_LOGO_BASE64}
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_SECRET=your_secret
+      - GITHUB_ID=your_github_id
     depends_on:
-      - postgres
+      - db
     volumes:
-      - /mnt/nas/docker-data/toko_matra:/app/public
-    networks:
-      - ix-cloudflared_default
+      - /mnt/nas/docker-data/toko_matra/merek:/app/public/merek
+      - /mnt/nas/docker-data/toko_matra/produk:/app/public/produk
 
-  postgres:
+  db:
     image: postgres:15-alpine
     container_name: postgres_db_tokomatra
     restart: always
@@ -35,16 +38,10 @@ services:
       POSTGRES_PASSWORD: root
       POSTGRES_DB: tokomatra
     ports:
-      - '4321:5432'
+      - '5432:5432'
     volumes:
       - /mnt/nas/docker-data/postgres_tokomatra:/var/lib/postgresql/data
-    networks:
-      - ix-cloudflared_default
 
 volumes:
   postgres-data:
     driver: local
-networks:
-  ix-cloudflared_default:
-    external: true
-    name: ix-cloudflared_default

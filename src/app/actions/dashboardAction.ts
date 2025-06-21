@@ -20,6 +20,7 @@ export async function getDashboardStats() {
         createdAt: {
           gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         },
+        status: 'CONFIRMED',
       },
     })
 
@@ -177,7 +178,7 @@ export async function getRecentOrders() {
             product: true,
           },
         },
-        Payment: true,
+        payment: true,
       },
     })
 
@@ -225,7 +226,7 @@ export async function getSalesData() {
               gte: startOfDay,
               lte: endOfDay,
             },
-            Payment: {
+            payment: {
               some: {
                 status: 'SUCCESS',
               },

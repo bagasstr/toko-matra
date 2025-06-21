@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { useForm, Controller } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -49,20 +49,41 @@ export default function VerificationForm() {
   })
 
   useEffect(() => {
-    // OTP Expiration Timer
+    if (typeof window !== 'undefined') {
+      const expireStr = localStorage.getItem('otp_resend_expire')
+      if (expireStr) {
+        const expire = parseInt(expireStr, 10)
+        const now = Date.now()
+        if (expire > now) {
+          setResendCooldown(Math.ceil((expire - now) / 1000))
+        } else {
+          localStorage.removeItem('otp_resend_expire')
+        }
+      } else {
+        const initialCooldown = 120 // 2 menit
+        const expire = Date.now() + initialCooldown * 1000
+        localStorage.setItem('otp_resend_expire', expire.toString())
+        setResendCooldown(initialCooldown)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
     const otpExpirationTimer = setTimeout(() => {
       setOtpExpired(true)
     }, 5 * 60 * 1000) // 5 minutes
 
-    // Resend Cooldown Timer
     let cooldownTimer: NodeJS.Timeout | null = null
     if (resendCooldown > 0) {
       cooldownTimer = setInterval(() => {
-        setResendCooldown((prev) => prev - 1)
+        setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0))
       }, 1000)
+    } else if (resendCooldown <= 0) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('otp_resend_expire')
+      }
     }
 
-    // Cleanup timers
     return () => {
       clearTimeout(otpExpirationTimer)
       if (cooldownTimer) clearInterval(cooldownTimer)
@@ -112,10 +133,20 @@ export default function VerificationForm() {
 
       if (result.success) {
         toast.success(result.message)
-        setResendCooldown(120) // 2 minutes cooldown
-        setOtpExpired(false) // Reset OTP expiration
+        const newCooldown = 120 // 2 minutes cooldown
+        setOtpExpired(false)
+        if (typeof window !== 'undefined') {
+          const expire = Date.now() + newCooldown * 1000
+          localStorage.setItem('otp_resend_expire', expire.toString())
+        }
+        setResendCooldown(newCooldown)
       } else if (result.cooldownRemaining) {
-        setResendCooldown(result.cooldownRemaining * 60)
+        const newCooldown = result.cooldownRemaining * 60
+        if (typeof window !== 'undefined') {
+          const expire = Date.now() + newCooldown * 1000
+          localStorage.setItem('otp_resend_expire', expire.toString())
+        }
+        setResendCooldown(newCooldown)
         toast.error(result.error)
       } else {
         toast.error(result.error || 'Gagal mengirim ulang OTP')

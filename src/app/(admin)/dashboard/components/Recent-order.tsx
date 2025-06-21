@@ -31,7 +31,7 @@ interface Order {
   items: OrderItem[]
   totalAmount: number
   status: string
-  Payment: {
+  payment: {
     status: string
   }[]
 }
@@ -48,7 +48,7 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
       case 'CONFIRMED':
         return (
           <Badge variant='outline' className='bg-green-100 text-green-800'>
-            Dikonfirmasi
+            Diproses
           </Badge>
         )
       case 'SHIPPED':
@@ -104,16 +104,18 @@ export default function RecentOrders({ orders }: RecentOrdersProps) {
                 })}
               </TableCell>
               <TableCell className='text-right'>
-                {new Intl.NumberFormat('id-ID', {
-                  style: 'currency',
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(order.totalAmount)}
+                {isNaN(order.totalAmount)
+                  ? '-'
+                  : new Intl.NumberFormat('id-ID', {
+                      style: 'currency',
+                      currency: 'IDR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(order.totalAmount)}
               </TableCell>
               <TableCell>{getStatusBadge(order.status)}</TableCell>
               <TableCell>
-                {getStatusBadge(getPaymentStatus(order.Payment))}
+                {getStatusBadge(getPaymentStatus(order.payment))}
               </TableCell>
             </TableRow>
           ))}

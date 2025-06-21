@@ -6,6 +6,6 @@
       "noEmit": false,
       "outDir": "./dist"
     },
-    "include": ["adminSeed.ts", "categorySeed.ts"]
+    "include": ["adminSeed.ts", "categorySeed.ts", "brandSeed.ts"]
   }
   

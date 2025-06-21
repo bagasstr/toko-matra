@@ -10,6 +10,7 @@ exports.generateCategoryId = generateCategoryId;
 exports.generateBrandId = generateBrandId;
 exports.generateUserId = generateUserId;
 exports.generateCustomId = generateCustomId;
+exports.generateFakturNumber = generateFakturNumber;
 // Format currency in Indonesian Rupiah
 function formatCurrency(amount) {
     const numAmount = typeof amount === 'string' ? parseFloat(amount) : amount;
@@ -82,4 +83,9 @@ function generateCustomId(prefix) {
     const timestamp = Date.now(); // milliseconds
     const randomSegment = generateRandomSegment(6);
     return `${prefix}-${randomSegment}`;
+}
+function generateFakturNumber(prefix) {
+    const timestamp = Date.now(); // milliseconds
+    const randomSegment = generateRandomSegment(6);
+    return `${prefix}${randomSegment}`;
 }

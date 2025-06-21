@@ -16,7 +16,7 @@ async function seedCategories() {
         },
         {
             id: (0, helpper_1.generateCustomId)('cat'),
-            name: 'Semen',
+            name: 'Semen dan Sejenisnya',
             image: '/assets/categories/semen.png',
         },
         {
@@ -63,7 +63,15 @@ async function seedCategories() {
     for (const category of categories) {
         await prisma_1.prisma.category.upsert({
             where: { id: category.id },
-            update: {},
+            update: {
+                id: category.id,
+                name: category.name,
+                imageUrl: category.image,
+                slug: category.name
+                    .toLowerCase()
+                    .replace(/ /g, '-')
+                    .replace(/&/g, 'dan'),
+            },
             create: {
                 id: category.id,
                 name: category.name,

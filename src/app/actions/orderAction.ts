@@ -1,48 +1,11 @@
 'use server'
 
-import { generateCustomId } from '@/lib/helpper'
+import { generateCustomId, generateFakturNumber } from '@/lib/helpper'
 import { prisma } from '@/lib/prisma'
 import { validateSession } from './session'
 import { getCartItems } from './cartAction'
 import { revalidatePath } from 'next/cache'
-
-enum OrderStatus {
-  PENDING = 'PENDING',
-  CONFIRMED = 'CONFIRMED',
-  SHIPPED = 'SHIPPED',
-  DELIVERED = 'DELIVERED',
-  CANCELLED = 'CANCELLED',
-}
-export interface IOrder {
-  id: string
-  userId: string
-  user: string
-  addressId: string
-  address: string
-  status: OrderStatus
-  totalAmount: number
-  receiptNumber?: string | null
-  items: {
-    productId: string
-    quantity: number
-    price: number
-  }[]
-  createdAt: Date
-  updatedAt: Date
-  Payment: string[]
-  Shipments?: string | null
-  paymentMethod?: string
-  bank?: string
-  paymentType?: string
-  transactionId?: string
-  transactionTime?: string
-  transactionStatus?: string
-  fraudStatus?: string
-  vaNumber?: string
-  approvalCode?: string
-  rawResponse?: string
-  paidAt?: string
-}
+import { OrderStatus, IOrder } from '@/types/order'
 
 interface CheckoutFormData {
   addressId: string
@@ -108,7 +71,7 @@ export async function processCheckoutAndCreateOrder(
         subtotalAmount: subtotal,
         items: {
           create: items.map((item) => ({
-            id: crypto.randomUUID(),
+            id: generateCustomId('ord-itm'),
             product: {
               connect: {
                 id: item.productId,
@@ -118,7 +81,7 @@ export async function processCheckoutAndCreateOrder(
             price: item.price,
           })),
         },
-        Payment: {
+        payment: {
           create: [
             {
               id: crypto.randomUUID(),
@@ -129,7 +92,7 @@ export async function processCheckoutAndCreateOrder(
             },
           ],
         },
-        Shipment: {
+        shipment: {
           create: {
             id: crypto.randomUUID(),
             status: 'PENDING',
@@ -146,7 +109,7 @@ export async function processCheckoutAndCreateOrder(
             product: true,
           },
         },
-        Payment: true,
+        payment: true,
         address: true,
         user: {
           select: {
@@ -172,7 +135,7 @@ export async function processCheckoutAndCreateOrder(
   }
 }
 
-// // Get all orders for the current user
+// Get all orders for the current user
 export async function getUserOrders() {
   try {
     const session = await validateSession()
@@ -193,8 +156,8 @@ export async function getUserOrders() {
             product: true,
           },
         },
-        Payment: true,
-        Shipment: true,
+        payment: true,
+        shipment: true,
         address: true,
         user: {
           select: {
@@ -240,7 +203,7 @@ export async function getOrderById(orderId: string) {
     const order = await prisma.order.findFirst({
       where: {
         id: orderId,
-        userId, // Ensure the order belongs to the current user
+        // Ensure the order belongs to the current user
       },
       include: {
         user: {
@@ -253,8 +216,8 @@ export async function getOrderById(orderId: string) {
             product: true,
           },
         },
-        Payment: true,
-        Shipment: true,
+        payment: true,
+        shipment: true,
         address: true,
       },
     })
@@ -284,41 +247,19 @@ export async function getOrderById(orderId: string) {
 // Update order status
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   try {
-    const session = await validateSession()
-    if (!session?.user) {
-      return {
-        success: false,
-        message: 'User not authenticated',
-      }
-    }
-
-    // Check if user is admin (only admins should update order status)
-    if (session.user.role !== 'ADMIN') {
-      return {
-        success: false,
-        message: 'Unauthorized to update order status',
-      }
-    }
-
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: { status },
     })
-    await prisma.shipment.update({
-      where: { orderId },
-      data: { status },
-    })
 
-    revalidatePath('/admin/orders')
-    revalidatePath(`/orders/${orderId}`)
-
+    revalidatePath('/dashboard/pesanan')
     return {
       success: true,
       message: 'Order status updated successfully',
       data: updatedOrder,
     }
   } catch (error) {
-    console.error('Error updating order status:', error)
+    console.error(`Error updating order status for ${orderId}:`, error)
     return {
       success: false,
       message: 'Failed to update order status',
@@ -327,145 +268,57 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   }
 }
 
-export async function updateOrderStatusShipped(orderId: string) {
-  try {
-    const session = await validateSession()
-    if (!session?.user) {
-      return {
-        success: false,
-        message: 'User not authenticated',
-      }
-    }
+// // Get all orders for the current user
+// export async function getUserOrders() {
+//   try {
+//     const session = await validateSession()
+//     if (!session?.user) {
+//       return {
+//         success: false,
+//         message: 'User not authenticated',
+//       }
+//     }
 
-    // Check if user is admin (only admins should update order status)
-    if (session.user.role !== 'ADMIN') {
-      return {
-        success: false,
-        message: 'Unauthorized to update order status',
-      }
-    }
+//     const userId = session.user.id
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: { status: OrderStatus.SHIPPED },
-    })
-    await prisma.shipment.update({
-      where: { orderId },
-      data: { status: OrderStatus.SHIPPED },
-    })
+//     const orders = await prisma.order.findMany({
+//       where: { userId },
+//       include: {
+//         items: {
+//           include: {
+//             product: true,
+//           },
+//         },
+//         payment: true,
+//         shipment: true,
+//         address: true,
+//         user: {
+//           select: {
+//             profile: {
+//               select: {
+//                 fullName: true,
+//               },
+//             },
+//           },
+//         },
+//       },
+//       orderBy: { createdAt: 'desc' },
+//     })
 
-    revalidatePath('/admin/orders')
-    revalidatePath(`/orders/${orderId}`)
-
-    return {
-      success: true,
-      message: 'Order status updated successfully',
-      data: updatedOrder,
-    }
-  } catch (error) {
-    console.error('Error updating order status:', error)
-    return {
-      success: false,
-      message: 'Failed to update order status',
-      error,
-    }
-  }
-}
-
-// Cancel an order
-export async function cancelOrder(orderId: string) {
-  try {
-    const session = await validateSession()
-    if (!session?.user) {
-      return {
-        success: false,
-        message: 'User not authenticated',
-      }
-    }
-
-    const userId = session.user.id
-
-    // Start a transaction
-    const result = await prisma.$transaction(async (tx) => {
-      // 1. Check if the order exists and belongs to the user
-      const order = await tx.order.findFirst({
-        where: {
-          id: orderId,
-          userId,
-        },
-        include: {
-          items: true,
-        },
-      })
-
-      if (!order) {
-        throw new Error(
-          'Order not found or does not belong to the current user'
-        )
-      }
-
-      // 2. Check if the order can be cancelled (only PENDING or PROCESSING orders)
-      if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
-        throw new Error(`Cannot cancel order with status: ${order.status}`)
-      }
-
-      // 3. Update order status to CANCELLED
-      const updatedOrder = await tx.order.update({
-        where: { id: orderId },
-        data: { status: OrderStatus.CANCELLED },
-      })
-
-      // 4. Update payment status to CANCELLED
-      await tx.payment.updateMany({
-        where: { orderId },
-        data: { status: 'CANCELLED' },
-      })
-
-      // 5. Update shipment status to CANCELLED
-      await tx.shipment.update({
-        where: { orderId },
-        data: { status: 'CANCELLED' },
-      })
-
-      // 6. Restore product stock
-      await Promise.all(
-        order.items.map(async (item) => {
-          const product = await tx.product.findUnique({
-            where: { id: item.productId },
-          })
-
-          if (product) {
-            await tx.product.update({
-              where: { id: item.productId },
-              data: { stock: product.stock + item.quantity },
-            })
-          }
-        })
-      )
-
-      return updatedOrder
-    })
-
-    revalidatePath('/orders')
-    revalidatePath(`/orders/${orderId}`)
-
-    return {
-      success: true,
-      message: 'Order cancelled successfully',
-      data: result,
-    }
-  } catch (error) {
-    console.error('Error cancelling order:', error)
-    return {
-      success: false,
-      message:
-        typeof error === 'object' && error !== null && 'message' in error
-          ? (error as Error).message
-          : 'Failed to cancel order',
-      error,
-    }
-  }
-}
+//     return {
+//       success: true,
+//       message: 'Orders retrieved successfully',
+//       data: orders,
+//     }
+//   } catch (error) {
+//     console.error('Error getting orders:', error)
+//     return {
+//       success: false,
+//       message: 'Failed to retrieve orders',
+//       error,
+//     }
+//   }
+// }
 
 // Get all orders (admin only)
 export async function getAllOrders() {
@@ -479,7 +332,7 @@ export async function getAllOrders() {
     }
 
     // Check if user is admin
-    if (session.user.role !== 'ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return {
         success: false,
         message: 'Unauthorized to access all orders',
@@ -498,8 +351,8 @@ export async function getAllOrders() {
             product: true,
           },
         },
-        Payment: true,
-        Shipment: true,
+        payment: true,
+        shipment: true,
         address: true,
       },
       orderBy: { createdAt: 'desc' },
@@ -532,7 +385,7 @@ export async function updatePaymentStatus(paymentId: string, status: string) {
     }
 
     // Check if user is admin (only admins should update payment status)
-    if (session.user.role !== 'ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return {
         success: false,
         message: 'Unauthorized to update payment status',
@@ -586,7 +439,7 @@ export async function updateShipment(
     }
 
     // Check if user is admin
-    if (session.user.role !== 'ADMIN') {
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
       return {
         success: false,
         message: 'Unauthorized to update shipment',
@@ -634,7 +487,6 @@ export async function updateShipment(
 }
 
 export async function updateOrderResi(orderId: string, receiptNumber: string) {
-  // ...implementasi seperti yang sudah dijelaskan sebelumnya...
   try {
     const session = await validateSession()
     if (!session?.user) {
@@ -644,29 +496,127 @@ export async function updateOrderResi(orderId: string, receiptNumber: string) {
       }
     }
 
-    // Check if user is admin
-    if (session.user.role !== 'ADMIN') {
-      return {
-        success: false,
-        message: 'Unauthorized to update order resi',
-      }
-    }
+    // Update shipment status
+    await prisma.shipment.updateMany({
+      where: { orderId },
+      data: {
+        status: 'SHIPPED',
+      },
+    })
 
-    const updatedOrder = await prisma.order.update({
+    // Update order status
+    const order = await prisma.order.update({
       where: { id: orderId },
-      data: { status: OrderStatus.SHIPPED },
+      data: {
+        status: OrderStatus.SHIPPED,
+      },
+      include: {
+        shipment: true,
+      },
     })
 
     return {
       success: true,
       message: 'Order resi updated successfully',
-      data: updatedOrder,
+      data: order,
     }
   } catch (error) {
     console.error('Error updating order resi:', error)
     return {
       success: false,
       message: 'Failed to update order resi',
+      error,
+    }
+  }
+}
+
+// Cancel order function
+export async function cancelOrder(orderId: string) {
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+      }
+    }
+
+    // Get order with items to restore stock
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: {
+          include: {
+            product: true,
+          },
+        },
+        payment: true,
+      },
+    })
+
+    if (!order) {
+      return {
+        success: false,
+        message: 'Order not found',
+      }
+    }
+
+    // Check if user owns this order
+    if (order.userId !== session.user.id) {
+      return {
+        success: false,
+        message: 'Unauthorized to cancel this order',
+      }
+    }
+
+    // Check if order can be cancelled (only PENDING orders)
+    if (order.status !== OrderStatus.PENDING) {
+      return {
+        success: false,
+        message: 'Order cannot be cancelled at this stage',
+      }
+    }
+
+    // Update order status to CANCELLED
+    await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: OrderStatus.CANCELLED,
+        updatedAt: new Date(),
+      },
+    })
+
+    // Update payment status to CANCELLED if exists
+    if (order.payment && order.payment.length > 0) {
+      await prisma.payment.updateMany({
+        where: { orderId },
+        data: {
+          status: 'CANCELLED',
+        },
+      })
+    }
+
+    // Restore product stock
+    for (const item of order.items) {
+      await prisma.product.update({
+        where: { id: item.productId },
+        data: {
+          stock: {
+            increment: item.quantity,
+          },
+        },
+      })
+    }
+
+    return {
+      success: true,
+      message: 'Order cancelled successfully',
+    }
+  } catch (error) {
+    console.error('Error cancelling order:', error)
+    return {
+      success: false,
+      message: 'Failed to cancel order',
       error,
     }
   }

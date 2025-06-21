@@ -16,11 +16,14 @@ export default async function PaymentPage({
 
   const cartData = await getCartItems()
 
+  // Await searchParams before using its properties
+  const resolvedSearchParams = await searchParams
+
   // Filter cart items based on selected items
-  if (searchParams.items && cartData.success) {
-    const selectedItemIds = Array.isArray(searchParams.items)
-      ? searchParams.items
-      : (searchParams.items as string).split(',')
+  if (resolvedSearchParams.items && cartData.success) {
+    const selectedItemIds = Array.isArray(resolvedSearchParams.items)
+      ? resolvedSearchParams.items
+      : (resolvedSearchParams.items as string).split(',')
     cartData.data = cartData.data.filter((item: any) =>
       selectedItemIds.includes(item.id.toString())
     )
@@ -33,9 +36,23 @@ export default async function PaymentPage({
     const ppn = Math.round(subtotal * 0.11)
     const totalAmount = subtotal + ppn
 
-    cartData.subtotal = subtotal
-    cartData.ppn = ppn
-    cartData.totalAmount = totalAmount
+    // Add calculated values to cartData object
+    const enhancedCartData = {
+      ...cartData,
+      subtotal,
+      ppn,
+      totalAmount,
+    }
+
+    return (
+      <div className=''>
+        <PaymentForm
+          cookies={session}
+          initialCartData={enhancedCartData}
+          customerProfile={session?.user?.profile || null}
+        />
+      </div>
+    )
   }
 
   return (

@@ -37,15 +37,21 @@ export function BestSellingProducts({ products }: BestSellingProductsProps) {
             <TableRow key={index}>
               <TableCell className='font-medium'>{product.name}</TableCell>
               <TableCell className='text-right'>
-                {new Intl.NumberFormat('id-ID', {
-                  style: 'currency',
-                  currency: 'IDR',
-                  minimumFractionDigits: 0,
-                  maximumFractionDigits: 0,
-                }).format(product.price)}
+                {isNaN(product.price)
+                  ? '-'
+                  : new Intl.NumberFormat('id-ID', {
+                      style: 'currency',
+                      currency: 'IDR',
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 0,
+                    }).format(product.price)}
               </TableCell>
-              <TableCell className='text-right'>{product.stock}</TableCell>
-              <TableCell className='text-right'>{product.totalSold}</TableCell>
+              <TableCell className='text-right'>
+                {isNaN(product.stock) ? '-' : product.stock}
+              </TableCell>
+              <TableCell className='text-right'>
+                {isNaN(product.totalSold) ? '-' : product.totalSold}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

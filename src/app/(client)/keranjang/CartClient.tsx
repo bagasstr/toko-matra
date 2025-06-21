@@ -11,7 +11,16 @@ import { useCartStore } from '@/hooks/zustandStore'
 import { Skeleton } from '@/components/ui/skeleton'
 import { validateSession } from '@/app/actions/session'
 import { generateCartPDF } from '@/lib/pdfCartFormatter'
-import { PdfCartButton } from '../components/DownloadPdfButton'
+import dynamic from 'next/dynamic'
+
+// Dynamic import untuk menghindari SSR error
+const PdfCartButton = dynamic(
+  () =>
+    import('../components/DownloadPdfButton').then((mod) => ({
+      default: mod.PdfCartButton,
+    })),
+  { ssr: false }
+)
 
 interface CartClientProps {
   initialCartData: any
@@ -36,6 +45,7 @@ const CartClient = ({
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<string[]>([])
+  const [customerInfo, setCustomerInfo] = useState<any>(null)
 
   const selectedProduct = cart.filter((item: any) =>
     selectedItems.includes(item.id)
@@ -57,6 +67,32 @@ const CartClient = ({
       setLoading(false)
     }
   }, [initialCartData])
+
+  // Get customer information from session
+  useEffect(() => {
+    const getCustomerInfo = async () => {
+      try {
+        const session = await validateSession()
+        if (session?.user) {
+          const customerData = {
+            name: session.user.profile?.fullName || '-',
+            email: session.user.email || '-',
+            phone: session.user.profile?.phoneNumber || '-',
+            address: session.user.address?.[0]
+              ? `${session.user.address[0].address || '-'}, ${
+                  session.user.address[0].city || '-'
+                }, ${session.user.address[0].province || '-'}`
+              : '-',
+            company: session.user.profile?.companyName || '-',
+          }
+          setCustomerInfo(customerData)
+        }
+      } catch (error) {
+        console.error('Error getting customer info:', error)
+      }
+    }
+    getCustomerInfo()
+  }, [])
 
   // Sync database cart with state if state is empty
   useEffect(() => {
@@ -146,14 +182,35 @@ const CartClient = ({
   }
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     try {
-      const result = await updateCartItemQuantity(itemId, newQuantity)
+      // Validate quantity parameter
+      if (
+        typeof newQuantity !== 'number' ||
+        isNaN(newQuantity) ||
+        newQuantity < 0
+      ) {
+        console.error('Invalid quantity parameter:', newQuantity)
+        return
+      }
+
+      // Ensure newQuantity is an integer
+      const validQuantity = Math.floor(newQuantity)
+      if (validQuantity !== newQuantity) {
+        console.error('Quantity must be an integer:', newQuantity)
+        return
+      }
+
+      console.log(`Updating quantity for item ${itemId} to ${validQuantity}`)
+
+      const result = await updateCartItemQuantity(itemId, validQuantity)
       if (result.success) {
         setCartData((prev) => ({
           ...prev,
           data: prev.data.map((item) =>
-            item.id === itemId ? { ...item, quantity: newQuantity } : item
+            item.id === itemId ? { ...item, quantity: validQuantity } : item
           ),
         }))
+      } else {
+        console.error('Failed to update quantity:', result.error)
       }
     } catch (error) {
       console.error('Error updating quantity:', error)
@@ -234,7 +291,8 @@ const CartClient = ({
     calculateSubtotal(),
     calculatePPN(),
     calculateTotal(),
-    logoBase64
+    logoBase64,
+    customerInfo
   )
 
   return (
@@ -264,13 +322,27 @@ const CartClient = ({
                     size='icon'
                     variant='outline'
                     className='h-8 w-8'
-                    disabled={item.quantity === item.product.minOrder}
-                    onClick={() =>
-                      handleUpdateQuantity(
-                        item.id,
-                        Math.max(item.product.minOrder, item.quantity - 1)
+                    disabled={item.quantity <= (item.product.minOrder || 1)}
+                    onClick={() => {
+                      const minOrder = item.product.minOrder || 1
+                      const multiOrder = item.product.multiOrder || 1
+                      const newQuantity = Math.max(
+                        minOrder,
+                        item.quantity - multiOrder
                       )
-                    }>
+
+                      console.log('Decrement button clicked:', {
+                        itemId: item.id,
+                        currentQuantity: item.quantity,
+                        minOrder: item.product.minOrder,
+                        multiOrder: item.product.multiOrder,
+                        calculatedMinOrder: minOrder,
+                        calculatedMultiOrder: multiOrder,
+                        newQuantity: newQuantity,
+                      })
+
+                      handleUpdateQuantity(item.id, newQuantity)
+                    }}>
                     -
                   </Button>
                   <span className='text-sm'>{item.quantity}</span>
@@ -278,9 +350,11 @@ const CartClient = ({
                     size='icon'
                     variant='outline'
                     className='h-8 w-8'
-                    onClick={() =>
-                      handleUpdateQuantity(item.id, item.quantity + 1)
-                    }>
+                    onClick={() => {
+                      const multiOrder = item.product.multiOrder || 1
+                      const newQuantity = item.quantity + multiOrder
+                      handleUpdateQuantity(item.id, newQuantity)
+                    }}>
                     +
                   </Button>
                 </div>
@@ -335,22 +409,40 @@ const CartClient = ({
                       <Button
                         size='icon'
                         variant='outline'
-                        disabled={item.quantity === item.product.minOrder}
-                        onClick={() =>
-                          handleUpdateQuantity(
-                            item.id,
-                            Math.max(item.product.minOrder, item.quantity - 1)
+                        disabled={item.quantity <= (item.product.minOrder || 1)}
+                        onClick={() => {
+                          const minOrder = item.product.minOrder || 1
+                          const multiOrder = item.product.multiOrder || 1
+                          const newQuantity = Math.max(
+                            minOrder,
+                            item.quantity - multiOrder
                           )
-                        }>
+
+                          console.log('Decrement button clicked:', {
+                            itemId: item.id,
+                            currentQuantity: item.quantity,
+                            minOrder: item.product.minOrder,
+                            multiOrder: item.product.multiOrder,
+                            calculatedMinOrder: minOrder,
+                            calculatedMultiOrder: multiOrder,
+                            newQuantity: newQuantity,
+                          })
+
+                          handleUpdateQuantity(item.id, newQuantity)
+                        }}>
                         -
                       </Button>
-                      <span>{item.quantity}</span>
+                      <span>
+                        {item.quantity} / {item.product.unit}
+                      </span>
                       <Button
                         size='icon'
                         variant='outline'
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity + 1)
-                        }>
+                        onClick={() => {
+                          const multiOrder = item.product.multiOrder || 1
+                          const newQuantity = item.quantity + multiOrder
+                          handleUpdateQuantity(item.id, newQuantity)
+                        }}>
                         +
                       </Button>
                     </div>
@@ -385,7 +477,12 @@ const CartClient = ({
               <div className='flex justify-between items-center'>
                 <span>Ringkasan Belanja</span>
                 <PdfCartButton
-                  htmlContent={htmlContent}
+                  items={selectedProduct}
+                  subtotal={calculateSubtotal()}
+                  ppn={calculatePPN()}
+                  total={calculateTotal()}
+                  logoBase64={logoBase64}
+                  customerInfo={customerInfo}
                   disabled={selectedItems.length === 0}
                 />
               </div>

@@ -94,7 +94,7 @@ export async function createDeliveryNote(orderId: string) {
             product: true,
           },
         },
-        Payment: true,
+        payment: true,
       },
     })
 
@@ -103,7 +103,7 @@ export async function createDeliveryNote(orderId: string) {
     }
 
     // Check if order is paid
-    const isPaid = order.Payment.some((payment) => payment.status === 'PAID')
+    const isPaid = order.payment.some((payment) => payment.status === 'PAID')
 
     if (!isPaid) {
       return { error: 'Order is not paid yet' }

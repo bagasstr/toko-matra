@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs'
 import { generateCustomId } from './src/lib/helpper'
 async function seedAdmin() {
   const existingAdmin = await prisma.user.findFirst({
-    where: { profile: { email: 'admin@gmail.com' } },
+    where: { profile: { email: 'matra@gmail.com' } },
   })
 
   if (!existingAdmin) {
@@ -11,16 +11,16 @@ async function seedAdmin() {
       const { id } = await tx.user.create({
         data: {
           id: generateCustomId('usr'),
-          email: 'admin@gmail.com',
+          email: 'matra@gmail.com',
           emailVerified: new Date(),
-          password: await bcrypt.hash('admin123', 10),
-          typeUser: '',
-          role: 'ADMIN',
+          password: await bcrypt.hash('matrakosala123', 10),
+          typeUser: 'perusahaan',
+          role: 'SUPER_ADMIN',
           profile: {
             create: {
               id: generateCustomId('prf'),
-              email: 'admin@gmail.com',
-              fullName: 'Admin',
+              email: 'matra@gmail.com',
+              fullName: 'Matra',
               phoneNumber: null,
             },
           },
@@ -32,7 +32,7 @@ async function seedAdmin() {
           userId: id,
           type: 'credentials',
           provider: 'credentials',
-          providerAccountId: 'admin@gmail.com',
+          providerAccountId: 'matra@gmail.com',
         },
       })
       return { id }

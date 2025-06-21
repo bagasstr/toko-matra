@@ -7,6 +7,8 @@ import {
   Package,
   Truck,
   Copy,
+  Clock,
+  Loader2,
 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -23,6 +25,8 @@ import { ButtonCopy, ButtonCancelTrx } from '@/components/ButtonCopy'
 import { clearCartAfterOrder } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { cn } from '@/lib/utils'
+import { useQuery } from '@tanstack/react-query'
+import { createNotification } from '@/app/actions/notificationAction'
 
 interface OrderPageProps {
   params: {
@@ -30,120 +34,263 @@ interface OrderPageProps {
   }
 }
 
-export default function OrderPage() {
-  const router = useRouter()
-  const param = useParams()
-  const [paymentResult, setPaymentResult] = useState<any>(null)
-  const [transactionResult, setTransactionResult] = useState<any>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const { fetchCart } = useCartStore()
+interface CountdownProps {
+  expiryTime: string
+}
 
-  console.log(param)
+function CountdownTimer({ expiryTime }: CountdownProps) {
+  const [timeLeft, setTimeLeft] = useState({
+    hours: 0,
+    minutes: 0,
+    seconds: 0,
+  })
+
   useEffect(() => {
-    async function fetchOrderDetails() {
-      try {
-        // Fetch payment details
-        const paymentRes = await getPaymentByOrderId(param.id as string)
+    const calculateTimeLeft = () => {
+      const expiry = new Date(expiryTime).getTime()
+      const now = new Date().getTime()
+      const difference = expiry - now
 
-        if (!paymentRes.success || !paymentRes.data) {
-          setError(paymentRes.message || 'Gagal memuat detail pembayaran')
-          setLoading(false)
-          return
-        }
+      if (difference <= 0) {
+        return { hours: 0, minutes: 0, seconds: 0 }
+      }
 
-        setPaymentResult(paymentRes.data)
-
-        let transactionRes = null
-        // Check transaction status if we have a transactionId
-        if (paymentRes.data.transactionId) {
-          transactionRes = await checkMidtransTransaction(
-            paymentRes.data.transactionId
-          )
-
-          if (!transactionRes.success) {
-            setError(
-              transactionRes.message || 'Gagal memeriksa status transaksi'
-            )
-          } else {
-            setTransactionResult(transactionRes.data)
-          }
-        }
-
-        // Check if payment is successful based on transaction status
-        const isPaymentSuccessful =
-          paymentRes.data.status === 'SUCCESS' ||
-          transactionRes?.data?.statusResponse?.data?.status === 'SETTLEMENT' ||
-          transactionRes?.data?.statusResponse?.data?.status === 'SUCCESS'
-
-        if (isPaymentSuccessful) {
-          try {
-            // Clear cart items for this order
-            await clearCartAfterOrder(paymentRes.data.order.id)
-
-            // Refresh cart state
-            await fetchCart()
-
-            // Show success toast
-            toast.success('Pesanan berhasil dibayar dan keranjang diperbarui')
-
-            // Redirect to success page
-            router.replace(
-              `/payment/success?order_id=${paymentRes.data.transactionId}`
-            )
-          } catch (clearError) {
-            console.error('Error clearing cart:', clearError)
-            toast.error('Gagal membersihkan keranjang')
-          }
-          return
-        }
-
-        setLoading(false)
-      } catch (err) {
-        setError('Terjadi kesalahan saat memuat halaman')
-        setLoading(false)
+      return {
+        hours: Math.floor(difference / (1000 * 60 * 60)),
+        minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+        seconds: Math.floor((difference % (1000 * 60)) / 1000),
       }
     }
 
-    fetchOrderDetails()
-  }, [param.id, router, fetchCart])
+    // Update immediately
+    setTimeLeft(calculateTimeLeft())
 
-  // Loading state
-  if (loading) {
+    // Update every second
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft())
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [expiryTime])
+
+  return (
+    <div className='flex items-center gap-2 text-sm text-red-600'>
+      <Clock className='h-4 w-4' />
+      <span>
+        {String(timeLeft.hours).padStart(2, '0')}:
+        {String(timeLeft.minutes).padStart(2, '0')}:
+        {String(timeLeft.seconds).padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
+
+interface OrderData {
+  payment: {
+    id: string
+    status: string
+    amount: number
+    paymentMethod: string
+    bank?: string
+    vaNumber?: string
+    transactionId?: string
+    order: {
+      id: string
+      status: string
+      totalAmount: number
+      createdAt: string
+      userId: string
+      items: {
+        id: string
+        quantity: number
+        price: number
+        product: {
+          name: string
+          images: string[]
+        }
+      }[]
+      address: {
+        fullName: string
+        phoneNumber: string
+        address: string
+        city: string
+        postalCode: string
+      }
+    }
+  }
+  transaction?: {
+    statusResponse?: {
+      data?: {
+        status: string
+        order_id?: string
+        expiry_time?: string
+      }
+    }
+  }
+}
+
+export default function OrderPage() {
+  const router = useRouter()
+  const param = useParams()
+  const { fetchCart } = useCartStore()
+
+  const {
+    data: orderData,
+    isLoading,
+    error,
+  } = useQuery<OrderData, Error>({
+    queryKey: ['orderDetails', param.id],
+    queryFn: async () => {
+      const paymentRes = await getPaymentByOrderId(param.id.toString())
+      if (!paymentRes.success || !paymentRes.data) {
+        throw new Error(paymentRes.message || 'Gagal memuat detail pembayaran')
+      }
+
+      let transactionRes = null
+      if (paymentRes.data.transactionId) {
+        transactionRes = await checkMidtransTransaction(
+          paymentRes.data.transactionId
+        )
+        if (!transactionRes.success) {
+          throw new Error(
+            transactionRes.message || 'Gagal memeriksa status transaksi'
+          )
+        }
+      }
+
+      return {
+        payment: paymentRes.data,
+        transaction: transactionRes?.data,
+      }
+    },
+    refetchInterval: 5000,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchIntervalInBackground: true,
+  })
+
+  useEffect(() => {
+    const handleSuccessPayment = async () => {
+      if (orderData?.payment?.status === 'SUCCESS') {
+        try {
+          // Clear cart items that have been purchased
+          await clearCartAfterOrder(orderData.payment.order.id)
+          // Refresh cart data in the store
+          await fetchCart()
+
+          // Create notifications
+          await createNotification(
+            orderData.payment.order.userId,
+            'Pembayaran Terverifikasi',
+            'Pembayaran kamu sudah kami terima. Terima kasih!',
+            false
+          )
+
+          await createNotification(
+            orderData.payment.order.userId,
+            'Pesanan Dikonfirmasi',
+            `Pesanan #${orderData.payment.order.id} telah dikonfirmasi dan sedang diproses.`,
+            false
+          )
+
+          // Redirect to success page with transaction ID
+          const transactionId = orderData.payment.transactionId
+          if (transactionId) {
+            router.push(`/payment/success?order_id=${transactionId}`)
+          }
+        } catch (error) {
+          console.error('Error handling success payment:', error)
+        }
+      }
+    }
+
+    handleSuccessPayment()
+  }, [orderData, router, fetchCart])
+
+  // Add effect to monitor order status changes
+  useEffect(() => {
+    const previousStatus = orderData?.payment?.order?.status
+    const currentStatus = orderData?.payment?.order?.status
+
+    if (
+      previousStatus !== currentStatus &&
+      currentStatus &&
+      orderData?.payment?.order?.userId
+    ) {
+      const createStatusNotification = async () => {
+        let title = ''
+        let message = ''
+
+        switch (currentStatus) {
+          case 'CONFIRMED':
+            title = 'Pesanan Diproses'
+            message = `Pesanan #${orderData.payment.order.id} sedang diproses oleh tim kami.`
+            break
+          case 'SHIPPED':
+            title = 'Pesanan Dikirim'
+            message = `Pesanan #${orderData.payment.order.id} sedang dalam perjalanan.`
+            break
+          case 'DELIVERED':
+            title = 'Pesanan Selesai'
+            message = `Pesanan #${orderData.payment.order.id} telah selesai. Terima kasih telah berbelanja!`
+            break
+          case 'CANCELLED':
+            title = 'Pesanan Dibatalkan'
+            message = `Pesanan #${orderData.payment.order.id} telah dibatalkan.`
+            break
+        }
+
+        if (title && message) {
+          try {
+            await createNotification(
+              orderData.payment.order.userId,
+              title,
+              message,
+              false
+            )
+          } catch (error) {
+            console.error('Error creating status notification:', error)
+          }
+        }
+      }
+
+      createStatusNotification()
+    }
+  }, [orderData?.payment?.order?.status])
+
+  console.log('orderData', orderData)
+  if (isLoading) {
     return (
-      <div className='max-w-5xl mx-auto py-10 px-4'>
-        <div className='text-center text-gray-600'>
-          Memuat detail pesanan...
+      <div className='flex min-h-[400px] items-center justify-center'>
+        <div className='text-center'>
+          <div className='mb-4'>
+            <Loader2 className='mx-auto h-8 w-8 animate-spin text-primary' />
+          </div>
+          <p className='text-gray-600'>Memuat detail pesanan...</p>
         </div>
       </div>
     )
   }
 
-  // Error state
-  if (error) {
+  if (error || !orderData) {
     return (
-      <div className='max-w-5xl mx-auto py-10 px-4'>
-        <div className='bg-red-50 text-red-800 p-4 rounded-md flex items-center gap-2'>
-          <AlertCircle className='w-5 h-5' />
-          <p>{error}</p>
+      <div className='flex min-h-[400px] items-center justify-center'>
+        <div className='text-center'>
+          <div className='mb-4'>
+            <AlertCircle className='mx-auto h-8 w-8 text-destructive' />
+          </div>
+          <p className='text-gray-600'>
+            {error instanceof Error
+              ? error.message
+              : 'Terjadi kesalahan saat memuat detail pesanan'}
+          </p>
         </div>
       </div>
     )
   }
 
-  // If no payment result, show error
-  if (!paymentResult) {
-    return (
-      <div className='max-w-5xl mx-auto py-10 px-4'>
-        <div className='bg-red-50 text-red-800 p-4 rounded-md'>
-          Tidak dapat memuat detail pesanan
-        </div>
-      </div>
-    )
-  }
-
-  const order = paymentResult.order
-  const payment = paymentResult
+  const { payment, transaction } = orderData
+  const order = payment.order
 
   return (
     <div className='min-h-screen bg-gray-50'>
@@ -282,13 +429,12 @@ export default function OrderPage() {
                     <span className='text-gray-600'>Subtotal</span>
                     <span>
                       Rp{' '}
-                      {(
-                        order.subtotalAmount ??
-                        order.items.reduce(
+                      {order.items
+                        .reduce(
                           (total, item) => total + item.price * item.quantity,
                           0
                         )
-                      ).toLocaleString('id-ID')}
+                        .toLocaleString('id-ID')}
                     </span>
                   </div>
                   <div className='flex justify-between'>
@@ -296,11 +442,10 @@ export default function OrderPage() {
                     <span>
                       Rp{' '}
                       {Math.round(
-                        (order.subtotalAmount ??
-                          order.items.reduce(
-                            (total, item) => total + item.price * item.quantity,
-                            0
-                          )) * 0.11
+                        order.items.reduce(
+                          (total, item) => total + item.price * item.quantity,
+                          0
+                        ) * 0.11
                       ).toLocaleString('id-ID')}
                     </span>
                   </div>
@@ -322,19 +467,12 @@ export default function OrderPage() {
               <CardContent>
                 <div className='space-y-2'>
                   <div className='font-semibold text-gray-900'>
-                    {order.address.recipientName}
-                  </div>
-                  <div className='inline-flex items-center px-2 py-1 rounded-md bg-blue-100 text-blue-800 text-xs font-medium'>
-                    {order.address.labelAddress}
+                    {order.address.fullName}
                   </div>
                   <div className='text-gray-700 leading-relaxed'>
                     <div>{order.address.address}</div>
                     <div>
-                      {order.address.village}, {order.address.district}
-                    </div>
-                    <div>
-                      {order.address.city}, {order.address.province}{' '}
-                      {order.address.postalCode}
+                      {order.address.city}, {order.address.postalCode}
                     </div>
                   </div>
                 </div>
@@ -413,30 +551,36 @@ export default function OrderPage() {
                       </div>
                     </div>
 
-                    {transactionResult?.statusResponse?.data?.status ===
-                      'PENDING' &&
-                      transactionResult.statusResponse.data.expiry_time && (
-                        <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
-                          <div className='text-sm font-medium text-red-800 mb-1'>
-                            Batas Pembayaran:
-                          </div>
-                          <div className='text-sm font-semibold text-red-600'>
-                            {new Date(
-                              transactionResult.statusResponse.data.expiry_time
+                    {payment.status === 'PENDING' && (
+                      <div className='bg-red-50 border border-red-200 rounded-lg p-3'>
+                        <div className='text-sm font-medium text-red-800 mb-1'>
+                          Batas Pembayaran:
+                        </div>
+                        <div className='text-sm font-semibold text-red-600 mb-2'>
+                          {transaction?.statusResponse?.data.expiry_time &&
+                            new Date(
+                              transaction.statusResponse.data.expiry_time
                             ).toLocaleString('id-ID', {
                               dateStyle: 'medium',
                               timeStyle: 'short',
                             })}
-                          </div>
                         </div>
-                      )}
+                        {transaction?.statusResponse?.data.expiry_time && (
+                          <CountdownTimer
+                            expiryTime={
+                              transaction.statusResponse.data.expiry_time
+                            }
+                          />
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {payment.status === 'PENDING' && (
                     <div className='pt-4 border-t'>
                       <ButtonCancelTrx
                         transactionId={
-                          transactionResult?.statusResponse?.data?.order_id
+                          transaction?.statusResponse?.data?.order_id
                         }
                       />
                     </div>

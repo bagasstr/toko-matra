@@ -10,7 +10,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { Suspense, useMemo, useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, Heart, Share2, X } from 'lucide-react'
-import { addToCart } from '@/app/actions/cartAction'
+import { addToCart, getCartItems } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { useQuery } from '@tanstack/react-query'
 import { validateSession } from '@/app/actions/session'
@@ -591,10 +591,32 @@ function ProductDetailPage({
         return
       }
 
+      // Check if cart has existing data
+      const cartResult = await getCartItems()
+      const hasCartData =
+        cartResult.success && cartResult.data && cartResult.data.length > 0
+
+      // Determine quantity to add based on cart status
+      let quantityToAdd: number
+      if (hasCartData) {
+        // If cart has data, add with multiOrder
+        quantityToAdd = safeProduct.multiOrder
+      } else {
+        // If cart is empty, add with minOrder
+        quantityToAdd = safeProduct.minOrder
+      }
+
+      console.log('Buy now - adding to cart:', {
+        hasCartData,
+        quantityToAdd,
+        minOrder: safeProduct.minOrder,
+        multiOrder: safeProduct.multiOrder,
+      })
+
       const result = await addToCart({
         userId: session.user.id,
         productId: safeProduct.id,
-        quantity: calculateActualQuantity(quantity),
+        quantity: quantityToAdd,
       })
 
       if (result.success) {
@@ -608,7 +630,7 @@ function ProductDetailPage({
             minOrder: safeProduct.minOrder,
             unit: safeProduct.unit,
           },
-          quantity: calculateActualQuantity(quantity),
+          quantity: quantityToAdd,
         })
 
         // Navigate to checkout page
@@ -652,10 +674,32 @@ function ProductDetailPage({
         return
       }
 
+      // Check if cart has existing data
+      const cartResult = await getCartItems()
+      const hasCartData =
+        cartResult.success && cartResult.data && cartResult.data.length > 0
+
+      // Determine quantity to add based on cart status
+      let quantityToAdd: number
+      if (hasCartData) {
+        // If cart has data, add with multiOrder
+        quantityToAdd = safeProduct.multiOrder
+      } else {
+        // If cart is empty, add with minOrder
+        quantityToAdd = safeProduct.minOrder
+      }
+
+      console.log('Adding to cart:', {
+        hasCartData,
+        quantityToAdd,
+        minOrder: safeProduct.minOrder,
+        multiOrder: safeProduct.multiOrder,
+      })
+
       const result = await addToCart({
         userId: session.user.id,
         productId: safeProduct.id,
-        quantity: calculateActualQuantity(quantity),
+        quantity: quantityToAdd,
       })
 
       if (result.success) {
@@ -669,10 +713,12 @@ function ProductDetailPage({
             minOrder: safeProduct.minOrder,
             unit: safeProduct.unit,
           },
-          quantity: calculateActualQuantity(quantity),
+          quantity: quantityToAdd,
         })
 
         await fetchCart()
+
+        toast.success('Produk berhasil ditambahkan ke keranjang')
       } else {
         toast.error('Gagal menambahkan produk ke keranjang')
       }
@@ -1358,7 +1404,7 @@ function ProductDetailPage({
             </div>
             <div className='space-y-2'>
               <h4 className='text-base font-semibold mb-4'>Deskripsi</h4>
-              <p className='text-sm text-muted-foreground line-clamp-1'>
+              <p className='text-sm text-muted-foreground whitespace-pre-line'>
                 {safeProduct.description}
               </p>
             </div>

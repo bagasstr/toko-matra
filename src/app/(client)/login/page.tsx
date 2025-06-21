@@ -133,7 +133,7 @@ const LoginPage = () => {
           <div className='text-center text-sm text-gray-500 mt-2'>
             Lupa password?{' '}
             <Link
-              href='/lupapassword'
+              href='/lupa-password'
               className='text-blue-600 hover:underline'>
               Klik disini
             </Link>

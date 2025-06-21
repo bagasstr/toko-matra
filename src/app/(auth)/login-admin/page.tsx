@@ -8,17 +8,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { useModalLogin, useRefresh } from '@/hooks/zustandStore'
 import Link from 'next/link'
-import { X } from 'lucide-react'
+import { X, Loader2 } from 'lucide-react'
 import { z } from 'zod'
 import { cn } from '@/lib/utils'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { toast } from 'sonner'
 
 type LoginInput = z.infer<typeof loginSchema>
 
 const LoginAdmin = () => {
-  const [formError, setFormError] = useState<string | null>(null)
   const router = useRouter()
 
   const {
@@ -30,8 +30,6 @@ const LoginAdmin = () => {
   })
 
   const onSubmit = async (data: LoginInput) => {
-    setFormError(null)
-
     const formData = new FormData()
     formData.append('email', data.email)
     formData.append('password', data.password)
@@ -39,9 +37,11 @@ const LoginAdmin = () => {
     const result = await login(formData)
 
     if (result?.success) {
+      toast.success('Login berhasil!')
       router.push('/dashboard')
     } else {
-      router.push('/login-admin') // Navigasi ke halaman utama
+      // Tampilkan error dari server
+      toast.error(result?.error || 'Terjadi kesalahan saat login')
     }
   }
 
@@ -54,7 +54,7 @@ const LoginAdmin = () => {
       />
       <div
         className={cn(
-          'absolute top-1/2 left-0 right-0 z-50 w-[90%] mx-auto -translate-y-1/2 border p-4 rounded-md bg-background shadow'
+          'absolute top-1/2 left-0 right-0 z-50 w-[25%] mx-auto -translate-y-1/2 border p-4 rounded-md bg-background shadow'
         )}>
         <div className='mb-8'>
           <span className='text-2xl font-semibold text-center'>
@@ -78,10 +78,15 @@ const LoginAdmin = () => {
             )}
           </div>
 
-          {formError && <p className='text-sm text-red-500'>{formError}</p>}
-
           <Button type='submit' className='w-full mt-4' disabled={isSubmitting}>
-            {isSubmitting ? 'Memproses...' : 'Masuk'}
+            {isSubmitting ? (
+              <>
+                <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                Memproses...
+              </>
+            ) : (
+              'Masuk'
+            )}
           </Button>
         </form>
       </div>

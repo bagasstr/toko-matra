@@ -10,8 +10,6 @@
     # Copy entire project
     COPY . .
     
-
-   
     # Generate Prisma Client
     RUN npx prisma generate
     
@@ -40,6 +38,7 @@
     COPY --from=builder /app/tsconfig.seed.json ./
     COPY --from=builder /app/tsconfig.json ./
     COPY --from=builder /app/dist ./dist
+    
 
     # Expose the port
     EXPOSE 3000

@@ -1,12 +1,32 @@
+import { existsSync } from 'fs'
 import type { NextConfig } from 'next'
+import dotenv from 'dotenv'
+import path from 'path'
+
+const __dirname = path.resolve()
+const envFile = `.env || 'development'}`
+const envPath = path.join(__dirname, envFile)
+if (existsSync(envPath)) {
+  dotenv.config({ path: envPath })
+} else {
+  console.error(`.env`)
+}
 
 const nextConfig: NextConfig = {
   /* config options here */
+
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
   images: {
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'toko.matrakosala.com',
       },
     ],
   },

@@ -6,27 +6,91 @@ import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { getCartItems } from '@/app/actions/cartAction'
-import { useQuery } from '@tanstack/react-query'
+import { getNotifications } from '@/app/actions/notificationAction'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 
 interface NavbarActionsProps {
   userId?: string
 }
 
 export function NavbarActions({ userId }: NavbarActionsProps) {
-  const { data: cartData } = useQuery({
+  const queryClient = useQueryClient()
+  const [cartBadgeCount, setCartBadgeCount] = useState(0)
+
+  const { data: cartData, refetch } = useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
-      const { data } = await getCartItems()
-      return data || []
+      const response = await getCartItems()
+      return response.success ? response.data || [] : []
     },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 5000, // Refetch every 5 seconds
+    refetchInterval: 2000, // Poll every 2 seconds for real-time updates
     staleTime: 0, // Consider data stale immediately
+    gcTime: 0, // Don't cache the data
   })
 
-  const items = cartData || []
-  const uniqueProductCount = items.length
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const response = await getNotifications()
+      return response.notifications || []
+    },
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    refetchInterval: 5000, // Poll every 5 seconds for notifications
+    staleTime: 0,
+    gcTime: 0,
+  })
+
+  // Calculate badge count from cart data (converted from total quantity)
+  const totalQuantity = (cartData || []).reduce((total, item) => {
+    return total + (item?.quantity || 0)
+  }, 0)
+
+  // Convert quantity to badge count: 50 = 1, 60 = 2, 70 = 3, etc.
+  const calculatedBadgeCount =
+    totalQuantity >= 50 ? Math.floor((totalQuantity - 50) / 10) + 1 : 0
+
+  // Calculate unread notifications count
+  const unreadNotifications =
+    notificationsData?.filter((n) => !n.isRead).length || 0
+
+  // Update badge count whenever cart data changes
+  useEffect(() => {
+    setCartBadgeCount(calculatedBadgeCount)
+  }, [calculatedBadgeCount])
+
+  // Debug logging
+  console.log('=== Cart Badge Debug ===')
+  console.log('Cart data in navbar:', cartData)
+  console.log('Total quantity:', totalQuantity)
+  console.log('Calculated badge count:', calculatedBadgeCount)
+  console.log('Final badge count:', cartBadgeCount)
+  console.log('========================')
+
+  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
+    // Validate quantity parameter
+    if (
+      typeof newQuantity !== 'number' ||
+      isNaN(newQuantity) ||
+      newQuantity < 0
+    ) {
+      console.error('Invalid quantity parameter:', newQuantity)
+      return
+    }
+
+    // Ensure newQuantity is an integer
+    const validQuantity = Math.floor(newQuantity)
+    if (validQuantity !== newQuantity) {
+      console.error('Quantity must be an integer:', newQuantity)
+      return
+    }
+
+    console.log(`Updating quantity for item ${itemId} to ${validQuantity}`)
+    // ... rest of the function
+  }
 
   return (
     <>
@@ -46,20 +110,27 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
 
       {/* User Actions */}
       <div className='flex items-center gap-2 xl:gap-4 shrink-0'>
-        <Button size='icon' variant='ghost' className=''>
-          <Link href='/notifikasi'>
+        <Link href='/notifikasi'>
+          <Button size='icon' variant='ghost' className='relative'>
             <Bell size={20} className='text-foreground' />
-          </Link>
-        </Button>
-        {items ? (
+            {unreadNotifications > 0 && (
+              <Badge
+                variant='destructive'
+                className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
+                {unreadNotifications > 99 ? '99+' : unreadNotifications}
+              </Badge>
+            )}
+          </Button>
+        </Link>
+        {cartData ? (
           <Link href='/keranjang'>
             <Button size='icon' variant='ghost' className='relative'>
               <ShoppingCart size={20} className='text-foreground' />
-              {items.length > 0 && (
+              {cartBadgeCount > 0 && (
                 <Badge
                   variant='default'
-                  className='absolute -top-1 -right-1 h-4 w-4 flex items-center justify-center p-0'>
-                  {uniqueProductCount}
+                  className='absolute -top-1 -right-1 h-5 min-w-[1.25rem] flex items-center justify-center p-1 text-xs'>
+                  {cartBadgeCount}
                 </Badge>
               )}
             </Button>

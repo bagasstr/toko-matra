@@ -1,11 +1,69 @@
+'use client'
+
 import React from 'react'
 import { Bell } from 'lucide-react'
 import { getNotifications } from '@/app/actions/notificationAction'
 import NotificationItem from './components/NotificationItem'
 import NotificationBadge from './components/NotificationBadge'
+import { useSSE } from '@/app/context/SseProvidet'
+import { useEffect, useState } from 'react'
 
-const NotificationsPage = async () => {
-  const { notifications, error } = await getNotifications()
+interface Notification {
+  id: string
+  title: string
+  message: string
+  createdAt: Date
+  isRead: boolean
+}
+
+const NotificationsPage = () => {
+  const { notifications: sseNotifications } = useSSE()
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchInitialNotifications = async () => {
+      try {
+        const result = await getNotifications()
+        if (result.error) {
+          setError(result.error)
+        } else if (result.notifications) {
+          setNotifications(result.notifications)
+        }
+      } catch (err) {
+        setError('Failed to fetch notifications')
+        console.error('Error fetching notifications:', err)
+      }
+    }
+
+    fetchInitialNotifications()
+  }, [])
+
+  // Merge SSE notifications with existing notifications
+  useEffect(() => {
+    if (sseNotifications.length > 0) {
+      setNotifications((prevNotifications) => {
+        const merged = [...prevNotifications]
+        sseNotifications.forEach((sseNotif) => {
+          const existingIndex = merged.findIndex((n) => n.id === sseNotif.id)
+          if (existingIndex !== -1) {
+            // Update existing notification
+            merged[existingIndex] = {
+              ...merged[existingIndex],
+              isRead: sseNotif.isRead,
+            }
+          } else {
+            // Add new notification at the beginning
+            merged.unshift({
+              ...sseNotif,
+              createdAt: new Date(sseNotif.createdAt),
+            })
+          }
+        })
+        return merged
+      })
+    }
+  }, [sseNotifications])
 
   if (error) {
     return (

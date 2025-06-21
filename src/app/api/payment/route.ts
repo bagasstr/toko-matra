@@ -42,7 +42,7 @@ export async function POST(request: Request) {
         userId: session.user.id,
       },
       include: {
-        Payment: true,
+        payment: true,
       },
     })
 
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     }
 
     // Check if payment already exists
-    if (order.Payment?.some((p) => p.status === 'SUCCESS')) {
+    if (order.payment?.some((p) => p.status === 'SUCCESS')) {
       return NextResponse.json(
         { success: false, message: 'Order already paid' },
         { status: 400 }
@@ -89,6 +89,7 @@ export async function POST(request: Request) {
         order_id: transactionId,
         gross_amount: amount, // Use the original amount
       },
+
       payment_type: paymentType,
       bank_transfer: {
         bank: bank,

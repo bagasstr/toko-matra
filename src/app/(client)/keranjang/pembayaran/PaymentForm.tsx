@@ -23,8 +23,17 @@ import {
 import { getUserAddresses } from '../../../actions/addressAction'
 import { useRouter } from 'next/navigation'
 import { generateProformaPDF } from '@/lib/pdfProInvFormatter'
-import { PdfProInvoiceButton } from '../../components/DownloadPdfButton'
 import { getPaymentByOrderId } from '@/app/actions/midtransAction'
+import dynamic from 'next/dynamic'
+
+// Dynamic import untuk menghindari SSR error
+const ProInvoicePdfButton = dynamic(
+  () =>
+    import('../../components/DownloadPdfButton').then((mod) => ({
+      default: mod.ProInvoicePdfButton,
+    })),
+  { ssr: false }
+)
 
 type PaymentMethod = 'bank_transfer' | 'e_wallet' | 'virtual_account' | 'cod'
 
@@ -44,6 +53,7 @@ interface PaymentFormProps {
     email?: string
     phoneNumber?: string
     companyName?: string
+    taxId?: string
   }
   cookies?: any
   userId?: string
@@ -104,6 +114,15 @@ const PaymentForm = ({
   )
 
   const total = subtotal + subtotal * 0.11
+  const ppn = subtotal * 0.11
+
+  // Customer data
+  const customerName = customerProfile?.fullName || ''
+  const customerCompany = customerProfile?.companyName || ''
+  const customerEmail = customerProfile?.email || ''
+  const customerPhone = customerProfile?.phoneNumber || ''
+  const customerAddress =
+    addresses.find((addr) => addr.id === selectedAddressId)?.address || ''
 
   // Fetch user addresses
   useEffect(() => {
@@ -176,7 +195,7 @@ const PaymentForm = ({
       console.log(resultPayment)
 
       // Create payment transaction
-      const resultMidtrans = await fetch('http://localhost:3000/api/payment', {
+      const resultMidtrans = await fetch('/api/payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,7 +238,7 @@ const PaymentForm = ({
             brand: item.product.brandId,
             category: item.product.categoryId,
             merchant_name: 'Toko Matra',
-            url: 'https://tokobuah.com/apple-fuji',
+            url: 'https://tokomatra.com',
           })),
         }),
       })
@@ -281,14 +300,6 @@ const PaymentForm = ({
   const selectedAddress = addresses.find(
     (addr) => addr.id === selectedAddressId
   )
-  const customerName =
-    customerProfile?.fullName || selectedAddress?.recipientName || ''
-  const customerCompany = customerProfile?.companyName || ''
-  const customerEmail = customerProfile?.email || ''
-  const customerPhone = customerProfile?.phoneNumber || ''
-  const customerAddress = selectedAddress
-    ? `${selectedAddress.address}, ${selectedAddress.village}, ${selectedAddress.district}, ${selectedAddress.city}, ${selectedAddress.province} ${selectedAddress.postalCode}`
-    : '-'
   const customerLabelAddress = selectedAddress
     ? `${selectedAddress.labelAddress}`
     : '-'
@@ -473,27 +484,39 @@ const PaymentForm = ({
                 </div>
               </div>
               <div className='flex items-center gap-2 mt-4'>
-                <PdfProInvoiceButton
-                  htmlContent={htmlContent}
-                  disabled={!selectedAddressId}
-                  data={{
-                    cartItems: cartItems.map((item) => ({
-                      product: {
-                        id: item.product.id,
-                        price: item.product.price,
-                        unit: item.product.unit,
-                      },
-                      quantity: item.quantity,
-                    })),
-                    customerData: {
-                      name: customerName,
-                      companyName: customerCompany,
-                      address: customerAddress,
-                      phone: customerPhone,
-                      email: customerEmail,
+                <ProInvoicePdfButton
+                  items={cartItems.map((item: any) => ({
+                    product: {
+                      name: item.product.name,
+                      price: item.product.price,
+                      unit: item.product.unit,
+                      sku: item.product.sku,
+                      description: item.product.description,
                     },
-                    notes: '',
-                  }}
+                    quantity: item.quantity,
+                  }))}
+                  subtotal={subtotal}
+                  ppn={ppn}
+                  total={total}
+                  logoBase64={logoBase64}
+                  proInvoiceNumber={`PI-${new Date().getFullYear()}${String(
+                    new Date().getMonth() + 1
+                  ).padStart(2, '0')}${String(new Date().getDate()).padStart(
+                    2,
+                    '0'
+                  )}-${String(new Date().getHours()).padStart(2, '0')}${String(
+                    new Date().getMinutes()
+                  ).padStart(2, '0')}`}
+                  proInvoiceDate={new Date().toLocaleDateString('id-ID')}
+                  customerName={customerName}
+                  customerCompany={customerCompany}
+                  customerAddress={customerAddress}
+                  customerEmail={customerEmail}
+                  customerPhone={customerPhone}
+                  customerTaxId={customerProfile?.taxId || ''}
+                  notes={notes}
+                  terms='1. Pembayaran dilakukan dalam waktu 7 hari setelah proforma invoice diterima\n2. Barang akan dikirim setelah pembayaran diterima\n3. Harga berlaku selama 30 hari'
+                  disabled={!selectedAddressId}
                 />
                 <span className='text-xs text-gray-500'>
                   Unduh Proforma Invoice

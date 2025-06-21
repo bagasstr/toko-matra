@@ -5,6 +5,8 @@ import { formatDistanceToNow } from 'date-fns'
 import { id as idLocale } from 'date-fns/locale'
 import { markNotificationAsRead } from '@/app/actions/notificationAction'
 import { useRouter } from 'next/navigation'
+import { useSSE } from '@/app/context/SseProvidet'
+import { useEffect, useState } from 'react'
 
 interface NotificationItemProps {
   id: string
@@ -19,14 +21,23 @@ const NotificationItem = ({
   title,
   message,
   createdAt,
-  isRead,
+  isRead: initialIsRead,
 }: NotificationItemProps) => {
   const router = useRouter()
+  const { updateNotificationStatus } = useSSE()
+  const [isRead, setIsRead] = useState(initialIsRead)
 
   const handleClick = async () => {
     if (!isRead) {
-      await markNotificationAsRead(id)
-      router.refresh()
+      try {
+        const result = await markNotificationAsRead(id)
+        if (!result.error) {
+          setIsRead(true)
+          updateNotificationStatus(id, true)
+        }
+      } catch (error) {
+        console.error('Error marking notification as read:', error)
+      }
     }
   }
 

@@ -82,3 +82,9 @@ export function generateCustomId(prefix: string): string {
   const randomSegment = generateRandomSegment(6)
   return `${prefix}-${randomSegment}`
 }
+
+export function generateFakturNumber(prefix: string): string {
+  const timestamp = Date.now() // milliseconds
+  const randomSegment = generateRandomSegment(6)
+  return `${prefix}${randomSegment}`
+}
