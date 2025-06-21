@@ -25,8 +25,8 @@ const MobileNavbar = async ({ userId }: MobileNavbarProps) => {
     const notifRes = await getNotifications(userId)
     notifications = notifRes.data || []
   }
-  const stockProduct = products
-    ?.map((product) => product.stock)
+  const stockProduct = (products || [])
+    .map((product) => product.stock)
     .reduce((acc, stock) => acc + stock, 0)
 
   const items = cartData || []
