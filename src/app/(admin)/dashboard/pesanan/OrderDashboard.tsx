@@ -56,10 +56,15 @@ import {
   TableBody,
 } from '@/components/ui/table'
 import { PurchaseOrderPdfButton } from '@/app/(client)/components/DownloadPdfButton'
-import { useQuery } from '@tanstack/react-query'
-import { queryClient } from '@/lib/queryClient'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createNotification } from '@/app/actions/notificationAction'
 import { toast } from 'sonner'
+import {
+  sendOrderConfirmedNotification,
+  sendOrderShippedNotification,
+  sendOrderDeliveredNotification,
+  sendOrderCancelledNotification,
+} from '@/app/actions/orderStatusNotification'
 
 function getStatusBadge(status: string) {
   switch (status) {
@@ -131,6 +136,8 @@ export default function OrderDashboard({
     staleTime: 0,
   })
 
+  const queryClient = useQueryClient()
+
   const status = {
     'Semua Status': 'Semua Status',
     [OrderStatus.PENDING]: 'Menunggu Pembayaran',
@@ -162,43 +169,80 @@ export default function OrderDashboard({
           setCurrentOrderId(orderId)
           setShowSupplierAlert(true)
 
-          // Enhanced admin notification
-
+          // Create in-app notification
           await createNotification(
             userId,
             'Pesanan Dikonfirmasi',
-            'Pesanan kamu sudah kami konfirmasi dan sedang diproses.',
-            false
+            'Pesanan kamu sudah kami konfirmasi dan sedang diproses.'
           )
+
+          // Send email notification
+          try {
+            await sendOrderConfirmedNotification(orderId)
+            console.log('Order confirmed email sent successfully')
+          } catch (error) {
+            console.error('Failed to send order confirmed email:', error)
+          }
           break
+
         case OrderStatus.SHIPPED:
           console.log('Creating SHIPPED notification')
           const notificationResult = await createNotification(
             userId,
             'Pesanan Dikirim',
-            'Pesanan kamu sudah kami kirim. Terima kasih telah berbelanja di Matrakosala!',
-            false
+            'Pesanan kamu sudah kami kirim. Terima kasih telah berbelanja di Matrakosala!'
           )
           console.log('SHIPPED notification result:', notificationResult)
+
+          // Send email notification
+          try {
+            await sendOrderShippedNotification(orderId)
+            console.log('Order shipped email sent successfully')
+          } catch (error) {
+            console.error('Failed to send order shipped email:', error)
+          }
           break
+
         case OrderStatus.DELIVERED:
           await createNotification(
             userId,
             'Pesanan Selesai',
-            'Pesanan kamu sudah selesai. Terima kasih telah berbelanja di Matrakosala!',
-            false
+            'Pesanan kamu sudah selesai. Terima kasih telah berbelanja di Matrakosala!'
           )
+
+          // Send email notification
+          try {
+            await sendOrderDeliveredNotification(orderId)
+            console.log('Order delivered email sent successfully')
+          } catch (error) {
+            console.error('Failed to send order delivered email:', error)
+          }
           break
+
         case OrderStatus.CANCELLED:
           await createNotification(
             userId,
             'Pesanan Dibatalkan',
-            'Mohon maaf, pesanan kamu dibatalkan. Silakan hubungi kami untuk informasi lebih lanjut.',
-            false
+            'Mohon maaf, pesanan kamu dibatalkan. Silakan hubungi kami untuk informasi lebih lanjut.'
           )
+
+          // Send email notification
+          try {
+            await sendOrderCancelledNotification(orderId)
+            console.log('Order cancelled email sent successfully')
+          } catch (error) {
+            console.error('Failed to send order cancelled email:', error)
+          }
           break
       }
+
+      // Invalidate queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['orders'] })
+
+      // Invalidate notifications for the specific user
+      if (userId) {
+        queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
+      }
     }
   }
 

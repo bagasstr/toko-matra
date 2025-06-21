@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 import {
   generateCartId,
@@ -154,6 +154,7 @@ export async function addToCart(
         },
       })
 
+      revalidateTag('cart')
       revalidatePath('/keranjang')
       return { success: true, data: updatedItem }
     } else {
@@ -179,6 +180,7 @@ export async function addToCart(
         },
       })
 
+      revalidateTag('cart')
       revalidatePath('/keranjang')
       return { success: true, data: newItem }
     }
@@ -245,6 +247,7 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
       })
     }
 
+    revalidateTag('cart')
     revalidatePath('/keranjang')
     return { success: true }
   } catch (error) {
@@ -278,6 +281,7 @@ export async function removeFromCart(itemId: string) {
       },
     })
 
+    revalidateTag('cart')
     revalidatePath('/keranjang')
     return { success: true }
   } catch (error) {
@@ -310,6 +314,7 @@ export async function clearCart() {
       },
     })
 
+    revalidateTag('cart')
     revalidatePath('/keranjang')
     return { success: true }
   } catch (error) {
@@ -373,6 +378,7 @@ export async function clearCartAfterOrder(orderId: string) {
       },
     })
 
+    revalidateTag('cart')
     revalidatePath('/keranjang')
     return { success: true }
   } catch (error) {

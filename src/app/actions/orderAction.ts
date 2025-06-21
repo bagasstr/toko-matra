@@ -6,6 +6,13 @@ import { validateSession } from './session'
 import { getCartItems } from './cartAction'
 import { revalidatePath } from 'next/cache'
 import { OrderStatus, IOrder } from '@/types/order'
+import {
+  sendOrderConfirmedNotification,
+  sendOrderShippedNotification,
+  sendOrderDeliveredNotification,
+  sendOrderCancelledNotification,
+} from '@/app/actions/orderStatusNotification'
+import { createNotification } from '@/app/actions/notificationAction'
 
 interface CheckoutFormData {
   addressId: string
@@ -247,16 +254,64 @@ export async function getOrderById(orderId: string) {
 // Update order status
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   try {
+    // Get order details first to get userId
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true },
+    })
+
+    if (!order) {
+      return {
+        success: false,
+        message: 'Order not found',
+      }
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: { status },
     })
 
+    // Send email notification based on status
+    try {
+      switch (status) {
+        case OrderStatus.CONFIRMED:
+          await sendOrderConfirmedNotification(orderId)
+          console.log(`Order confirmed email sent for order: ${orderId}`)
+          break
+
+        case OrderStatus.SHIPPED:
+          await sendOrderShippedNotification(orderId)
+          console.log(`Order shipped email sent for order: ${orderId}`)
+          break
+
+        case OrderStatus.DELIVERED:
+          await sendOrderDeliveredNotification(orderId)
+          console.log(`Order delivered email sent for order: ${orderId}`)
+          break
+
+        case OrderStatus.CANCELLED:
+          await sendOrderCancelledNotification(orderId)
+          console.log(`Order cancelled email sent for order: ${orderId}`)
+          break
+
+        default:
+          console.log(`No email notification for status: ${status}`)
+          break
+      }
+    } catch (emailError) {
+      console.error('Failed to send email notification:', emailError)
+      // Don't fail the entire operation if email fails
+    }
+
     revalidatePath('/dashboard/pesanan')
+    revalidatePath(`/orders/${orderId}`)
+
     return {
       success: true,
       message: 'Order status updated successfully',
       data: updatedOrder,
+      userId: order.userId, // Return userId for query invalidation
     }
   } catch (error) {
     console.error(`Error updating order status for ${orderId}:`, error)
@@ -452,20 +507,44 @@ export async function updateShipment(
       include: { order: true },
     })
 
-    // If shipment is marked as SHIPPED, update order status
+    // If shipment is marked as SHIPPED, update order status and send email
     if (data.status === 'SHIPPED') {
       await prisma.order.update({
         where: { id: updatedShipment.orderId },
         data: { status: OrderStatus.SHIPPED },
       })
+
+      // Send email notification
+      try {
+        await sendOrderShippedNotification(
+          updatedShipment.orderId,
+          data.trackingNumber,
+          data.carrier
+        )
+        console.log(
+          `Order shipped email sent for order: ${updatedShipment.orderId}`
+        )
+      } catch (emailError) {
+        console.error('Failed to send order shipped email:', emailError)
+      }
     }
 
-    // If shipment is marked as DELIVERED, update order status
+    // If shipment is marked as DELIVERED, update order status and send email
     if (data.status === 'DELIVERED') {
       await prisma.order.update({
         where: { id: updatedShipment.orderId },
         data: { status: OrderStatus.DELIVERED },
       })
+
+      // Send email notification
+      try {
+        await sendOrderDeliveredNotification(updatedShipment.orderId)
+        console.log(
+          `Order delivered email sent for order: ${updatedShipment.orderId}`
+        )
+      } catch (emailError) {
+        console.error('Failed to send order delivered email:', emailError)
+      }
     }
 
     revalidatePath('/admin/orders')
@@ -475,6 +554,7 @@ export async function updateShipment(
       success: true,
       message: 'Shipment updated successfully',
       data: updatedShipment,
+      userId: updatedShipment.order.userId, // Return userId for query invalidation
     }
   } catch (error) {
     console.error('Error updating shipment:', error)
@@ -496,16 +576,30 @@ export async function updateOrderResi(orderId: string, receiptNumber: string) {
       }
     }
 
+    // Get order details first to get userId
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { userId: true },
+    })
+
+    if (!order) {
+      return {
+        success: false,
+        message: 'Order not found',
+      }
+    }
+
     // Update shipment status
     await prisma.shipment.updateMany({
       where: { orderId },
       data: {
         status: 'SHIPPED',
+        deliveryNumber: receiptNumber,
       },
     })
 
     // Update order status
-    const order = await prisma.order.update({
+    const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: {
         status: OrderStatus.SHIPPED,
@@ -515,10 +609,19 @@ export async function updateOrderResi(orderId: string, receiptNumber: string) {
       },
     })
 
+    // Send email notification
+    try {
+      await sendOrderShippedNotification(orderId, receiptNumber, 'Kurir')
+      console.log(`Order shipped email sent for order: ${orderId}`)
+    } catch (emailError) {
+      console.error('Failed to send order shipped email:', emailError)
+    }
+
     return {
       success: true,
       message: 'Order resi updated successfully',
-      data: order,
+      data: updatedOrder,
+      userId: order.userId, // Return userId for query invalidation
     }
   } catch (error) {
     console.error('Error updating order resi:', error)
@@ -530,14 +633,25 @@ export async function updateOrderResi(orderId: string, receiptNumber: string) {
   }
 }
 
-// Cancel order function
-export async function cancelOrder(orderId: string) {
+// Admin cancel order function
+export async function adminCancelOrder(
+  orderId: string,
+  cancellationReason?: string
+) {
   try {
     const session = await validateSession()
     if (!session?.user) {
       return {
         success: false,
         message: 'User not authenticated',
+      }
+    }
+
+    // Check if user is admin
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+      return {
+        success: false,
+        message: 'Unauthorized to cancel orders',
       }
     }
 
@@ -561,19 +675,11 @@ export async function cancelOrder(orderId: string) {
       }
     }
 
-    // Check if user owns this order
-    if (order.userId !== session.user.id) {
+    // Check if order can be cancelled (not already delivered)
+    if (order.status === OrderStatus.DELIVERED) {
       return {
         success: false,
-        message: 'Unauthorized to cancel this order',
-      }
-    }
-
-    // Check if order can be cancelled (only PENDING orders)
-    if (order.status !== OrderStatus.PENDING) {
-      return {
-        success: false,
-        message: 'Order cannot be cancelled at this stage',
+        message: 'Order cannot be cancelled after delivery',
       }
     }
 
@@ -608,9 +714,24 @@ export async function cancelOrder(orderId: string) {
       })
     }
 
+    // Send email notification
+    try {
+      await sendOrderCancelledNotification(
+        orderId,
+        cancellationReason || 'Dibatalkan oleh admin'
+      )
+      console.log(`Order cancelled email sent for order: ${orderId}`)
+    } catch (emailError) {
+      console.error('Failed to send order cancelled email:', emailError)
+    }
+
+    revalidatePath('/dashboard/pesanan')
+    revalidatePath(`/orders/${orderId}`)
+
     return {
       success: true,
       message: 'Order cancelled successfully',
+      userId: order.userId, // Return userId for query invalidation
     }
   } catch (error) {
     console.error('Error cancelling order:', error)

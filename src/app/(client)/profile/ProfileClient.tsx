@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { useSSE } from '@/app/context/SseProvidet'
 import {
   LogOut,
   User,
@@ -87,8 +86,6 @@ interface ProfileClientProps {
 }
 
 const ProfileClient = ({ user }: ProfileClientProps) => {
-  const { notifications } = useSSE()
-  console.log(`notifications`, notifications)
   const router = useRouter()
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
   const [isAddressDialogOpen, setIsAddressDialogOpen] = useState(false)

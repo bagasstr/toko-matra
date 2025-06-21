@@ -16,9 +16,8 @@ interface NavbarActionsProps {
 
 export function NavbarActions({ userId }: NavbarActionsProps) {
   const queryClient = useQueryClient()
-  const [cartBadgeCount, setCartBadgeCount] = useState(0)
 
-  const { data: cartData, refetch } = useQuery({
+  const { data: cartData } = useQuery({
     queryKey: ['cart'],
     queryFn: async () => {
       const response = await getCartItems()
@@ -26,48 +25,51 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
     },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 2000, // Poll every 2 seconds for real-time updates
-    staleTime: 0, // Consider data stale immediately
-    gcTime: 0, // Don't cache the data
-  })
-
-  const { data: notificationsData } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: async () => {
-      const response = await getNotifications()
-      return response.notifications || []
-    },
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    refetchInterval: 5000, // Poll every 5 seconds for notifications
     staleTime: 0,
     gcTime: 0,
   })
 
-  // Calculate badge count from cart data (converted from total quantity)
-  const totalQuantity = (cartData || []).reduce((total, item) => {
-    return total + (item?.quantity || 0)
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications', userId],
+    queryFn: async () => {
+      if (!userId) return []
+      const response = await getNotifications(userId)
+      return response.data || []
+    },
+    enabled: !!userId,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
+  })
+
+  // --- Badge Calculation ---
+  const validItems = (cartData || []).filter((item) => {
+    const quantity = item?.quantity
+    const product = item?.product
+    return (
+      quantity && product && product.minOrder && quantity >= product.minOrder
+    )
+  })
+
+  const calculatedBadgeCount = validItems.reduce((totalUnits, item) => {
+    const { quantity, product } = item
+    const { minOrder, multiOrder } = product
+    const effectiveMultiOrder = multiOrder > 0 ? multiOrder : 1
+    let itemConvertedUnits = 1
+    const remainingQuantity = quantity - minOrder
+    itemConvertedUnits += Math.floor(remainingQuantity / effectiveMultiOrder)
+    return totalUnits + itemConvertedUnits
   }, 0)
+  // --- End of Badge Calculation ---
 
-  // Convert quantity to badge count: 50 = 1, 60 = 2, 70 = 3, etc.
-  const calculatedBadgeCount =
-    totalQuantity >= 50 ? Math.floor((totalQuantity - 50) / 10) + 1 : 0
-
-  // Calculate unread notifications count
   const unreadNotifications =
     notificationsData?.filter((n) => !n.isRead).length || 0
-
-  // Update badge count whenever cart data changes
-  useEffect(() => {
-    setCartBadgeCount(calculatedBadgeCount)
-  }, [calculatedBadgeCount])
 
   // Debug logging
   console.log('=== Cart Badge Debug ===')
   console.log('Cart data in navbar:', cartData)
-  console.log('Total quantity:', totalQuantity)
   console.log('Calculated badge count:', calculatedBadgeCount)
-  console.log('Final badge count:', cartBadgeCount)
   console.log('========================')
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
@@ -126,11 +128,11 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
           <Link href='/keranjang'>
             <Button size='icon' variant='ghost' className='relative'>
               <ShoppingCart size={20} className='text-foreground' />
-              {cartBadgeCount > 0 && (
+              {calculatedBadgeCount > 0 && (
                 <Badge
                   variant='default'
                   className='absolute -top-1 -right-1 h-5 min-w-[1.25rem] flex items-center justify-center p-1 text-xs'>
-                  {cartBadgeCount}
+                  {calculatedBadgeCount}
                 </Badge>
               )}
             </Button>

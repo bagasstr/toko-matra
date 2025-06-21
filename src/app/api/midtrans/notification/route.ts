@@ -5,6 +5,7 @@ import {
   sendPaymentSuccessNotification,
   sendPaymentWaitingNotification,
 } from '@/app/actions/paymentNotification'
+import { sendOrderConfirmedNotification } from '@/app/actions/orderStatusNotification'
 
 enum OrderStatus {
   PENDING = 'PENDING',
@@ -136,6 +137,7 @@ export async function POST(request: Request) {
 
       if (paymentStatus === 'SUCCESS') {
         await sendPaymentSuccessNotification(payment.orderId)
+        await sendOrderConfirmedNotification(payment.orderId)
       } else if (paymentStatus === 'PENDING') {
         await sendPaymentWaitingNotification(payment.orderId, va_numbers)
       }

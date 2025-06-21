@@ -9,7 +9,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import CopyButton from '@/app/(client)/components/CopyButton'
-import { checkTransaction } from '@/lib/midtransClient'
 import { PdfFakturButton } from '@/app/(client)/components/DownloadPdfButton'
 
 export default async function OrderDetailPage({

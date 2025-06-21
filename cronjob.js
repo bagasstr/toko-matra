@@ -27,7 +27,7 @@ async function pingHealthEndpoint(attempt = 1) {
       });
       
       res.on('end', () => {
-        const timestamp = new Date().toISOString();
+        const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
         if (res.statusCode === 200) {
           try {
             const response = JSON.parse(data);
@@ -46,13 +46,13 @@ async function pingHealthEndpoint(attempt = 1) {
     });
 
     req.on('error', (error) => {
-      const timestamp = new Date().toISOString();
+      const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
       console.error(`❌ [${timestamp}] Health check error (attempt ${attempt}):`, error.message);
       reject(error);
     });
 
     req.on('timeout', () => {
-      const timestamp = new Date().toISOString();
+      const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
       console.error(`❌ [${timestamp}] Health check timeout (attempt ${attempt})`);
       req.destroy();
       reject(new Error('Request timeout'));
@@ -81,7 +81,7 @@ async function pingWithRetry() {
   }
   
   // Jika semua retry gagal
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" });
   console.error(`💥 [${timestamp}] All health check attempts failed. Last error:`, lastError.message);
   throw lastError;
 }
@@ -93,7 +93,7 @@ async function main() {
   console.log(`⏰ Interval: ${config.intervalMinutes} minutes`);
   console.log(`⏱️  Timeout: ${config.timeoutMs}ms`);
   console.log(`🔄 Retry enabled: ${config.retry.enabled}`);
-  console.log(`⏰ Current time: ${new Date().toISOString()}`);
+  console.log(`⏰ Current time: ${new Date().toLocaleString("en-US", { timeZone: "Asia/Jakarta" })}`);
   console.log('─'.repeat(60));
   
   // Jalankan ping pertama
