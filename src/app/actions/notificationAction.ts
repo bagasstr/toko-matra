@@ -49,7 +49,7 @@ export async function createNotification(
   userId: string,
   title: string,
   message: string,
-  type?: string
+  type?: boolean
 ) {
   try {
     const notification = await prisma.notification.create({
@@ -58,7 +58,7 @@ export async function createNotification(
         userId,
         title,
         message,
-        isRead: false,
+        isRead: type || false,
       },
     })
 
