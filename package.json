@@ -13,8 +13,7 @@
     "cron:start": "bash start-cron.sh start",
     "cron:stop": "bash start-cron.sh stop",
     "cron:restart": "bash start-cron.sh restart",
-    "cron:status": "bash start-cron.sh status",
-    "cron:logs": "bash start-cron.sh logs"
+    "cron:status": "bash start-cron.sh status"
   },
   "dependencies": {
     "@develoka/angka-rupiah-js": "^1.0.3",
