@@ -6,6 +6,7 @@ import { generateBrandId, generateCustomId } from '@/lib/helpper'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { put } from '@vercel/blob'
 
 type CreateBrandInput = {
   name: string
@@ -39,20 +40,20 @@ export async function createBrand(data: CreateBrandInput) {
     let logoPath = ''
     if (data.logo) {
       const logoBuffer = Buffer.from(data.logo.split(',')[1], 'base64')
-      const logoFileName = `${slug}-${Date.now()}.png`
-      const logoFilePath = `public/merek/${logoFileName}`
+      const logoFileName = `merek/${slug}-${Date.now()}.png`
 
-      // Ensure directory exists
-      const fs = require('fs')
-      const path = require('path')
-      const dir = path.join(process.cwd(), 'public/merek')
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
-      }
+      // Create file from buffer for Vercel Blob
+      const file = new File([logoBuffer], `${slug}-${Date.now()}.png`, {
+        type: 'image/png',
+      })
 
-      // Write file
-      fs.writeFileSync(path.join(process.cwd(), logoFilePath), logoBuffer)
-      logoPath = `/api/images/merek/${logoFileName}`
+      // Upload to Vercel Blob
+      const blob = await put(logoFileName, file, {
+        access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      })
+
+      logoPath = blob.url
     }
 
     const brand = await prisma.brand.create({
@@ -87,20 +88,20 @@ export async function updateBrand(
     let logoPath = undefined
     if (data.logo) {
       const logoBuffer = Buffer.from(data.logo.split(',')[1], 'base64')
-      const logoFileName = `${slug}-${Date.now()}.png`
-      const logoFilePath = `public/merek/${logoFileName}`
+      const logoFileName = `merek/${slug}-${Date.now()}.png`
 
-      // Ensure directory exists
-      const fs = require('fs')
-      const path = require('path')
-      const dir = path.join(process.cwd(), 'public/merek')
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
-      }
+      // Create file from buffer for Vercel Blob
+      const file = new File([logoBuffer], `${slug}-${Date.now()}.png`, {
+        type: 'image/png',
+      })
 
-      // Write file
-      fs.writeFileSync(path.join(process.cwd(), logoFilePath), logoBuffer)
-      logoPath = `/api/images/merek/${logoFileName}`
+      // Upload to Vercel Blob
+      const blob = await put(logoFileName, file, {
+        access: 'public',
+        token: process.env.BLOB_READ_WRITE_TOKEN,
+      })
+
+      logoPath = blob.url
     }
 
     const brand = await prisma.brand.update({
@@ -176,27 +177,18 @@ export async function uploadBrandImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
-
     // Generate unique filename
     const uniqueId = uuidv4()
     const extension = file.name.split('.').pop()
-    const filename = `${uniqueId}.${extension}`
+    const filename = `merek/${uniqueId}.${extension}`
 
-    // Ensure directory exists
-    const uploadDir = join(process.cwd(), 'public', 'merek')
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
-    }
+    // Upload to Vercel Blob
+    const blob = await put(filename, file, {
+      access: 'public',
+      token: process.env.BLOB_READ_WRITE_TOKEN,
+    })
 
-    // Save to public/merek directory
-    const path = join(uploadDir, filename)
-    await writeFile(path, buffer)
-
-    // Return API route URL
-    return { success: true, url: `/api/images/merek/${filename}` }
+    return { success: true, url: blob.url }
   } catch (error) {
     console.error('Error uploading brand image:', error)
     return { success: false, error: 'Gagal mengupload gambar brand' }

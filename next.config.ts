@@ -50,6 +50,10 @@ const nextConfig: NextConfig = {
         hostname: 'toko-matra-k4ms5ei2w-bagasstrs-projects.vercel.app',
         pathname: '/api/images/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.vercel-storage.com',
+      },
     ],
   },
 
