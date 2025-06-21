@@ -3,8 +3,8 @@
 import React, { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { AlertCircle } from 'lucide-react'
-import { cancelOrder } from '@/app/actions/orderAction'
 import { useRouter } from 'next/navigation'
+import { adminCancelOrder } from '@/app/actions/orderAction'
 
 interface CancelOrderFormProps {
   orderId: string
@@ -20,7 +20,10 @@ export default function CancelOrderForm({ orderId }: CancelOrderFormProps) {
     setError(null)
 
     try {
-      const result = await cancelOrder(orderId)
+      const result = await adminCancelOrder(
+        orderId,
+        'Pesanan dibatalkan oleh admin'
+      )
 
       if (result.success) {
         // Redirect to order detail page with success message

@@ -13,10 +13,18 @@ import { getNotifications } from '@/app/actions/notificationAction'
 
 export const dynamic = 'force-dynamic'
 
-const MobileNavbar = async () => {
+interface MobileNavbarProps {
+  userId?: string
+}
+
+const MobileNavbar = async ({ userId }: MobileNavbarProps) => {
   const { data: cartData } = await getCartItems()
   const { products } = await getAllProducts()
-  const { notifications } = await getNotifications()
+  let notifications = []
+  if (userId) {
+    const notifRes = await getNotifications(userId)
+    notifications = notifRes.data || []
+  }
   const stockProduct = products
     ?.map((product) => product.stock)
     .reduce((acc, stock) => acc + stock, 0)
@@ -24,8 +32,7 @@ const MobileNavbar = async () => {
   const items = cartData || []
   const uniqueProductCount = items.length
   const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0)
-  const unreadNotifications =
-    notifications?.filter((n) => !n.isRead).length || 0
+  const unreadNotifications = notifications.filter((n) => !n.isRead).length || 0
 
   return (
     <div className='lg:hidden'>
