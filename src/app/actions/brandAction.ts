@@ -45,6 +45,7 @@ export async function createBrand(data: CreateBrandInput) {
     // Handle logo upload
     let logoPath = ''
     if (data.logo) {
+
       const filename = generateFileName('logo.png', `brand-${slug}-`)
       const path = `brands/${filename}`
 
@@ -62,6 +63,7 @@ export async function createBrand(data: CreateBrandInput) {
       }
 
       logoPath = url || ''
+
     }
 
     const brand = await prisma.brand.create({
@@ -112,6 +114,7 @@ export async function updateBrand(
       }
 
       logoPath = url || ''
+
     }
 
     const brand = await prisma.brand.update({
@@ -196,6 +199,7 @@ export async function uploadBrandImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
+
     // Generate unique filename for Supabase
     const filename = generateFileName(file.name, 'brand-')
     const path = `brands/${filename}`
@@ -209,6 +213,7 @@ export async function uploadBrandImage(formData: FormData) {
     }
 
     return { success: true, url }
+
   } catch (error) {
     console.error('Error uploading brand image:', error)
     return { success: false, error: 'Gagal mengupload gambar brand' }

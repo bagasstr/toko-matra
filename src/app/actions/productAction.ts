@@ -373,7 +373,7 @@ export async function uploadProductImages(formData: FormData) {
     }
 
     const uploadPromises = files.map(async (file) => {
-      // Generate unique filename for Supabase
+     // Generate unique filename for Supabase
       const filename = generateFileName(file.name, 'product-')
       const path = `products/${filename}`
 
@@ -385,6 +385,7 @@ export async function uploadProductImages(formData: FormData) {
       }
 
       return url
+
     })
 
     const urls = await Promise.all(uploadPromises)
