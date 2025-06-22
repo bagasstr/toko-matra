@@ -1,6 +1,6 @@
 'use client'
 
-import { getAllCategories } from '@/app/actions/categoryAction'
+import { getAllCategories, getTreeCategories } from '@/app/actions/categoryAction'
 import {
   Card,
   CardContent,
@@ -65,9 +65,9 @@ const Category = () => {
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { categories, error } = await getAllCategories()
+      const { categorie, error } = await getAllCategories()
       if (error) throw error
-      return categories
+      return categorie
     },
   })
 

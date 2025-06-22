@@ -79,6 +79,7 @@ export async function getAllCategories() {
         slug: true,
         parentId: true,
         isActive: true,
+        imageUrl: true,
         parent: {
           select: {
             id: true,
