@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { writeFile, unlink, access } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { put } from '@vercel/blob'
 import { generateCustomId, generateProductId } from '@/lib/helpper'
 import {
   uploadToSupabase,

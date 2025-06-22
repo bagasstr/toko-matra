@@ -21,7 +21,7 @@ const nextConfig: NextConfig = {
 
   output: 'standalone',
   images: {
-    unoptimized: true, // Bypass Next.js optimization karena kita handle sendiri
+    unoptimized: false, // Enable Next.js optimization untuk performa
     domains: ['localhost', 'DESKTOP-02S3AEE'],
     remotePatterns: [
       {
@@ -49,6 +49,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'toko-matra-k4ms5ei2w-bagasstrs-projects.vercel.app',
         pathname: '/api/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vercel-storage.com',
       },
     ],
   },
