@@ -96,29 +96,20 @@ const nextConfig: NextConfig = {
 
     // Production optimizations
     if (!dev) {
-      ;(config.cache = {
-        type: 'filesystem',
-        allowCollectingMemory: true,
-        buildDependencies: {
-          config: [__filename],
-        },
-        maxAge: 60 * 60 * 24 * 30, // 30 days
-        maxEntries: 100,
-      }),
-        (config.optimization = {
-          ...config.optimization,
-          splitChunks: {
-            ...config.optimization.splitChunks,
-            cacheGroups: {
-              ...config.optimization.splitChunks.cacheGroups,
-              vendor: {
-                test: /[\\/]node_modules[\\/]/,
-                name: 'vendors',
-                chunks: 'all',
-              },
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          cacheGroups: {
+            ...config.optimization.splitChunks.cacheGroups,
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
             },
           },
-        })
+        },
+      }
     }
 
     // Suppress Supabase realtime warnings
