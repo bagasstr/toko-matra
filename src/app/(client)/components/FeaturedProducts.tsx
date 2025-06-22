@@ -1,7 +1,6 @@
 'use client'
 
-import { getAllCategories } from '@/app/actions/categoryAction'
-import { getAllProducts } from '@/app/actions/productAction'
+import { getFeaturedProducts } from '@/app/actions/productAction'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -10,6 +9,7 @@ import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
+import { queryKeys } from '@/lib/queryClient'
 
 interface IDataProducts {
   id: string
@@ -20,28 +20,25 @@ interface IDataProducts {
   label: string
   isFeatured: boolean
   category: {
+    id: string
     name: string
     parentId: string
     slug: string
+    parent?: {
+      id: string
+      name: string
+      slug: string
+    }
   }
   brand: {
     name: string
     id: string
-    createdAt: Date
-    updatedAt: Date
     slug: string
     logo: string
-  }
+  } | null
   stock: number
   description: string
   slug: string
-}
-
-interface IDataCategories {
-  id: string
-  name: string
-  slug: string
-  parentId: string | null
 }
 
 const FeaturedProductsSkeleton = () => {
@@ -89,30 +86,17 @@ const FeaturedProductsSkeleton = () => {
 }
 
 const FeaturedProducts = () => {
-  const { data: products = [], isLoading: isLoadingProducts } = useQuery({
-    queryKey: ['productsFeatured'],
+  // Use optimized query for featured products only
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: queryKeys.products.featured(),
     queryFn: async () => {
-      const { products, error } = await getAllProducts()
+      const { products, error } = await getFeaturedProducts(20) // Limit to 20 products
       if (error) throw error
       return products
     },
+    staleTime: 5 * 60 * 1000, // 5 minutes cache
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
   })
-
-  const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categoriesProducts'],
-    queryFn: async () => {
-      const { categorie, error } = await getAllCategories()
-      if (error) throw error
-      return categorie
-    },
-  })
-
-  const featuredProducts = products.filter(
-    (product) => product.isActive && product.isFeatured
-  )
-
-  const isLoading = isLoadingProducts || isLoadingCategories
-  console.log(featuredProducts)
 
   return (
     <section className=''>
@@ -130,10 +114,8 @@ const FeaturedProducts = () => {
             {/* Mobile Carousel */}
             <div className='lg:hidden overflow-x-auto scrollbar-hide'>
               <div className='flex gap-3 py-2 w-full'>
-                {featuredProducts.map((product: IDataProducts) => {
-                  const parentCategory = categories.find(
-                    (cat) => cat.id === product.category.parentId
-                  )
+                {products.map((product: IDataProducts) => {
+                  const parentCategory = product.category.parent
                   // Skip rendering if parentCategory is not found
                   if (!parentCategory) return null
 
@@ -181,10 +163,8 @@ const FeaturedProducts = () => {
 
             {/* Desktop Grid */}
             <div className='hidden lg:grid grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-6'>
-              {featuredProducts.map((product: IDataProducts) => {
-                const parentCategory = categories.find(
-                  (cat) => cat.id === product.category.parentId
-                )
+              {products.map((product: IDataProducts) => {
+                const parentCategory = product.category.parent
                 // Skip rendering if parentCategory is not found
                 if (!parentCategory) return null
 
@@ -205,7 +185,7 @@ const FeaturedProducts = () => {
                           alt={product.name}
                           width={300}
                           height={200}
-                          className='w-full h-full object-contain p-3'
+                          className='w-full h-full object-contain p-2'
                           sizes='(max-width: 1024px) 25vw, (max-width: 1280px) 20vw, 16vw'
                           priority={false}
                         />
@@ -216,7 +196,7 @@ const FeaturedProducts = () => {
                             ? 'No Brand'
                             : product.brand.name}
                         </div>
-                        <div className='font-semibold text-base line-clamp-2 min-h-[48px] mb-1 text-gray-900'>
+                        <div className='font-semibold text-base line-clamp-2 min-h-[48px] mb-2 text-gray-900'>
                           {product.name}
                         </div>
                         <div className='font-bold text-lg mt-auto'>

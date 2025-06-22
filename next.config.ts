@@ -15,9 +15,10 @@ if (existsSync(envPath)) {
 const nextConfig: NextConfig = {
   /* config options here */
 
-  // compiler: {
-  //   removeConsole: process.env.NODE_ENV === 'production',
-  // },
+  // Enable removing console logs in production for better performance
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
 
   output: 'standalone',
   images: {
@@ -55,11 +56,23 @@ const nextConfig: NextConfig = {
         hostname: '*.vercel-storage.com',
       },
     ],
+    // Add image caching for better performance
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
+    formats: ['image/webp', 'image/avif'],
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
 
   devIndicators: false,
 
   // Configure for server-side rendering
+  experimental: {
+    // Enable modern features for better performance
+    optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
+    turbotrace: {
+      logLevel: 'error',
+    },
+  },
 
   // Set runtime to be server-side for routes that use cookies
   reactStrictMode: true,
@@ -72,11 +85,29 @@ const nextConfig: NextConfig = {
   // Disable static optimization for dynamic routes
   staticPageGenerationTimeout: 120,
   // Enable dynamic imports
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
+      }
+    }
+
+    // Production optimizations
+    if (!dev) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          ...config.optimization.splitChunks,
+          cacheGroups: {
+            ...config.optimization.splitChunks.cacheGroups,
+            vendor: {
+              test: /[\\/]node_modules[\\/]/,
+              name: 'vendors',
+              chunks: 'all',
+            },
+          },
+        },
       }
     }
 
@@ -90,6 +121,33 @@ const nextConfig: NextConfig = {
     ]
 
     return config
+  },
+
+  // Enable gzip compression
+  compress: true,
+
+  // Performance headers
+  headers: async () => {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=60, s-maxage=60',
+          },
+        ],
+      },
+      {
+        source: '/public/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+    ]
   },
 }
 

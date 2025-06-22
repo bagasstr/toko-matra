@@ -107,18 +107,60 @@ export async function createProduct(data: {
   }
 }
 
-export async function getAllProducts() {
+export async function getAllProducts(options?: {
+  limit?: number
+  offset?: number
+  isFeatured?: boolean
+  isActive?: boolean
+}) {
   try {
+    const {
+      limit = 50, // Default limit to prevent loading too much data
+      offset = 0,
+      isFeatured,
+      isActive = true,
+    } = options || {}
+
+    const where = {
+      ...(isActive !== undefined && { isActive }),
+      ...(isFeatured !== undefined && { isFeatured }),
+    }
+
     const products = await prisma.product.findMany({
+      where,
       include: {
-        category: true,
-        brand: true,
-        User: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+        // Remove User include to reduce data transfer
       },
       orderBy: {
         createdAt: 'desc',
       },
+      take: limit,
+      skip: offset,
     })
+
     return { success: true, products }
   } catch (error) {
     console.error('Error fetching products:', error)
@@ -373,7 +415,7 @@ export async function uploadProductImages(formData: FormData) {
     }
 
     const uploadPromises = files.map(async (file) => {
-     // Generate unique filename for Supabase
+      // Generate unique filename for Supabase
       const filename = generateFileName(file.name, 'product-')
       const path = `products/${filename}`
 
@@ -385,7 +427,6 @@ export async function uploadProductImages(formData: FormData) {
       }
 
       return url
-
     })
 
     const urls = await Promise.all(uploadPromises)
@@ -448,5 +489,51 @@ export async function deleteImage(imageUrl: string) {
   } catch (error) {
     console.error('Error deleting image:', error)
     return { success: false, error: 'Failed to delete image' }
+  }
+}
+
+// Add dedicated function for featured products only
+export async function getFeaturedProducts(limit: number = 20) {
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        isFeatured: true,
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    })
+
+    return { success: true, products }
+  } catch (error) {
+    console.error('Error fetching featured products:', error)
+    return { success: false, error: 'Gagal mengambil produk unggulan' }
   }
 }
