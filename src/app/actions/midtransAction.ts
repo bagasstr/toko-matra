@@ -599,10 +599,11 @@ export async function getPaymentByOrderId(
   orderId: string
 ): Promise<PaymentResponse> {
   try {
-    if (!orderId?.trim()) {
+    const validationError = validateTransactionId(orderId)
+    if (validationError) {
       return {
         success: false,
-        message: 'Order ID is required',
+        message: validationError,
       }
     }
 
@@ -614,22 +615,51 @@ export async function getPaymentByOrderId(
       }
     }
 
+    // Optimized query with selected fields only
     const payment = await prisma.payment.findFirst({
       where: {
-        orderId,
+        orderId: orderId,
         order: {
           userId: session.user.id,
         },
       },
-      include: {
+      select: {
+        id: true,
+        status: true,
+        amount: true,
+        paymentMethod: true,
+        bank: true,
+        vaNumber: true,
+        transactionId: true,
         order: {
-          include: {
+          select: {
+            id: true,
+            status: true,
+            totalAmount: true,
+            createdAt: true,
+            userId: true,
             items: {
-              include: {
-                product: true,
+              select: {
+                id: true,
+                quantity: true,
+                price: true,
+                product: {
+                  select: {
+                    name: true,
+                    images: true,
+                  },
+                },
               },
             },
-            address: true,
+            address: {
+              select: {
+                recipientName: true,
+                labelAddress: true,
+                address: true,
+                city: true,
+                postalCode: true,
+              },
+            },
           },
         },
       },
@@ -638,20 +668,20 @@ export async function getPaymentByOrderId(
     if (!payment) {
       return {
         success: false,
-        message: 'Pembayaran tidak ditemukan',
+        message: 'Payment tidak ditemukan untuk order ini',
       }
     }
 
     return {
       success: true,
-      message: 'Pembayaran berhasil ditemukan',
+      message: 'Payment berhasil diambil',
       data: payment,
     }
   } catch (error) {
     console.error('Error getting payment by order ID:', error)
     return {
       success: false,
-      message: 'Gagal mengambil data pembayaran',
+      message: 'Gagal mengambil data payment',
       error: error instanceof Error ? error.message : 'Unknown error',
     }
   }

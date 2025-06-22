@@ -6,7 +6,7 @@ import { redirect, usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { headers } from 'next/headers'
-import { getAllCategories } from '@/app/actions/categoryAction'
+import { getTreeCategories } from '@/app/actions/categoryAction'
 import { getAllProducts } from '@/app/actions/productAction'
 import { Badge } from '@/components/ui/badge'
 import { useQuery } from '@tanstack/react-query'
@@ -76,11 +76,12 @@ const CategorySkeleton = () => {
 
 const page = () => {
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categoriesTree'],
     queryFn: async () => {
-      const { categorie, error } = await getAllCategories()
+      const { treeCategories, error } = await getTreeCategories()
       if (error) throw error
-      return categorie
+      // Return hanya parent categories dengan data children
+      return treeCategories || []
     },
   })
 

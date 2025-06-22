@@ -1,19 +1,15 @@
 'use client'
 
 import { memo, useMemo } from 'react'
-import {
-  getBestSellingProducts,
-  getFeaturedProductsBySales,
-} from '@/app/actions/productAction'
+import { getBestSellingProducts } from '@/app/actions/productAction'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/queryClient'
 import { FeaturedProductCard } from './FeaturedProductCard'
 import { Badge } from '@/components/ui/badge'
-import OptimizedImage from '@/components/OptimizedImage'
 
-// Skeleton component yang dioptimalkan
-const FeaturedProductsSkeleton = memo(() => (
+// Skeleton component untuk loading state
+const BestSellingProductsSkeleton = memo(() => (
   <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 auto-rows-fr'>
     {Array.from({ length: 18 }).map((_, index) => (
       <div
@@ -34,7 +30,7 @@ const FeaturedProductsSkeleton = memo(() => (
   </div>
 ))
 
-FeaturedProductsSkeleton.displayName = 'FeaturedProductsSkeleton'
+BestSellingProductsSkeleton.displayName = 'BestSellingProductsSkeleton'
 
 // Enhanced ProductCard untuk menampilkan badge "Terlaris" dan jumlah terjual
 const BestSellingProductCard = memo(
@@ -59,18 +55,12 @@ const BestSellingProductCard = memo(
     return (
       <Link
         href={`/${categoryPath}`}
-        className='group bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 hover:border-primary/20  h-full flex flex-col'>
+        className='group bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 hover:border-primary/20 block h-full flex flex-col'>
         <div className='relative w-full aspect-square bg-gray-50'>
-          <OptimizedImage
+          <img
             src={product.images[0] || '/assets/products/placeholder.png'}
             alt={product.name}
-            width={100}
-            height={100}
-            priority={priority || index < 6}
-            quality={75}
             className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200'
-            sizes='(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16.67vw'
-            fallback='/assets/products/placeholder.png'
           />
 
           {/* Status overlay for out of stock */}
@@ -87,7 +77,13 @@ const BestSellingProductCard = memo(
             {/* Left side badges */}
             <div className='flex flex-col gap-1'>
               {/* Best Seller Badge */}
-
+              {index < 3 && (
+                <Badge
+                  variant='default'
+                  className='text-xs px-2 py-0.5 bg-orange-500'>
+                  #{index + 1} Terlaris
+                </Badge>
+              )}
               {product.label && (
                 <Badge variant='destructive' className='text-xs px-2 py-0.5'>
                   {product.label.replace('_', ' ')}
@@ -95,6 +91,15 @@ const BestSellingProductCard = memo(
               )}
             </div>
           </div>
+
+          {/* Bottom badge untuk jumlah terjual */}
+          {product.totalSold && (
+            <div className='absolute bottom-2 right-2'>
+              <Badge variant='secondary' className='text-xs px-2 py-0.5'>
+                {product.totalSold} terjual
+              </Badge>
+            </div>
+          )}
         </div>
 
         <div className='p-2 flex flex-col h-full'>
@@ -128,8 +133,8 @@ const BestSellingProductCard = memo(
 
 BestSellingProductCard.displayName = 'BestSellingProductCard'
 
-const FeaturedProducts = memo(() => {
-  // Use optimized query for featured products - PURELY based on sales data
+const BestSellingProducts = memo(() => {
+  // Query untuk mengambil produk terlaris
   const {
     data: products = [],
     isLoading,
@@ -137,19 +142,19 @@ const FeaturedProducts = memo(() => {
   } = useQuery({
     queryKey: queryKeys.products.bestSelling(18),
     queryFn: async () => {
-      const { products, error } = await getBestSellingProducts(18) // Limit to 18 products
+      const { products, error } = await getBestSellingProducts(18)
       if (error) throw new Error(error)
       return products
     },
-    staleTime: 10 * 60 * 1000, // 10 minutes cache (lebih lama untuk data sales)
+    staleTime: 10 * 60 * 1000, // 10 minutes cache (lebih lama karena data sales tidak berubah terlalu sering)
     gcTime: 20 * 60 * 1000, // 20 minutes cache
     refetchOnWindowFocus: false,
-    refetchOnMount: false, // Don't refetch on mount if data exists
+    refetchOnMount: false,
   })
 
-  // Memoize filtered products (no need to filter by isFeatured since it's already handled by sales logic)
+  // Memoize filtered products
   const displayProducts = useMemo(() => {
-    return products.filter((product) => product.isActive).slice(0, 18) // Limit display to 18 products untuk grid yang lebih rapi
+    return products.filter((product) => product.isActive).slice(0, 18)
   }, [products])
 
   if (error) {
@@ -162,7 +167,7 @@ const FeaturedProducts = memo(() => {
             </h2>
           </div>
           <div className='text-center py-8 text-gray-500'>
-            Gagal memuat produk unggulan. Silakan coba lagi nanti.
+            Gagal memuat produk terlaris. Silakan coba lagi nanti.
           </div>
         </div>
       </section>
@@ -175,8 +180,11 @@ const FeaturedProducts = memo(() => {
         <div className='my-6 flex items-center justify-between'>
           <div className='flex items-center gap-2'>
             <h2 className='text-lg sm:text-xl lg:text-2xl text-foreground/85 font-bold'>
-              Produk Unggulan
+              Produk Terlaris
             </h2>
+            <Badge variant='outline' className='text-xs'>
+              Berdasarkan Penjualan
+            </Badge>
           </div>
           {!isLoading && displayProducts.length > 0 && (
             <Link
@@ -188,10 +196,10 @@ const FeaturedProducts = memo(() => {
         </div>
 
         {isLoading ? (
-          <FeaturedProductsSkeleton />
+          <BestSellingProductsSkeleton />
         ) : displayProducts.length === 0 ? (
           <div className='text-center py-8 text-gray-500'>
-            Belum ada produk unggulan.
+            Belum ada data penjualan produk.
           </div>
         ) : (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 auto-rows-fr'>
@@ -210,6 +218,6 @@ const FeaturedProducts = memo(() => {
   )
 })
 
-FeaturedProducts.displayName = 'FeaturedProducts'
+BestSellingProducts.displayName = 'BestSellingProducts'
 
-export default FeaturedProducts
+export default BestSellingProducts

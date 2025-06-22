@@ -71,59 +71,136 @@ export async function getCategoryBySlug(slug: string) {
 
 export async function getAllCategories() {
   try {
-    const categories = await prisma.category.findMany({
-      where: {
-        parentId: null,
-      },
+    const categorie = await prisma.category.findMany({
       select: {
         id: true,
         name: true,
         slug: true,
+        parentId: true,
+        isActive: true,
         imageUrl: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            isActive: true,
+            imageUrl: true,
+            children: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parentId: true,
+                isActive: true,
+                imageUrl: true,
+              },
+              where: {
+                isActive: true,
+              },
+            },
+          },
+          where: {
+            isActive: true,
+          },
+        },
       },
-      orderBy: {
-        name: 'asc',
-      },
-    })
-    const categorie = await prisma.category.findMany({
       where: {
-        parentId: null,
-      },
-      include: {
-        children: true,
+        isActive: true,
       },
       orderBy: {
         name: 'asc',
       },
     })
-    const treeCategories = await prisma.category.findMany({
-      include: {
-        parent: true,
-        children: true,
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    })
-
-    // Transform ke format tree
-    const buildTree = (items: any[], parentId: string | null = null): any[] => {
-      return items
-        .filter((item) => item.parentId === parentId)
-        .map((item) => ({
-          id: item.id,
-          name: item.name,
-          children: buildTree(items, item.id),
-        }))
-    }
-
-    const treeCategory = buildTree(treeCategories)
-    return { success: true, treeCategory, categories, categorie }
+    return { success: true, categorie }
   } catch (error) {
-    console.error('Failed to get categories:', error)
-    return { success: false, error: 'Gagal mengambil data kategori.' }
+    console.error('Error fetching categories:', error)
+    return { success: false, error: 'Gagal mengambil data kategori' }
   }
 }
+
+// Function specifically for homepage - only parent categories
+export async function getParentCategories() {
+  try {
+    const categorie = await prisma.category.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        parentId: true,
+        isActive: true,
+        imageUrl: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      where: {
+        isActive: true,
+        parentId: null, // Only show parent categories, not subcategories
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    })
+    return { success: true, categorie }
+  } catch (error) {
+    console.error('Error fetching parent categories:', error)
+    return { success: false, error: 'Gagal mengambil data kategori' }
+  }
+}
+
+export async function getTreeCategories() {
+  try {
+    // Optimize for tree structure by selecting only necessary fields
+    const treeCategories = await prisma.category.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        parentId: true,
+        isActive: true,
+        imageUrl: true,
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            isActive: true,
+            imageUrl: true,
+          },
+          where: {
+            isActive: true,
+          },
+        },
+      },
+      where: {
+        parentId: null, // Only root categories
+        isActive: true,
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    })
+    return { success: true, treeCategories }
+  } catch (error) {
+    console.error('Error fetching tree categories:', error)
+    return { success: false, error: 'Gagal mengambil data kategori' }
+  }
+}
+
 export async function deleteCategory(id: string) {
   try {
     // Check if category has children

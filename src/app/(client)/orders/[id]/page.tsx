@@ -14,7 +14,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Payment } from '@/types/payment'
 import { useParams, useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   checkMidtransTransaction,
   getPaymentByOrderId,
@@ -27,6 +27,8 @@ import { useCartStore } from '@/hooks/zustandStore'
 import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { createNotification } from '@/app/actions/notificationAction'
+import OptimizedImage from '@/components/OptimizedImage'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface OrderPageProps {
   params: {
@@ -110,8 +112,8 @@ interface OrderData {
         }
       }[]
       address: {
-        fullName: string
-        phoneNumber: string
+        recipientName: string
+        labelAddress: string
         address: string
         city: string
         postalCode: string
@@ -129,19 +131,88 @@ interface OrderData {
   }
 }
 
+// Loading skeleton component
+function OrderDetailSkeleton() {
+  return (
+    <div className='max-w-6xl mx-auto px-4 py-8 space-y-6'>
+      <Skeleton className='h-6 w-48' />
+      <Skeleton className='h-8 w-64' />
+
+      <div className='grid grid-cols-1 lg:grid-cols-3 gap-6'>
+        {/* Left column skeleton */}
+        <div className='lg:col-span-2 space-y-6'>
+          <Card>
+            <CardHeader>
+              <Skeleton className='h-6 w-32' />
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='flex justify-between'>
+                <Skeleton className='h-4 w-16' />
+                <Skeleton className='h-4 w-24' />
+              </div>
+              <div className='flex justify-between'>
+                <Skeleton className='h-4 w-16' />
+                <Skeleton className='h-4 w-16' />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <Skeleton className='h-6 w-32' />
+            </CardHeader>
+            <CardContent>
+              <div className='flex gap-4'>
+                <Skeleton className='h-16 w-16' />
+                <div className='flex-1 space-y-2'>
+                  <Skeleton className='h-4 w-48' />
+                  <Skeleton className='h-3 w-24' />
+                </div>
+                <Skeleton className='h-4 w-20' />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right column skeleton */}
+        <div className='space-y-6'>
+          <Card>
+            <CardHeader>
+              <Skeleton className='h-6 w-40' />
+            </CardHeader>
+            <CardContent className='space-y-4'>
+              <div className='space-y-2'>
+                <Skeleton className='h-4 w-16' />
+                <Skeleton className='h-4 w-32' />
+              </div>
+              <div className='space-y-2'>
+                <Skeleton className='h-4 w-16' />
+                <Skeleton className='h-4 w-20' />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function OrderPage() {
   const router = useRouter()
   const param = useParams()
   const { fetchCart } = useCartStore()
 
+  // Optimized query with conditional refetching
   const {
     data: orderData,
     isLoading,
     error,
+    refetch,
   } = useQuery<OrderData, Error>({
     queryKey: ['orderDetails', param.id],
     queryFn: async () => {
       const paymentRes = await getPaymentByOrderId(param.id.toString())
+
       if (!paymentRes.success || !paymentRes.data) {
         throw new Error(paymentRes.message || 'Gagal memuat detail pembayaran')
       }
@@ -151,10 +222,10 @@ export default function OrderPage() {
         transactionRes = await checkMidtransTransaction(
           paymentRes.data.transactionId
         )
+
         if (!transactionRes.success) {
-          throw new Error(
-            transactionRes.message || 'Gagal memeriksa status transaksi'
-          )
+          console.warn('Transaction check failed:', transactionRes.message)
+          // Don't throw error for transaction check, continue without it
         }
       }
 
@@ -163,11 +234,64 @@ export default function OrderPage() {
         transaction: transactionRes?.data,
       }
     },
-    refetchInterval: 5000,
-    refetchOnWindowFocus: true,
+    // Optimized refetch logic - only refetch when payment is pending
+    refetchInterval: (query) => {
+      // Stop refetching if payment is success, failed, or cancelled
+      const data = query.state.data
+      if (
+        data?.payment?.status &&
+        ['SUCCESS', 'FAILED', 'CANCELLED'].includes(data.payment.status)
+      ) {
+        return false
+      }
+      // Refetch every 10 seconds (reduced from 5 seconds) for pending payments
+      return 10000
+    },
+    refetchOnWindowFocus: false, // Reduced unnecessary refetching
     refetchOnMount: true,
-    refetchIntervalInBackground: true,
+    refetchIntervalInBackground: false, // Don't refetch in background
+    // Cache for 2 minutes
+    staleTime: 2 * 60 * 1000,
+    gcTime: 5 * 60 * 1000,
   })
+
+  // Memoize derived values
+  const paymentStatus = useMemo(
+    () => orderData?.payment?.status,
+    [orderData?.payment?.status]
+  )
+  const isPaymentComplete = useMemo(
+    () =>
+      paymentStatus &&
+      ['SUCCESS', 'FAILED', 'CANCELLED'].includes(paymentStatus),
+    [paymentStatus]
+  )
+
+  // Memoize expensive calculations
+  const orderSummary = useMemo(() => {
+    if (!orderData?.payment?.order?.items)
+      return { subtotal: 0, ppn: 0, total: 0 }
+
+    const subtotal = orderData.payment.order.items.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    )
+    const ppn = Math.round(subtotal * 0.11)
+    const total = subtotal + ppn
+
+    return { subtotal, ppn, total }
+  }, [orderData?.payment?.order?.items])
+
+  // Memoize address display
+  const formattedAddress = useMemo(() => {
+    if (!orderData?.payment?.order?.address) return null
+    const addr = orderData.payment.order.address
+    return {
+      recipientName: addr.recipientName,
+      fullAddress: addr.address,
+      cityPostal: `${addr.city}, ${addr.postalCode}`,
+    }
+  }, [orderData?.payment?.order?.address])
 
   useEffect(() => {
     const handleSuccessPayment = async () => {
@@ -204,8 +328,18 @@ export default function OrderPage() {
       }
     }
 
-    handleSuccessPayment()
-  }, [orderData, router, fetchCart])
+    // Only run when payment becomes successful
+    if (orderData?.payment?.status === 'SUCCESS') {
+      handleSuccessPayment()
+    }
+  }, [
+    orderData?.payment?.status,
+    orderData?.payment?.order.id,
+    orderData?.payment?.order.userId,
+    orderData?.payment?.transactionId,
+    router,
+    fetchCart,
+  ])
 
   // Add effect to monitor order status changes
   useEffect(() => {
@@ -258,18 +392,8 @@ export default function OrderPage() {
     }
   }, [orderData?.payment?.order?.status])
 
-  console.log('orderData', orderData)
   if (isLoading) {
-    return (
-      <div className='flex min-h-[400px] items-center justify-center'>
-        <div className='text-center'>
-          <div className='mb-4'>
-            <Loader2 className='mx-auto h-8 w-8 animate-spin text-primary' />
-          </div>
-          <p className='text-gray-600'>Memuat detail pesanan...</p>
-        </div>
-      </div>
-    )
+    return <OrderDetailSkeleton />
   }
 
   if (error || !orderData) {
@@ -384,15 +508,13 @@ export default function OrderPage() {
                           : ''
                       }`}>
                       <div className='flex-shrink-0'>
-                        <Image
-                          src={
-                            item.product.images[0] ||
-                            '/placeholder.svg?height=80&width=80'
-                          }
+                        <OptimizedImage
+                          src={item.product.images[0]}
                           alt={item.product.name}
                           width={80}
                           height={80}
                           className='object-cover rounded-lg bg-gray-100 border'
+                          priority={index < 3}
                         />
                       </div>
                       <div className='flex-1 min-w-0'>
@@ -428,26 +550,12 @@ export default function OrderPage() {
                   <div className='flex justify-between'>
                     <span className='text-gray-600'>Subtotal</span>
                     <span>
-                      Rp{' '}
-                      {order.items
-                        .reduce(
-                          (total, item) => total + item.price * item.quantity,
-                          0
-                        )
-                        .toLocaleString('id-ID')}
+                      Rp {orderSummary.subtotal.toLocaleString('id-ID')}
                     </span>
                   </div>
                   <div className='flex justify-between'>
                     <span className='text-gray-600'>PPN (11%)</span>
-                    <span>
-                      Rp{' '}
-                      {Math.round(
-                        order.items.reduce(
-                          (total, item) => total + item.price * item.quantity,
-                          0
-                        ) * 0.11
-                      ).toLocaleString('id-ID')}
-                    </span>
+                    <span>Rp {orderSummary.ppn.toLocaleString('id-ID')}</span>
                   </div>
                   <div className='flex justify-between border-t pt-3 font-bold'>
                     <span>Total</span>
@@ -465,17 +573,19 @@ export default function OrderPage() {
                 <CardTitle>Alamat Pengiriman</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className='space-y-2'>
-                  <div className='font-semibold text-gray-900'>
-                    {order.address.fullName}
-                  </div>
-                  <div className='text-gray-700 leading-relaxed'>
-                    <div>{order.address.address}</div>
-                    <div>
-                      {order.address.city}, {order.address.postalCode}
+                {formattedAddress ? (
+                  <div className='space-y-2'>
+                    <div className='font-semibold text-gray-900'>
+                      {formattedAddress.recipientName}
+                    </div>
+                    <div className='text-gray-700 leading-relaxed'>
+                      <div>{formattedAddress.fullAddress}</div>
+                      <div>{formattedAddress.cityPostal}</div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className='text-gray-500'>Alamat tidak tersedia</div>
+                )}
               </CardContent>
             </Card>
           </div>

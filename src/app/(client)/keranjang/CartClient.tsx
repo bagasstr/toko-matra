@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, memo, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Trash2, Download } from 'lucide-react'
@@ -29,541 +29,500 @@ interface CartClientProps {
   validate: any
 }
 
-const CartClient = ({
-  initialCartData,
-  removeItem,
-  validate,
-}: CartClientProps) => {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const [cartData, setCartData] = useState(initialCartData)
-  const cart = cartData?.data || []
-  const {
-    getSubtotal,
-    items: cartItems,
-    fetchCart,
-    getCartItems,
-  } = useCartStore()
-  const [mounted, setMounted] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [customerInfo, setCustomerInfo] = useState<any>(null)
+// Memoized cart item component untuk mengurangi re-render
+const CartItem = memo(
+  ({
+    item,
+    onUpdateQuantity,
+    onRemove,
+    onSelectItem,
+    isSelected,
+  }: {
+    item: any
+    onUpdateQuantity: (itemId: string, quantity: number) => void
+    onRemove: (itemId: string) => void
+    onSelectItem: (itemId: string) => void
+    isSelected: boolean
+  }) => {
+    const [localQuantity, setLocalQuantity] = useState(item.quantity)
 
-  const selectedProduct = cart.filter((item: any) =>
-    selectedItems.includes(item.id)
-  )
-
-  useEffect(() => {
-    setMounted(true)
-    // Simulate loading time
-    const timer = setTimeout(() => {
-      setLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    // Sync cart data with state when component mounts
-    if (initialCartData?.success) {
-      setCartData(initialCartData)
-      setLoading(false)
-    }
-  }, [initialCartData])
-
-  // Get customer information from session
-  useEffect(() => {
-    const getCustomerInfo = async () => {
-      try {
-        const session = await validateSession()
-        if (session?.user) {
-          const customerData = {
-            name: session.user.profile?.fullName || '-',
-            email: session.user.email || '-',
-            phone: session.user.profile?.phoneNumber || '-',
-            address: session.user.address?.[0]
-              ? `${session.user.address[0].address || '-'}, ${
-                  session.user.address[0].city || '-'
-                }, ${session.user.address[0].province || '-'}`
-              : '-',
-            company: session.user.profile?.companyName || '-',
-          }
-          setCustomerInfo(customerData)
+    // Debounced quantity update
+    useEffect(() => {
+      const timer = setTimeout(() => {
+        if (localQuantity !== item.quantity && localQuantity > 0) {
+          onUpdateQuantity(item.id, localQuantity)
         }
-      } catch (error) {
-        console.error('Error getting customer info:', error)
-      }
-    }
-    getCustomerInfo()
-  }, [])
+      }, 500)
 
-  // Sync database cart with state if state is empty
-  useEffect(() => {
-    const syncCartWithState = async () => {
-      if (cartItems.length === 0 && cart.length > 0) {
-        await fetchCart()
-      }
-    }
-    syncCartWithState()
-  }, [cartItems.length, cart.length, fetchCart])
+      return () => clearTimeout(timer)
+    }, [localQuantity, item.quantity, item.id, onUpdateQuantity])
 
-  const handleCheckout = async () => {
-    try {
-      const session = await validateSession()
-      if (!session) {
-        // Handle unauthenticated user
-        router.push('/login')
-        return
-      }
-
-      if (selectedItems.length === 0) {
-        // Handle no items selected
-        alert('Pilih minimal satu item untuk checkout')
-        return
-      }
-
-      // Ensure cart data is up to date
-      await fetchCart()
-
-      // Get the latest cart data
-      const latestCartData = await getCartItems()
-      if (!latestCartData.success) {
-        alert('Gagal memuat data keranjang')
-        return
-      }
-
-      // Verify selected items still exist in cart
-      const validSelectedItems = selectedItems.filter((itemId) =>
-        latestCartData.data.some((item: any) => item.id === itemId)
-      )
-
-      if (validSelectedItems.length === 0) {
-        alert('Item yang dipilih tidak valid')
-        return
-      }
-
-      // Navigate to checkout page with selected items
-      const selectedItemsParam = validSelectedItems.join(',')
-      router.push(`/keranjang/pembayaran?items=${selectedItemsParam}`)
-    } catch (error) {
-      console.error('Error during checkout:', error)
-      alert('Terjadi kesalahan saat checkout')
-    }
-  }
-
-  const handleSelectItem = (itemId: string) => {
-    setSelectedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
+    const itemTotal = useMemo(
+      () => item.product.price * item.quantity,
+      [item.product.price, item.quantity]
     )
-  }
 
-  const handleSelectAll = () => {
-    if (selectedItems.length === cart.length) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems(cart.map((item) => item.id))
-    }
-  }
-
-  if (!validate) {
-    return (
-      <div className='text-gray-400 text-center flex flex-col gap-4 py-10'>
-        Silahkan login terlebih dahulu.
-        <Link href='/login' className='text-blue-500'>
-          <Button>Login</Button>
-        </Link>
-      </div>
+    const formattedPrice = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(item.product.price),
+      [item.product.price]
     )
-  } else if (!cartData?.success) {
-    return (
-      <div className='text-gray-400 text-center py-10'>
-        Tidak ada produk di keranjang.
-      </div>
+
+    const formattedTotal = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(itemTotal),
+      [itemTotal]
     )
-  }
-  const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
-    try {
-      // Validate quantity parameter
-      if (
-        typeof newQuantity !== 'number' ||
-        isNaN(newQuantity) ||
-        newQuantity < 0
-      ) {
-        console.error('Invalid quantity parameter:', newQuantity)
-        return
-      }
 
-      // Ensure newQuantity is an integer
-      const validQuantity = Math.floor(newQuantity)
-      if (validQuantity !== newQuantity) {
-        console.error('Quantity must be an integer:', newQuantity)
-        return
-      }
-
-      console.log(`Updating quantity for item ${itemId} to ${validQuantity}`)
-
-      const result = await updateCartItemQuantity(itemId, validQuantity)
-      if (result.success) {
-        setCartData((prev) => ({
-          ...prev,
-          data: prev.data.map((item) =>
-            item.id === itemId ? { ...item, quantity: validQuantity } : item
-          ),
-        }))
-        queryClient.invalidateQueries({ queryKey: ['cart'] })
-      } else {
-        console.error('Failed to update quantity:', result.error)
-      }
-    } catch (error) {
-      console.error('Error updating quantity:', error)
-    }
-  }
-
-  const handleRemoveItem = async (itemId: string) => {
-    try {
-      const result = await removeItem(itemId)
-      if (result.success) {
-        setCartData((prev) => ({
-          ...prev,
-          data: prev.data.filter((item) => item.id !== itemId),
-        }))
-        // Remove from selected items if present
-        setSelectedItems((prev) => prev.filter((id) => id !== itemId))
-        queryClient.invalidateQueries({ queryKey: ['cart'] })
-      }
-    } catch (error) {
-      console.error('Error removing item:', error)
-    }
-  }
-
-  // Calculate subtotal from cart data directly
-  const calculateSubtotal = () => {
-    return cart
-      .filter((item) => selectedItems.includes(item.id))
-      .reduce((total, item) => total + item.product.price * item.quantity, 0)
-  }
-
-  // Calculate PPN (11%)
-  const calculatePPN = () => {
-    const subtotal = calculateSubtotal()
-    return Math.round(subtotal * 0.11)
-  }
-
-  // Calculate total including PPN
-  const calculateTotal = () => {
-    const subtotal = calculateSubtotal()
-    const ppn = calculatePPN()
-    return subtotal + ppn
-  }
-
-  // Loading skeleton
-  if (loading) {
     return (
-      <div className=''>
-        <Skeleton className='h-10 w-48 mb-6' />
-        <div className='space-y-6'>
-          {[1, 2, 3].map((item) => (
-            <div key={item} className='flex gap-4 items-center border-b pb-4'>
-              <Skeleton className='w-4 h-4 rounded' />
-              <Skeleton className='w-16 h-16 rounded' />
-              <div className='flex-1'>
-                <Skeleton className='h-5 w-3/4 mb-2' />
-                <Skeleton className='h-6 w-1/3 mb-2' />
-                <Skeleton className='h-4 w-1/2 mb-2' />
-                <div className='flex items-center gap-2'>
-                  <Skeleton className='h-8 w-8 rounded' />
-                  <Skeleton className='h-6 w-8 rounded' />
-                  <Skeleton className='h-8 w-8 rounded' />
-                </div>
-              </div>
-              <Skeleton className='h-8 w-8 rounded-full' />
-            </div>
-          ))}
-          <div className='flex justify-between items-center pt-4'>
-            <Skeleton className='h-6 w-40' />
-            <Skeleton className='h-10 w-24' />
+      <div className='flex items-center space-x-4 p-4 border-b'>
+        <input
+          type='checkbox'
+          checked={isSelected}
+          onChange={() => onSelectItem(item.id)}
+          className='w-5 h-5'
+        />
+        <div className='flex-shrink-0'>
+          <Image
+            src={item.product.images[0] || '/placeholder.png'}
+            alt={item.product.name}
+            width={80}
+            height={80}
+            className='rounded-md object-cover'
+          />
+        </div>
+        <div className='flex-1 min-w-0'>
+          <h3 className='text-sm font-medium text-gray-900 truncate'>
+            {item.product.name}
+          </h3>
+          <p className='text-sm text-gray-500'>{formattedPrice}</p>
+          <div className='flex items-center mt-2 space-x-2'>
+            <button
+              onClick={() => setLocalQuantity(Math.max(1, localQuantity - 1))}
+              className='w-8 h-8 flex items-center justify-center border rounded'
+              disabled={localQuantity <= 1}>
+              -
+            </button>
+            <input
+              type='number'
+              value={localQuantity}
+              onChange={(e) => setLocalQuantity(parseInt(e.target.value) || 1)}
+              className='w-16 text-center border rounded px-2 py-1'
+              min={1}
+            />
+            <button
+              onClick={() => setLocalQuantity(localQuantity + 1)}
+              className='w-8 h-8 flex items-center justify-center border rounded'>
+              +
+            </button>
           </div>
+        </div>
+        <div className='text-right'>
+          <p className='text-sm font-medium text-gray-900'>{formattedTotal}</p>
+          <button
+            onClick={() => onRemove(item.id)}
+            className='mt-2 text-red-600 hover:text-red-800'>
+            <Trash2 className='w-4 h-4' />
+          </button>
         </div>
       </div>
     )
   }
+)
 
-  const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
-  const htmlContent = generateCartPDF(
-    selectedProduct,
-    calculateSubtotal(),
-    calculatePPN(),
-    calculateTotal(),
-    logoBase64,
-    customerInfo
-  )
+CartItem.displayName = 'CartItem'
 
-  return (
-    <div className='container mx-auto px-4 py-6'>
-      <div className='flex flex-col lg:flex-row gap-6'>
-        {/* Kiri: Daftar Produk - Mobile View */}
-        <div className='bg-white rounded-lg shadow p-4 lg:w-2/3 w-full'>
-          <div className='block lg:hidden mb-4'>
-            {cart.map((item) => (
-              <div
-                key={item.id}
-                className='border-b pb-4 mb-4 flex items-center space-x-4'>
-                <input
-                  type='checkbox'
-                  checked={selectedItems.includes(item.id)}
-                  onChange={() => handleSelectItem(item.id)}
-                  className='w-4 h-4 accent-primary'
-                />
-                <div className='flex-1'>
-                  <div className='font-medium text-sm'>{item.product.name}</div>
-                  <div className='text-xs text-gray-500'>
-                    Rp {Number(item.product.price).toLocaleString('id-ID')}
-                  </div>
-                </div>
-                <div className='flex items-center gap-2'>
-                  <Button
-                    size='icon'
-                    variant='outline'
-                    className='h-8 w-8'
-                    disabled={item.quantity <= (item.product.minOrder || 1)}
-                    onClick={() => {
-                      const minOrder = item.product.minOrder || 1
-                      const multiOrder = item.product.multiOrder || 1
-                      const newQuantity = Math.max(
-                        minOrder,
-                        item.quantity - multiOrder
-                      )
-
-                      console.log('Decrement button clicked:', {
-                        itemId: item.id,
-                        currentQuantity: item.quantity,
-                        minOrder: item.product.minOrder,
-                        multiOrder: item.product.multiOrder,
-                        calculatedMinOrder: minOrder,
-                        calculatedMultiOrder: multiOrder,
-                        newQuantity: newQuantity,
-                      })
-
-                      handleUpdateQuantity(item.id, newQuantity)
-                    }}>
-                    -
-                  </Button>
-                  <span className='text-sm'>{item.quantity}</span>
-                  <Button
-                    size='icon'
-                    variant='outline'
-                    className='h-8 w-8'
-                    onClick={() => {
-                      const multiOrder = item.product.multiOrder || 1
-                      const newQuantity = item.quantity + multiOrder
-                      handleUpdateQuantity(item.id, newQuantity)
-                    }}>
-                    +
-                  </Button>
-                </div>
-                <Button
-                  variant='ghost'
-                  size='icon'
-                  onClick={() => handleRemoveItem(item.id)}>
-                  <Trash2 className='h-4 w-4 text-red-500' />
-                </Button>
-              </div>
-            ))}
+// Loading skeleton component
+const CartSkeleton = memo(() => (
+  <div className='space-y-4'>
+    {Array.from({ length: 3 }).map((_, index) => (
+      <div key={index} className='flex items-center space-x-4 p-4 border-b'>
+        <Skeleton className='w-5 h-5 rounded' />
+        <Skeleton className='w-20 h-20 rounded-md' />
+        <div className='flex-1 space-y-2'>
+          <Skeleton className='h-4 w-3/4' />
+          <Skeleton className='h-3 w-1/2' />
+          <div className='flex space-x-2'>
+            <Skeleton className='w-8 h-8 rounded' />
+            <Skeleton className='w-16 h-8 rounded' />
+            <Skeleton className='w-8 h-8 rounded' />
           </div>
+        </div>
+        <div className='text-right space-y-2'>
+          <Skeleton className='h-4 w-20' />
+          <Skeleton className='w-4 h-4 rounded' />
+        </div>
+      </div>
+    ))}
+  </div>
+))
 
-          {/* Desktop Table View */}
-          <table className='w-full border text-sm hidden lg:table'>
-            <thead>
-              <tr className='bg-gray-100'>
-                <th className='p-2 text-center'>
-                  <input
-                    type='checkbox'
-                    id='selectAll'
-                    checked={
-                      cart.length > 0 && selectedItems.length === cart.length
-                    }
-                    onChange={handleSelectAll}
-                    className='w-4 h-4 accent-primary'
-                  />
-                </th>
-                <th className='p-2 text-left w-1/4'>Nama Produk</th>
-                <th className='p-2 text-center'>Jumlah</th>
-                <th className='p-2 text-right w-[18%]'>Harga Satuan</th>
-                <th className='p-2 text-right'>Nominal</th>
-                <th className=''></th>
-              </tr>
-            </thead>
-            <tbody>
-              {cart.map((item) => (
-                <tr key={item.id}>
-                  <td className='p-2 text-center'>
+CartSkeleton.displayName = 'CartSkeleton'
+
+const CartClient = memo(
+  ({ initialCartData, removeItem, validate }: CartClientProps) => {
+    const router = useRouter()
+    const queryClient = useQueryClient()
+    const [cartData, setCartData] = useState(initialCartData)
+    const cart = cartData?.data || []
+    const {
+      getSubtotal,
+      items: cartItems,
+      fetchCart,
+      getCartItems,
+    } = useCartStore()
+    const [mounted, setMounted] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [selectedItems, setSelectedItems] = useState<string[]>([])
+    const [customerInfo, setCustomerInfo] = useState<any>(null)
+    const [isUpdating, setIsUpdating] = useState(false)
+
+    // Memoized calculations
+    const selectedProduct = useMemo(
+      () => cart.filter((item: any) => selectedItems.includes(item.id)),
+      [cart, selectedItems]
+    )
+
+    const calculateSubtotal = useCallback(() => {
+      return selectedProduct.reduce(
+        (sum: number, item: any) => sum + item.product.price * item.quantity,
+        0
+      )
+    }, [selectedProduct])
+
+    const calculatePPN = useCallback(() => {
+      return calculateSubtotal() * 0.11
+    }, [calculateSubtotal])
+
+    const calculateTotal = useCallback(() => {
+      return calculateSubtotal() + calculatePPN()
+    }, [calculateSubtotal, calculatePPN])
+
+    // Memoized formatted values
+    const formattedSubtotal = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculateSubtotal()),
+      [calculateSubtotal]
+    )
+
+    const formattedPPN = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculatePPN()),
+      [calculatePPN]
+    )
+
+    const formattedTotal = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculateTotal()),
+      [calculateTotal]
+    )
+
+    useEffect(() => {
+      setMounted(true)
+      const timer = setTimeout(() => {
+        setLoading(false)
+      }, 500) // Reduced loading time
+      return () => clearTimeout(timer)
+    }, [])
+
+    useEffect(() => {
+      if (initialCartData?.success) {
+        setCartData(initialCartData)
+        setLoading(false)
+      }
+    }, [initialCartData])
+
+    // Get customer information from session
+    useEffect(() => {
+      const getCustomerInfo = async () => {
+        try {
+          const session = await validateSession()
+          if (session?.user) {
+            const customerData = {
+              name: session.user.profile?.fullName || '-',
+              email: session.user.email || '-',
+              phone: session.user.profile?.phoneNumber || '-',
+              address: session.user.address?.[0]
+                ? `${session.user.address[0].address || '-'}, ${
+                    session.user.address[0].city || '-'
+                  }, ${session.user.address[0].province || '-'}`
+                : '-',
+              company: session.user.profile?.companyName || '-',
+            }
+            setCustomerInfo(customerData)
+          }
+        } catch (error) {
+          console.error('Error getting customer info:', error)
+        }
+      }
+      getCustomerInfo()
+    }, [])
+
+    // Sync database cart with state if state is empty
+    useEffect(() => {
+      const syncCartWithState = async () => {
+        if (cartItems.length === 0 && cart.length > 0) {
+          await fetchCart()
+        }
+      }
+      syncCartWithState()
+    }, [cartItems.length, cart.length, fetchCart])
+
+    // Optimized handlers with useCallback
+    const handleCheckout = useCallback(async () => {
+      if (isUpdating) return
+
+      try {
+        setIsUpdating(true)
+        const session = await validateSession()
+        if (!session) {
+          router.push('/login')
+          return
+        }
+
+        if (selectedItems.length === 0) {
+          alert('Pilih minimal satu item untuk checkout')
+          return
+        }
+
+        await fetchCart()
+        const latestCartData = await getCartItems()
+        if (!latestCartData.success) {
+          alert('Gagal memuat data keranjang')
+          return
+        }
+
+        const validSelectedItems = selectedItems.filter((itemId) =>
+          latestCartData.data.some((item: any) => item.id === itemId)
+        )
+
+        if (validSelectedItems.length === 0) {
+          alert('Item yang dipilih tidak valid')
+          return
+        }
+
+        const selectedItemsParam = validSelectedItems.join(',')
+        router.push(`/keranjang/pembayaran?items=${selectedItemsParam}`)
+      } catch (error) {
+        console.error('Error during checkout:', error)
+        alert('Terjadi kesalahan saat checkout')
+      } finally {
+        setIsUpdating(false)
+      }
+    }, [isUpdating, selectedItems, router, fetchCart, getCartItems])
+
+    const handleSelectItem = useCallback((itemId: string) => {
+      setSelectedItems((prev) =>
+        prev.includes(itemId)
+          ? prev.filter((id) => id !== itemId)
+          : [...prev, itemId]
+      )
+    }, [])
+
+    const handleSelectAll = useCallback(() => {
+      if (selectedItems.length === cart.length) {
+        setSelectedItems([])
+      } else {
+        setSelectedItems(cart.map((item: any) => item.id))
+      }
+    }, [selectedItems.length, cart])
+
+    const handleUpdateQuantity = useCallback(
+      async (itemId: string, newQuantity: number) => {
+        try {
+          if (
+            typeof newQuantity !== 'number' ||
+            isNaN(newQuantity) ||
+            newQuantity < 0
+          ) {
+            console.error('Invalid quantity parameter:', newQuantity)
+            return
+          }
+
+          const validQuantity = Math.floor(newQuantity)
+          if (validQuantity === 0) {
+            await removeItem(itemId)
+            return
+          }
+
+          const response = await updateCartItemQuantity(itemId, validQuantity)
+          if (response.success) {
+            // Update local state optimistically
+            setCartData((prev: any) => ({
+              ...prev,
+              data: prev.data.map((item: any) =>
+                item.id === itemId ? { ...item, quantity: validQuantity } : item
+              ),
+            }))
+
+            // Invalidate and refetch cart data
+            queryClient.invalidateQueries({ queryKey: ['cart'] })
+          }
+        } catch (error) {
+          console.error('Error updating quantity:', error)
+        }
+      },
+      [removeItem, queryClient]
+    )
+
+    const handleRemoveItem = useCallback(
+      async (itemId: string) => {
+        try {
+          const response = await removeItem(itemId)
+          if (response.success) {
+            // Update local state optimistically
+            setCartData((prev: any) => ({
+              ...prev,
+              data: prev.data.filter((item: any) => item.id !== itemId),
+            }))
+
+            // Remove from selected items if it was selected
+            setSelectedItems((prev) => prev.filter((id) => id !== itemId))
+
+            // Invalidate and refetch cart data
+            queryClient.invalidateQueries({ queryKey: ['cart'] })
+          }
+        } catch (error) {
+          console.error('Error removing item:', error)
+        }
+      },
+      [removeItem, queryClient]
+    )
+
+    if (!validate) {
+      return (
+        <div className='text-gray-400 text-center flex flex-col gap-4 py-10'>
+          Silahkan login terlebih dahulu.
+          <Link href='/login' className='text-blue-500'>
+            <Button>Login</Button>
+          </Link>
+        </div>
+      )
+    }
+
+    if (!cartData?.success) {
+      return (
+        <div className='text-gray-400 text-center py-10'>
+          Tidak ada produk di keranjang.
+        </div>
+      )
+    }
+
+    if (loading || !mounted) {
+      return <CartSkeleton />
+    }
+
+    return (
+      <div className='container mx-auto px-4 py-8'>
+        <h1 className='text-2xl font-bold mb-6'>Keranjang Belanja</h1>
+
+        {cart.length === 0 ? (
+          <div className='text-center py-8'>
+            <p className='text-gray-500 mb-4'>Keranjang Anda kosong</p>
+            <Link href='/kategori'>
+              <Button>Mulai Belanja</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className='grid lg:grid-cols-3 gap-8'>
+            <div className='lg:col-span-2'>
+              <div className='bg-white rounded-lg shadow'>
+                <div className='p-4 border-b'>
+                  <label className='flex items-center'>
                     <input
                       type='checkbox'
-                      checked={selectedItems.includes(item.id)}
-                      onChange={() => handleSelectItem(item.id)}
-                      className='w-4 h-4 accent-primary'
+                      checked={selectedItems.length === cart.length}
+                      onChange={handleSelectAll}
+                      className='w-5 h-5 mr-3'
                     />
-                  </td>
-                  <td className='p-2'>
-                    <div className='font-medium'>{item.product.name}</div>
-                  </td>
-                  <td className='p-2 text-center'>
-                    <div className='flex items-center justify-center gap-2'>
-                      <Button
-                        size='icon'
-                        variant='outline'
-                        disabled={item.quantity <= (item.product.minOrder || 1)}
-                        onClick={() => {
-                          const minOrder = item.product.minOrder || 1
-                          const multiOrder = item.product.multiOrder || 1
-                          const newQuantity = Math.max(
-                            minOrder,
-                            item.quantity - multiOrder
-                          )
-
-                          console.log('Decrement button clicked:', {
-                            itemId: item.id,
-                            currentQuantity: item.quantity,
-                            minOrder: item.product.minOrder,
-                            multiOrder: item.product.multiOrder,
-                            calculatedMinOrder: minOrder,
-                            calculatedMultiOrder: multiOrder,
-                            newQuantity: newQuantity,
-                          })
-
-                          handleUpdateQuantity(item.id, newQuantity)
-                        }}>
-                        -
-                      </Button>
-                      <span>
-                        {item.quantity} / {item.product.unit}
-                      </span>
-                      <Button
-                        size='icon'
-                        variant='outline'
-                        onClick={() => {
-                          const multiOrder = item.product.multiOrder || 1
-                          const newQuantity = item.quantity + multiOrder
-                          handleUpdateQuantity(item.id, newQuantity)
-                        }}>
-                        +
-                      </Button>
-                    </div>
-                  </td>
-                  <td className='p-2 text-right'>
-                    Rp {Number(item.product.price).toLocaleString('id-ID')}
-                  </td>
-                  <td className='p-2 text-right'>
-                    Rp{' '}
-                    {Number(item.product.price * item.quantity).toLocaleString(
-                      'id-ID'
-                    )}
-                  </td>
-                  <td className='p-2 text-center'>
-                    <Button
-                      variant='ghost'
-                      size='icon'
-                      onClick={() => handleRemoveItem(item.id)}>
-                      <Trash2 className='h-5 w-5 text-red-500' />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Kanan: Ringkasan Belanja - Responsive */}
-        <div className='bg-white rounded-lg gap-4 shadow p-4 lg:w-1/3 w-full'>
-          <div className=''>
-            <div className='font-semibold mb-2'>
-              <div className='flex justify-between items-center'>
-                <span>Ringkasan Belanja</span>
-                <PdfCartButton
-                  items={selectedProduct}
-                  subtotal={calculateSubtotal()}
-                  ppn={calculatePPN()}
-                  total={calculateTotal()}
-                  logoBase64={logoBase64}
-                  customerInfo={customerInfo}
-                  disabled={selectedItems.length === 0}
-                />
+                    Pilih Semua ({cart.length} produk)
+                  </label>
+                </div>
+                <div className='divide-y'>
+                  {cart.map((item: any) => (
+                    <CartItem
+                      key={item.id}
+                      item={item}
+                      onUpdateQuantity={handleUpdateQuantity}
+                      onRemove={handleRemoveItem}
+                      onSelectItem={handleSelectItem}
+                      isSelected={selectedItems.includes(item.id)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
-          <div className='text-sm mb-2'>
-            <div>
-              <div className='space-y-2'>
-                {selectedProduct.map((item) => (
-                  <div key={item.id} className='flex justify-between'>
-                    <p className=''>
-                      {item.product.name} ({item.quantity} {item.product.unit})
-                    </p>
-                    <p>
-                      Rp{' '}
-                      {(item.product.price * item.quantity).toLocaleString(
-                        'id-ID'
-                      )}
-                    </p>
+
+            <div className='lg:col-span-1'>
+              <div className='bg-white rounded-lg shadow p-6 sticky top-4'>
+                <h3 className='text-lg font-semibold mb-4'>
+                  Ringkasan Pesanan
+                </h3>
+                <div className='space-y-2 mb-4'>
+                  <div className='flex justify-between'>
+                    <span>Subtotal ({selectedItems.length} produk)</span>
+                    <span>{formattedSubtotal}</span>
                   </div>
-                ))}
-              </div>
-            </div>
-            <div className='text-right mt-7 space-y-2'>
-              <div className='flex justify-between'>
-                <span>Subtotal</span>
-                <span>Rp {calculateSubtotal().toLocaleString('id-ID')}</span>
-              </div>
-              <div className='flex justify-between'>
-                <span>PPN (11%)</span>
-                <span>Rp {calculatePPN().toLocaleString('id-ID')}</span>
-              </div>
-              <div className='font-semibold flex justify-between border-t pt-2'>
-                <span>Total</span>
-                <span>Rp {calculateTotal().toLocaleString('id-ID')}</span>
-              </div>
-            </div>
-          </div>
-          <div className='font-bold text-lg flex justify-between border-t pt-2 mt-2'>
-            <span>Total Harga</span>
-            <span className='text-primary'>
-              Rp {calculateTotal().toLocaleString('id-ID')}
-            </span>
-          </div>
-          <Button
-            onClick={handleCheckout}
-            disabled={selectedItems.length === 0}
-            className='w-full mt-4 bg-primary text-white py-2 rounded font-semibold'>
-            Lanjutkan Ke Pembayaran
-          </Button>
-          <div className='text-center text-xs text-gray-500 mt-4'>
-            <p>Total harga sudah termasuk PPN 11%</p>
-          </div>
-        </div>
-      </div>
+                  <div className='flex justify-between'>
+                    <span>PPN (11%)</span>
+                    <span>{formattedPPN}</span>
+                  </div>
+                  <div className='border-t pt-2'>
+                    <div className='flex justify-between font-semibold text-lg'>
+                      <span>Total</span>
+                      <span>{formattedTotal}</span>
+                    </div>
+                  </div>
+                </div>
 
-      {/* Fixed Bottom Bar for Mobile */}
-      <div className='lg:hidden fixed bottom-0 left-0 right-0 bg-white shadow-lg p-4 z-50'>
-        <div className='flex justify-between items-center'>
-          <div>
-            <div className='text-sm text-gray-600'>
-              {selectedItems.length} Item
-            </div>
-            <div className='font-semibold text-primary'>
-              Rp {calculateTotal().toLocaleString('id-ID')}
+                <div className='space-y-3'>
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={selectedItems.length === 0 || isUpdating}
+                    className='w-full'>
+                    {isUpdating ? 'Memproses...' : 'Checkout'}
+                  </Button>
+
+                  {customerInfo && selectedProduct.length > 0 && (
+                    <PdfCartButton
+                      items={selectedProduct}
+                      subtotal={calculateSubtotal()}
+                      ppn={calculatePPN()}
+                      total={calculateTotal()}
+                      logoBase64=''
+                      customerInfo={customerInfo}
+                    />
+                  )}
+                </div>
+              </div>
             </div>
           </div>
-          <Button
-            onClick={handleCheckout}
-            disabled={selectedItems.length === 0}
-            className='bg-primary text-white px-6 py-2 rounded font-semibold'>
-            Lanjutkan
-          </Button>
-        </div>
+        )}
       </div>
-    </div>
-  )
-}
+    )
+  }
+)
+
+CartClient.displayName = 'CartClient'
 
 export default CartClient

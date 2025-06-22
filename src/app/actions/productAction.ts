@@ -107,18 +107,60 @@ export async function createProduct(data: {
   }
 }
 
-export async function getAllProducts() {
+export async function getAllProducts(options?: {
+  limit?: number
+  offset?: number
+  isFeatured?: boolean
+  isActive?: boolean
+}) {
   try {
+    const {
+      limit = 50, // Default limit to prevent loading too much data
+      offset = 0,
+      isFeatured,
+      isActive = true,
+    } = options || {}
+
+    const where = {
+      ...(isActive !== undefined && { isActive }),
+      ...(isFeatured !== undefined && { isFeatured }),
+    }
+
     const products = await prisma.product.findMany({
+      where,
       include: {
-        category: true,
-        brand: true,
-        User: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+        // Remove User include to reduce data transfer
       },
       orderBy: {
         createdAt: 'desc',
       },
+      take: limit,
+      skip: offset,
     })
+
     return { success: true, products }
   } catch (error) {
     console.error('Error fetching products:', error)
@@ -373,7 +415,7 @@ export async function uploadProductImages(formData: FormData) {
     }
 
     const uploadPromises = files.map(async (file) => {
-     // Generate unique filename for Supabase
+      // Generate unique filename for Supabase
       const filename = generateFileName(file.name, 'product-')
       const path = `products/${filename}`
 
@@ -385,7 +427,6 @@ export async function uploadProductImages(formData: FormData) {
       }
 
       return url
-
     })
 
     const urls = await Promise.all(uploadPromises)
@@ -448,5 +489,452 @@ export async function deleteImage(imageUrl: string) {
   } catch (error) {
     console.error('Error deleting image:', error)
     return { success: false, error: 'Failed to delete image' }
+  }
+}
+
+// Add dedicated function for featured products only
+export async function getFeaturedProducts(limit: number = 20) {
+  try {
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        isFeatured: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        stock: true,
+        label: true,
+        isFeatured: true,
+        isActive: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    })
+
+    return { success: true, products }
+  } catch (error) {
+    console.error('Error fetching featured products:', error)
+    return { success: false, error: 'Gagal mengambil produk unggulan' }
+  }
+}
+
+// Add optimized function for getting products by category
+export async function getProductsByCategory(
+  categoryId: string,
+  options?: {
+    limit?: number
+    offset?: number
+    isActive?: boolean
+  }
+) {
+  try {
+    const { limit = 50, offset = 0, isActive = true } = options || {}
+
+    const products = await prisma.product.findMany({
+      where: {
+        categoryId,
+        ...(isActive !== undefined && { isActive }),
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        stock: true,
+        label: true,
+        isFeatured: true,
+        isActive: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+      skip: offset,
+    })
+
+    return { success: true, products }
+  } catch (error) {
+    console.error('Error fetching products by category:', error)
+    return { success: false, error: 'Gagal mengambil produk kategori' }
+  }
+}
+
+// Add optimized function for getting products by multiple categories
+export async function getProductsByCategories(
+  categoryIds: string[],
+  options?: {
+    limit?: number
+    offset?: number
+    isActive?: boolean
+  }
+) {
+  try {
+    const { limit = 50, offset = 0, isActive = true } = options || {}
+
+    const products = await prisma.product.findMany({
+      where: {
+        categoryId: {
+          in: categoryIds,
+        },
+        ...(isActive !== undefined && { isActive }),
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        stock: true,
+        label: true,
+        isFeatured: true,
+        isActive: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+      skip: offset,
+    })
+
+    return { success: true, products }
+  } catch (error) {
+    console.error('Error fetching products by categories:', error)
+    return { success: false, error: 'Gagal mengambil produk kategori' }
+  }
+}
+
+// Add optimized function for product search with minimal data
+export async function searchProducts(
+  searchTerm: string,
+  options?: {
+    limit?: number
+    offset?: number
+    categoryId?: string
+    isActive?: boolean
+  }
+) {
+  try {
+    const {
+      limit = 20,
+      offset = 0,
+      categoryId,
+      isActive = true,
+    } = options || {}
+
+    const where = {
+      ...(isActive !== undefined && { isActive }),
+      ...(categoryId && { categoryId }),
+      OR: [
+        {
+          name: {
+            contains: searchTerm,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          description: {
+            contains: searchTerm,
+            mode: 'insensitive' as const,
+          },
+        },
+        {
+          sku: {
+            contains: searchTerm,
+            mode: 'insensitive' as const,
+          },
+        },
+      ],
+    }
+
+    const products = await prisma.product.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        stock: true,
+        label: true,
+        isFeatured: true,
+        isActive: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
+      take: limit,
+      skip: offset,
+    })
+
+    const totalCount = await prisma.product.count({ where })
+
+    return {
+      success: true,
+      products,
+      totalCount,
+      hasMore: offset + limit < totalCount,
+    }
+  } catch (error) {
+    console.error('Error searching products:', error)
+    return { success: false, error: 'Gagal mencari produk' }
+  }
+}
+
+// Add dedicated function for best selling products based on sales data
+export async function getBestSellingProducts(limit: number = 20) {
+  try {
+    // Query untuk mendapatkan produk dengan penjualan terbanyak
+    const products = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        orderItem: {
+          some: {
+            order: {
+              status: {
+                in: ['CONFIRMED', 'SHIPPED', 'DELIVERED'], // Hanya order yang sukses
+              },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        stock: true,
+        label: true,
+        isFeatured: true,
+        isActive: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+        // Menghitung total quantity yang terjual
+        orderItem: {
+          where: {
+            order: {
+              status: {
+                in: ['CONFIRMED', 'SHIPPED', 'DELIVERED'],
+              },
+            },
+          },
+          select: {
+            quantity: true,
+          },
+        },
+      },
+    })
+
+    // Menghitung total penjualan dan mengurutkan
+    const productsWithSales = products
+      .map((product) => {
+        const totalSold = product.orderItem.reduce(
+          (sum, item) => sum + item.quantity,
+          0
+        )
+        return {
+          ...product,
+          totalSold,
+          orderItem: undefined, // Remove orderItem dari response untuk mengurangi data
+        }
+      })
+      .filter((product) => product.totalSold > 0) // Hanya produk yang pernah terjual
+      .sort((a, b) => b.totalSold - a.totalSold) // Urutkan berdasarkan penjualan tertinggi
+      .slice(0, limit) // Ambil sesuai limit
+
+    return { success: true, products: productsWithSales }
+  } catch (error) {
+    console.error('Error fetching best selling products:', error)
+    return { success: false, error: 'Gagal mengambil produk terlaris' }
+  }
+}
+
+// Alternative: Function untuk mendapatkan featured products berdasarkan penjualan DAN flag isFeatured
+export async function getFeaturedProductsBySales(limit: number = 20) {
+  try {
+    // Ambil produk best selling
+    const bestSellingResult = await getBestSellingProducts(limit * 2) // Ambil lebih banyak dulu
+
+    if (!bestSellingResult.success || !bestSellingResult.products) {
+      // Fallback ke featured products biasa jika ada error
+      return getFeaturedProducts(limit)
+    }
+
+    // Ambil juga produk yang ditandai sebagai featured
+    const featuredProducts = await prisma.product.findMany({
+      where: {
+        isActive: true,
+        isFeatured: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        price: true,
+        images: true,
+        stock: true,
+        label: true,
+        isFeatured: true,
+        isActive: true,
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            parent: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+              },
+            },
+          },
+        },
+        brand: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            logo: true,
+          },
+        },
+      },
+      take: limit,
+    })
+
+    // Gabungkan best selling dan featured products, prioritaskan best selling
+    const productMap = new Map()
+
+    // Masukkan best selling products dulu
+    bestSellingResult.products.forEach((product) => {
+      if (!productMap.has(product.id)) {
+        productMap.set(product.id, product)
+      }
+    })
+
+    // Tambahkan featured products jika belum ada dan masih ada slot
+    featuredProducts.forEach((product) => {
+      if (!productMap.has(product.id) && productMap.size < limit) {
+        productMap.set(product.id, product)
+      }
+    })
+
+    const combinedProducts = Array.from(productMap.values()).slice(0, limit)
+
+    return { success: true, products: combinedProducts }
+  } catch (error) {
+    console.error('Error fetching featured products by sales:', error)
+    return { success: false, error: 'Gagal mengambil produk unggulan' }
   }
 }

@@ -742,3 +742,85 @@ export async function adminCancelOrder(
     }
   }
 }
+
+// Optimized function to get order details for client pages
+export async function getOrderDetails(orderId: string) {
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User not authenticated',
+      }
+    }
+
+    // Optimized query with specific select fields
+    const order = await prisma.order.findFirst({
+      where: {
+        id: orderId,
+        userId: session.user.id,
+      },
+      select: {
+        id: true,
+        status: true,
+        totalAmount: true,
+        subtotalAmount: true,
+        createdAt: true,
+        userId: true,
+        items: {
+          select: {
+            id: true,
+            quantity: true,
+            price: true,
+            product: {
+              select: {
+                name: true,
+                images: true,
+              },
+            },
+          },
+        },
+        address: {
+          select: {
+            recipientName: true,
+            labelAddress: true,
+            address: true,
+            city: true,
+            postalCode: true,
+          },
+        },
+        payment: {
+          select: {
+            id: true,
+            status: true,
+            amount: true,
+            paymentMethod: true,
+            bank: true,
+            vaNumber: true,
+            transactionId: true,
+          },
+        },
+      },
+    })
+
+    if (!order) {
+      return {
+        success: false,
+        message: 'Order not found',
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Order details retrieved successfully',
+      data: order,
+    }
+  } catch (error) {
+    console.error('Error getting order details:', error)
+    return {
+      success: false,
+      message: 'Failed to retrieve order details',
+      error,
+    }
+  }
+}
