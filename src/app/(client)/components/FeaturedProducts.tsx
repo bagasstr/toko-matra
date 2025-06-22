@@ -134,6 +134,7 @@ const FeaturedProducts = memo(() => {
     data: products = [],
     isLoading,
     error,
+    isFetching,
   } = useQuery({
     queryKey: queryKeys.products.bestSelling(18),
     queryFn: async () => {
@@ -152,8 +153,23 @@ const FeaturedProducts = memo(() => {
     return products.filter((product) => product.isActive).slice(0, 18) // Limit display to 18 products untuk grid yang lebih rapi
   }, [products])
 
-  // Hide the entire section if there are no products or if loading failed
-  if (error || (!isLoading && displayProducts.length === 0)) {
+  // Determine if we should show the section at all
+  const shouldShowSection = useMemo(() => {
+    // If we have an error, don't show
+    if (error) return false
+
+    // If we have products, show
+    if (displayProducts.length > 0) return true
+
+    // If we're in initial loading state (no cached data), show loading
+    if (isLoading && products.length === 0) return true
+
+    // Otherwise, don't show (no products available)
+    return false
+  }, [error, displayProducts.length, isLoading, products.length])
+
+  // Don't render anything if we shouldn't show the section
+  if (!shouldShowSection) {
     return null
   }
 
@@ -175,7 +191,7 @@ const FeaturedProducts = memo(() => {
           )}
         </div>
 
-        {isLoading ? (
+        {isLoading || isFetching ? (
           <FeaturedProductsSkeleton />
         ) : (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 auto-rows-fr'>

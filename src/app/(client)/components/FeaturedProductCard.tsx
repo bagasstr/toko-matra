@@ -63,7 +63,7 @@ export const FeaturedProductCard = memo(
     return (
       <Link
         href={`/${categoryPath}`}
-        className='group bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 hover:border-primary/20 block h-full flex flex-col'>
+        className='group bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 hover:border-primary/20  h-full flex flex-col'>
         <div className='relative w-full aspect-square bg-gray-50'>
           <OptimizedImage
             src={product.images[0] || '/assets/products/placeholder.png'}
