@@ -29,6 +29,7 @@ import {
   getWishlist,
   toggleWishlist,
 } from '@/app/actions/wishlist'
+import Image from 'next/image'
 
 // Utility function to safely get brand name
 function getBrandName(brand: Brand | undefined | null): string {
@@ -287,7 +288,7 @@ function CategoryPage() {
                     </Badge>
                   )}
                   <Image
-                    src={item.images[0] || '/placeholder.png'}
+                    src={item.images[0]}
                     alt={item.name}
                     fill
                     className='object-contain p-2'
@@ -531,7 +532,7 @@ function ProductPage({
           className='group bg-white rounded-lg shadow-sm hover:shadow-md transition overflow-hidden'>
           <div className='relative w-full h-40'>
             <Image
-              src={product.images[0] || '/placeholder.png'}
+              src={product.images[0]}
               alt={product.name}
               fill
               priority
