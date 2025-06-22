@@ -69,9 +69,6 @@ const nextConfig: NextConfig = {
   experimental: {
     // Enable modern features for better performance
     optimizePackageImports: ['@radix-ui/react-icons', 'lucide-react'],
-    turbotrace: {
-      logLevel: 'error',
-    },
   },
 
   // Set runtime to be server-side for routes that use cookies
