@@ -13,9 +13,12 @@ interface OptimizedImageProps {
   quality?: number
   placeholder?: 'blur' | 'empty'
   sizes?: string
+  fallback?: string
 }
 
-export default function OptimizedImage({
+export type { OptimizedImageProps }
+
+export function OptimizedImage({
   src,
   alt,
   width = 300,
@@ -25,12 +28,13 @@ export default function OptimizedImage({
   quality = 75,
   placeholder = 'empty',
   sizes = '(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw',
+  fallback = '/default-image.png',
 }: OptimizedImageProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
-  // Fallback image jika ada error
-  const fallbackSrc = '/default-image.png'
+  // Use provided fallback or default
+  const fallbackSrc = fallback
 
   return (
     <div className={`relative overflow-hidden ${className}`}>
@@ -63,3 +67,5 @@ export default function OptimizedImage({
     </div>
   )
 }
+
+export default OptimizedImage

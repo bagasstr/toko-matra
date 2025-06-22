@@ -102,6 +102,40 @@ export async function getAllCategories() {
   }
 }
 
+// Function specifically for homepage - only parent categories
+export async function getParentCategories() {
+  try {
+    const categorie = await prisma.category.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        parentId: true,
+        isActive: true,
+        imageUrl: true,
+        parent: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
+      where: {
+        isActive: true,
+        parentId: null, // Only show parent categories, not subcategories
+      },
+      orderBy: {
+        name: 'asc',
+      },
+    })
+    return { success: true, categorie }
+  } catch (error) {
+    console.error('Error fetching parent categories:', error)
+    return { success: false, error: 'Gagal mengambil data kategori' }
+  }
+}
+
 export async function getTreeCategories() {
   try {
     // Optimize for tree structure by selecting only necessary fields
@@ -112,6 +146,7 @@ export async function getTreeCategories() {
         slug: true,
         parentId: true,
         isActive: true,
+        imageUrl: true,
         children: {
           select: {
             id: true,
@@ -119,6 +154,7 @@ export async function getTreeCategories() {
             slug: true,
             parentId: true,
             isActive: true,
+            imageUrl: true,
           },
           where: {
             isActive: true,

@@ -5,7 +5,7 @@ import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { getAllProducts } from '@/app/actions/productAction'
-import { getAllCategories } from '@/app/actions/categoryAction'
+import { getTreeCategories } from '@/app/actions/categoryAction'
 import { useParams, useRouter } from 'next/navigation'
 import { Suspense, useMemo, useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
@@ -105,16 +105,16 @@ function findCategoryBySlug(categories: any[], slug: string) {
 function CategoryPage() {
   const params = useParams()
 
-  // Fetch categories using React Query
+  // Fetch categories using React Query - use tree structure for proper hierarchy
   const { data: categories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['categories'],
+    queryKey: ['categoriesTree'],
     queryFn: async () => {
-      const { categorie, success, error } = await getAllCategories()
+      const { treeCategories, success, error } = await getTreeCategories()
       if (!success) {
         console.log(error)
         return []
       }
-      return categorie
+      return treeCategories
     },
   })
 

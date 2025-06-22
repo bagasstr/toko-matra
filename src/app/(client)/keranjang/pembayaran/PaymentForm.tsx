@@ -205,7 +205,7 @@ const PaymentForm = ({
           bank: selectedVABank,
           paymentType: 'bank_transfer',
           amount: resultPayment.data.amount,
-          orderId: resultPayment.data.orderId,
+          orderId: resultPayment.data.order.id, // Fixed: use order.id instead of orderId
           customerDetails: {
             first_name: result.data.user.profile.fullName,
             email: result.data.user.profile.email,
@@ -230,13 +230,11 @@ const PaymentForm = ({
               country_code: 'IDN',
             },
           },
-          itemDetails: result.data.items.map((item) => ({
-            id: item.product.id,
-            price: item.product.price,
+          itemDetails: resultPayment.data.order.items.map((item) => ({
+            id: item.product.name, // Use product name as ID since product.id might not be available
+            price: item.price,
             quantity: item.quantity,
             name: item.product.name,
-            brand: item.product.brandId,
-            category: item.product.categoryId,
             merchant_name: 'Toko Matra',
             url: 'https://tokomatra.com',
           })),

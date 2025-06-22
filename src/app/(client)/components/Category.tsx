@@ -1,6 +1,9 @@
 'use client'
 
-import { getAllCategories, getTreeCategories } from '@/app/actions/categoryAction'
+import {
+  getParentCategories,
+  getTreeCategories,
+} from '@/app/actions/categoryAction'
 import {
   Card,
   CardContent,
@@ -17,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 interface IDataCategories {
   id: string
   name: string
-  imageUrl: string
+  imageUrl: string | null
   slug: string
 }
 
@@ -65,7 +68,7 @@ const Category = () => {
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories'],
     queryFn: async () => {
-      const { categorie, error } = await getAllCategories()
+      const { categorie, error } = await getParentCategories()
       if (error) throw error
       return categorie
     },
@@ -93,61 +96,73 @@ const Category = () => {
             {/* Mobile Carousel */}
             <div className='lg:hidden overflow-x-auto scrollbar-hide'>
               <div className='flex gap-3 py-2 w-full'>
-                {categories.map((category: IDataCategories) => (
+                {categories
+                  .filter((cat: IDataCategories) => cat.imageUrl)
+                  .map((category: IDataCategories) => (
+                    <Link
+                      href={`/kategori/${category.slug}`}
+                      key={category.id}
+                      className='group w-[120px] flex-shrink-0'>
+                      <Card className='flex flex-col items-stretch justify-between p-2 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
+                        <div className='relative w-full aspect-square'>
+                          {category.imageUrl ? (
+                            <OptimizedImage
+                              src={category.imageUrl}
+                              alt={category.name}
+                              width={120}
+                              height={120}
+                              className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
+                              sizes='120px'
+                              priority={false}
+                            />
+                          ) : (
+                            <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
+                              <span className='text-gray-400 text-xs'>
+                                No Image
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <CardFooter className='p-0 pt-1 flex justify-center items-center'>
+                          <p className='text-sm text-center font-medium text-foreground/80 group-hover:text-primary transition-colors line-clamp-2'>
+                            {category.name}
+                          </p>
+                        </CardFooter>
+                      </Card>
+                    </Link>
+                  ))}
+              </div>
+            </div>
+
+            {/* Desktop Grid */}
+            <div className='hidden lg:grid grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4'>
+              {categories
+                .filter((cat: IDataCategories) => cat.imageUrl)
+                .map((category: IDataCategories) => (
                   <Link
                     href={`/kategori/${category.slug}`}
                     key={category.id}
-                    className='group w-[120px] flex-shrink-0'>
-                    <Card className='flex flex-col items-stretch justify-between p-2 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
+                    className='group'>
+                    <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
                       <div className='relative w-full aspect-square'>
                         <OptimizedImage
                           src={category.imageUrl}
                           alt={category.name}
-                          width={120}
-                          height={120}
+                          width={150}
+                          height={150}
                           className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
-                          sizes='120px'
+                          sizes='(max-width: 1024px) 25vw, (max-width: 1280px) 16vw, 12vw'
                           priority={false}
                         />
                       </div>
-                      <CardFooter className='p-0 pt-1 flex justify-center items-center'>
-                        <p className='text-sm text-center font-medium text-foreground/80 group-hover:text-primary transition-colors line-clamp-2'>
+                      <CardFooter className='p-0 pt-2 flex justify-center items-center'>
+                        <p className='text-xs md:text-sm text-center font-medium text-foreground/80 group-hover:text-primary transition-colors line-clamp-2'>
                           {category.name}
                         </p>
                       </CardFooter>
                     </Card>
                   </Link>
                 ))}
-              </div>
-            </div>
-
-            {/* Desktop Grid */}
-            <div className='hidden lg:grid grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4'>
-              {categories.map((category: IDataCategories) => (
-                <Link
-                  href={`/kategori/${category.slug}`}
-                  key={category.id}
-                  className='group'>
-                  <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
-                    <div className='relative w-full aspect-square'>
-                      <OptimizedImage
-                        src={category.imageUrl}
-                        alt={category.name}
-                        width={150}
-                        height={150}
-                        className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
-                        sizes='(max-width: 1024px) 25vw, (max-width: 1280px) 16vw, 12vw'
-                        priority={false}
-                      />
-                    </div>
-                    <CardFooter className='p-0 pt-2 flex justify-center items-center'>
-                      <p className='text-xs md:text-sm text-center font-medium text-foreground/80 group-hover:text-primary transition-colors line-clamp-2'>
-                        {category.name}
-                      </p>
-                    </CardFooter>
-                  </Card>
-                </Link>
-              ))}
             </div>
           </>
         )}
