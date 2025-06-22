@@ -1,9 +1,19 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create Supabase client with fallback for build time
+let supabase: ReturnType<typeof createClient> | null = null
+
+if (supabaseUrl && supabaseAnonKey) {
+  supabase = createClient(supabaseUrl, supabaseAnonKey)
+} else {
+  // Create a dummy client for build time when env vars are not available
+  supabase = createClient('https://dummy.supabase.co', 'dummy-key')
+}
+
+export { supabase }
 
 // Helper function untuk upload file ke Supabase Storage
 export async function uploadToSupabase(
@@ -12,6 +22,18 @@ export async function uploadToSupabase(
   path: string
 ): Promise<{ url: string | null; error: string | null }> {
   try {
+    // Check if Supabase is properly configured
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      return { url: null, error: 'Supabase configuration is missing' }
+    }
+
+    if (!supabase) {
+      return { url: null, error: 'Supabase client is not initialized' }
+    }
+
     const { data, error } = await supabase.storage
       .from(bucket)
       .upload(path, file, {
