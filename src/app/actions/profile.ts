@@ -9,6 +9,11 @@ import path from 'path'
 import { generateCustomId } from '@/lib/helpper'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import {
+  uploadBase64ToSupabase,
+  uploadToSupabase,
+  generateFileName,
+} from '@/lib/supabase'
 
 interface ProfileData {
   fullName: string
@@ -24,16 +29,23 @@ interface ProfileData {
 
 async function saveImage(base64Image: string, userId: string): Promise<string> {
   try {
-    // Remove data:image/jpeg;base64, from the string
-    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '')
-    const buffer = Buffer.from(base64Data, 'base64')
+    const filename = generateFileName('avatar.jpg', `profile-${userId}-`)
+    const path = `profiles/${filename}`
 
-    // Create directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'assets', 'avatar')
-    await writeFile(path.join(uploadDir, `${userId}.jpg`), buffer)
+    // Upload to Supabase Storage
+    const { url, error } = await uploadBase64ToSupabase(
+      base64Image,
+      'images',
+      path,
+      'image/jpeg'
+    )
 
-    // Return the API route URL
-    return `/api/images/assets/avatar/${userId}.jpg`
+    if (error) {
+      console.error('Failed to upload profile image:', error)
+      throw new Error('Failed to save image')
+    }
+
+    return url || ''
   } catch (error) {
     console.error('Error saving image:', error)
     throw new Error('Failed to save image')
@@ -170,27 +182,19 @@ export async function uploadProfileImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    // Generate unique filename for Supabase
+    const filename = generateFileName(file.name, 'profile-')
+    const path = `profiles/${filename}`
 
-    // Generate unique filename
-    const uniqueId = uuidv4()
-    const extension = file.name.split('.').pop()
-    const filename = `${uniqueId}.${extension}`
+    // Upload to Supabase Storage
+    const { url, error } = await uploadToSupabase(file, 'images', path)
 
-    // Ensure directory exists
-    const uploadDir = join(process.cwd(), 'public', 'assets', 'avatar')
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
+    if (error) {
+      console.error('Error uploading profile image:', error)
+      return { success: false, error: 'Gagal mengupload gambar profile' }
     }
 
-    // Save to public/assets/avatar directory
-    const path = join(uploadDir, filename)
-    await writeFile(path, buffer)
-
-    // Return API route URL
-    return { success: true, url: `/api/images/assets/avatar/${filename}` }
+    return { success: true, url }
   } catch (error) {
     console.error('Error uploading profile image:', error)
     return { success: false, error: 'Gagal mengupload gambar profile' }

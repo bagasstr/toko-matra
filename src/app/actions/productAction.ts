@@ -6,6 +6,12 @@ import { writeFile, unlink, access } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
 import { generateCustomId, generateProductId } from '@/lib/helpper'
+import {
+  uploadToSupabase,
+  deleteFromSupabase,
+  generateFileName,
+  extractSupabasePath,
+} from '@/lib/supabase'
 import { cookies } from 'next/headers'
 import { validateSession } from './session'
 
@@ -204,26 +210,34 @@ export async function updateProduct(id: string, data: any) {
       }
     }
 
-    // Delete removed images from filesystem
+    // Delete removed images from storage (Supabase or local)
     if (data.deletedImages && data.deletedImages.length > 0) {
       const deleteImagePromises = data.deletedImages.map(
         async (imagePath: string) => {
           try {
-            // Remove API route prefix to get the filename
-            const filename = imagePath
-              .replace('/api/images/produk/', '')
-              .replace('/produk/', '')
-            const filePath = join(process.cwd(), 'public', 'produk', filename)
+            if (imagePath.includes('supabase')) {
+              // Delete from Supabase Storage
+              const path = extractSupabasePath(imagePath)
+              if (path) {
+                await deleteFromSupabase('images', path)
+              }
+            } else {
+              // Legacy local file deletion
+              const filename = imagePath
+                .replace('/api/images/produk/', '')
+                .replace('/produk/', '')
+              const filePath = join(process.cwd(), 'public', 'produk', filename)
 
-            // Check if file exists before trying to delete
-            try {
-              await access(filePath)
-              await unlink(filePath)
-            } catch (error) {
-              // File doesn't exist or can't be accessed, skip deletion
-              console.log(
-                `File ${filename} not found or not accessible, skipping deletion`
-              )
+              // Check if file exists before trying to delete
+              try {
+                await access(filePath)
+                await unlink(filePath)
+              } catch (error) {
+                // File doesn't exist or can't be accessed, skip deletion
+                console.log(
+                  `File ${filename} not found or not accessible, skipping deletion`
+                )
+              }
             }
           } catch (error) {
             console.error(`Error processing image ${imagePath}:`, error)
@@ -296,24 +310,32 @@ export async function deleteProduct(id: string) {
       }
     }
 
-    // Delete images from filesystem
+    // Delete images from storage (Supabase or local)
     const deleteImagePromises = product.images.map(async (imagePath) => {
       try {
-        // Remove API route prefix to get the filename
-        const filename = imagePath
-          .replace('/api/images/produk/', '')
-          .replace('/produk/', '')
-        const filePath = join(process.cwd(), 'public', 'produk', filename)
+        if (imagePath.includes('supabase')) {
+          // Delete from Supabase Storage
+          const path = extractSupabasePath(imagePath)
+          if (path) {
+            await deleteFromSupabase('images', path)
+          }
+        } else {
+          // Legacy local file deletion
+          const filename = imagePath
+            .replace('/api/images/produk/', '')
+            .replace('/produk/', '')
+          const filePath = join(process.cwd(), 'public', 'produk', filename)
 
-        // Check if file exists before trying to delete
-        try {
-          await access(filePath)
-          await unlink(filePath)
-        } catch (error) {
-          // File doesn't exist or can't be accessed, skip deletion
-          console.log(
-            `File ${filename} not found or not accessible, skipping deletion`
-          )
+          // Check if file exists before trying to delete
+          try {
+            await access(filePath)
+            await unlink(filePath)
+          } catch (error) {
+            // File doesn't exist or can't be accessed, skip deletion
+            console.log(
+              `File ${filename} not found or not accessible, skipping deletion`
+            )
+          }
         }
       } catch (error) {
         console.error(`Error processing image ${imagePath}:`, error)
@@ -350,20 +372,18 @@ export async function uploadProductImages(formData: FormData) {
     }
 
     const uploadPromises = files.map(async (file) => {
-      const bytes = await file.arrayBuffer()
-      const buffer = Buffer.from(bytes)
+      // Generate unique filename for Supabase
+      const filename = generateFileName(file.name, 'product-')
+      const path = `products/${filename}`
 
-      // Generate unique filename
-      const uniqueId = uuidv4()
-      const extension = file.name.split('.').pop()
-      const filename = `${uniqueId}.${extension}`
+      // Upload to Supabase Storage
+      const { url, error } = await uploadToSupabase(file, 'images', path)
 
-      // Save to public/produk directory
-      const path = join(process.cwd(), 'public', 'produk', filename)
-      await writeFile(path, buffer)
+      if (error) {
+        throw new Error(`Failed to upload ${file.name}: ${error}`)
+      }
 
-      // Return API route URL instead of direct path
-      return `/api/images/produk/${filename}`
+      return url
     })
 
     const urls = await Promise.all(uploadPromises)
@@ -376,26 +396,53 @@ export async function uploadProductImages(formData: FormData) {
 
 export async function deleteImage(imageUrl: string) {
   try {
-    // Extract filename from URL
-    const filename = imageUrl.split('/').pop()
-    if (!filename) {
-      return { success: false, error: 'Invalid image URL' }
+    // Check if it's a Supabase URL or legacy local URL
+    if (imageUrl.includes('supabase')) {
+      // Extract path from Supabase URL
+      const path = extractSupabasePath(imageUrl)
+      if (!path) {
+        return { success: false, error: 'Invalid Supabase URL' }
+      }
+
+      // Delete from Supabase Storage
+      const { success, error } = await deleteFromSupabase('images', path)
+
+      if (!success) {
+        return {
+          success: false,
+          error: error || 'Failed to delete from Supabase',
+        }
+      }
+
+      return {
+        success: true,
+        message: 'Image deleted successfully from Supabase',
+      }
+    } else {
+      // Legacy local file deletion
+      const filename = imageUrl.split('/').pop()
+      if (!filename) {
+        return { success: false, error: 'Invalid image URL' }
+      }
+
+      // Construct full path to file
+      const filePath = join(process.cwd(), 'public', 'produk', filename)
+
+      // Check if file exists before attempting to delete
+      try {
+        await access(filePath)
+      } catch {
+        return { success: false, error: 'File not found' }
+      }
+
+      // Delete the file
+      await unlink(filePath)
+
+      return {
+        success: true,
+        message: 'Image deleted successfully from local storage',
+      }
     }
-
-    // Construct full path to file
-    const filePath = join(process.cwd(), 'public', 'produk', filename)
-
-    // Check if file exists before attempting to delete
-    try {
-      await access(filePath)
-    } catch {
-      return { success: false, error: 'File not found' }
-    }
-
-    // Delete the file
-    await unlink(filePath)
-
-    return { success: true, message: 'Image deleted successfully' }
   } catch (error) {
     console.error('Error deleting image:', error)
     return { success: false, error: 'Failed to delete image' }

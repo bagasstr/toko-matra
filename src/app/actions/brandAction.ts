@@ -6,6 +6,13 @@ import { generateBrandId, generateCustomId } from '@/lib/helpper'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import {
+  uploadBase64ToSupabase,
+  uploadToSupabase,
+  deleteFromSupabase,
+  generateFileName,
+  extractSupabasePath,
+} from '@/lib/supabase'
 
 type CreateBrandInput = {
   name: string
@@ -38,21 +45,23 @@ export async function createBrand(data: CreateBrandInput) {
     // Handle logo upload
     let logoPath = ''
     if (data.logo) {
-      const logoBuffer = Buffer.from(data.logo.split(',')[1], 'base64')
-      const logoFileName = `${slug}-${Date.now()}.png`
-      const logoFilePath = `public/merek/${logoFileName}`
+      const filename = generateFileName('logo.png', `brand-${slug}-`)
+      const path = `brands/${filename}`
 
-      // Ensure directory exists
-      const fs = require('fs')
-      const path = require('path')
-      const dir = path.join(process.cwd(), 'public/merek')
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
+      // Upload to Supabase Storage
+      const { url, error } = await uploadBase64ToSupabase(
+        data.logo,
+        'images',
+        path,
+        'image/png'
+      )
+
+      if (error) {
+        console.error('Failed to upload brand logo:', error)
+        return { success: false, error: 'Failed to upload brand logo' }
       }
 
-      // Write file
-      fs.writeFileSync(path.join(process.cwd(), logoFilePath), logoBuffer)
-      logoPath = `/api/images/merek/${logoFileName}`
+      logoPath = url || ''
     }
 
     const brand = await prisma.brand.create({
@@ -86,21 +95,23 @@ export async function updateBrand(
     // Handle logo upload if provided
     let logoPath = undefined
     if (data.logo) {
-      const logoBuffer = Buffer.from(data.logo.split(',')[1], 'base64')
-      const logoFileName = `${slug}-${Date.now()}.png`
-      const logoFilePath = `public/merek/${logoFileName}`
+      const filename = generateFileName('logo.png', `brand-${slug}-`)
+      const path = `brands/${filename}`
 
-      // Ensure directory exists
-      const fs = require('fs')
-      const path = require('path')
-      const dir = path.join(process.cwd(), 'public/merek')
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true })
+      // Upload to Supabase Storage
+      const { url, error } = await uploadBase64ToSupabase(
+        data.logo,
+        'images',
+        path,
+        'image/png'
+      )
+
+      if (error) {
+        console.error('Failed to upload brand logo:', error)
+        return { success: false, error: 'Failed to upload brand logo' }
       }
 
-      // Write file
-      fs.writeFileSync(path.join(process.cwd(), logoFilePath), logoBuffer)
-      logoPath = `/api/images/merek/${logoFileName}`
+      logoPath = url || ''
     }
 
     const brand = await prisma.brand.update({
@@ -138,18 +149,27 @@ export async function deleteBrand(id: string) {
       }
     }
 
-    // Delete logo file from filesystem if exists
+    // Delete logo file from storage (Supabase or local) if exists
     if (brand.logo) {
       try {
-        const fs = require('fs')
-        const path = require('path')
-        const logoPath = path.join(
-          process.cwd(),
-          'public',
-          brand.logo.replace(/^\//, '')
-        )
-        if (fs.existsSync(logoPath)) {
-          fs.unlinkSync(logoPath)
+        if (brand.logo.includes('supabase')) {
+          // Delete from Supabase Storage
+          const path = extractSupabasePath(brand.logo)
+          if (path) {
+            await deleteFromSupabase('images', path)
+          }
+        } else {
+          // Legacy local file deletion
+          const fs = require('fs')
+          const path = require('path')
+          const logoPath = path.join(
+            process.cwd(),
+            'public',
+            brand.logo.replace(/^\//, '')
+          )
+          if (fs.existsSync(logoPath)) {
+            fs.unlinkSync(logoPath)
+          }
         }
       } catch (fsError) {
         console.warn('Failed to delete logo file:', fsError)
@@ -176,27 +196,19 @@ export async function uploadBrandImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-    const bytes = await file.arrayBuffer()
-    const buffer = Buffer.from(bytes)
+    // Generate unique filename for Supabase
+    const filename = generateFileName(file.name, 'brand-')
+    const path = `brands/${filename}`
 
-    // Generate unique filename
-    const uniqueId = uuidv4()
-    const extension = file.name.split('.').pop()
-    const filename = `${uniqueId}.${extension}`
+    // Upload to Supabase Storage
+    const { url, error } = await uploadToSupabase(file, 'images', path)
 
-    // Ensure directory exists
-    const uploadDir = join(process.cwd(), 'public', 'merek')
-    const fs = require('fs')
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true })
+    if (error) {
+      console.error('Error uploading brand image:', error)
+      return { success: false, error: 'Gagal mengupload gambar brand' }
     }
 
-    // Save to public/merek directory
-    const path = join(uploadDir, filename)
-    await writeFile(path, buffer)
-
-    // Return API route URL
-    return { success: true, url: `/api/images/merek/${filename}` }
+    return { success: true, url }
   } catch (error) {
     console.error('Error uploading brand image:', error)
     return { success: false, error: 'Gagal mengupload gambar brand' }
