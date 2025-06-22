@@ -16,26 +16,21 @@ const FeaturedProducts = dynamic(
   }
 )
 
-const AllProducts = dynamic(() => import('./components/AllProducts'), {
-  ssr: false, // Client-side only untuk mengurangi server load
-  loading: () => <AllProductsSkeleton />,
-})
+// Client-side components wrapper
+const ClientSideComponents = dynamic(
+  () => import('./components/ClientSideComponents'),
+  {
+    loading: () => (
+      <div>
+        <AllProductsSkeleton />
+        <BrandSkeleton />
+        <ContentSkeleton />
+        <ContentSkeleton />
+      </div>
+    ),
+  }
+)
 
-// Lower priority components - lazy load
-const Brand = dynamic(() => import('./components/brand'), {
-  ssr: false,
-  loading: () => <BrandSkeleton />,
-})
-
-const Benefit = dynamic(() => import('./components/benefit'), {
-  ssr: false,
-  loading: () => <ContentSkeleton />,
-})
-
-const Faq = dynamic(() => import('./components/faq'), {
-  ssr: false,
-  loading: () => <ContentSkeleton />,
-})
 import { getOrderById } from '../actions/orderAction'
 import { redirect } from 'next/navigation'
 import { validateSession } from '../actions/session'
@@ -201,17 +196,8 @@ const Home = async () => {
       {/* Featured Products Section - High Priority */}
       <FeaturedProducts />
 
-      {/* All Products Section - Medium Priority */}
-      <AllProducts />
-
-      {/* Brand Section - Lower Priority */}
-      <Brand />
-
-      {/* Benefit Section - Lower Priority */}
-      <Benefit />
-
-      {/* FAQ Section - Lower Priority */}
-      <Faq />
+      {/* Client-side components - All Products, Brand, Benefit, FAQ */}
+      <ClientSideComponents />
 
       {/* Optional sections - commented out for performance */}
       {/* <MaterialsOffer /> */}
