@@ -18,7 +18,7 @@ interface IDataCategories {
 // Skeleton component yang dioptimalkan
 const CategorySkeleton = memo(() => (
   <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3'>
-    {Array.from({ length: 16 }).map((_, index) => (
+    {Array.from({ length: 5 }).map((_, index) => (
       <div
         key={index}
         className='bg-white rounded-md shadow-sm overflow-hidden border border-gray-100'>
@@ -120,9 +120,6 @@ const Category = memo(() => {
         {isLoading ? (
           <>
             <CategorySkeleton />
-            <div className='text-center mt-2 text-xs text-gray-400'>
-              Loading categories...
-            </div>
           </>
         ) : displayCategories.length === 0 ? (
           <div className='text-center py-8 text-gray-500'>
@@ -143,9 +140,7 @@ const Category = memo(() => {
                 />
               ))}
             </div>
-            <div className='text-center mt-2 text-xs text-gray-400'>
-              Showing {displayCategories.length} parent categories
-            </div>
+            <div className='text-center mt-2 text-xs text-gray-400'></div>
           </>
         )}
       </div>

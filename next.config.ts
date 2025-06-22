@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
     removeConsole: process.env.NODE_ENV === 'production',
   },
 
-  output: 'standalone',
+  // output: 'standalone',
   images: {
     unoptimized: false, // Enable Next.js optimization untuk performa
     domains: ['localhost', 'DESKTOP-02S3AEE'],
