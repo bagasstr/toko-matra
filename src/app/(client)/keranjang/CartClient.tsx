@@ -505,7 +505,11 @@ const CartClient = memo(
 
                   {customerInfo && selectedProduct.length > 0 && (
                     <PdfCartButton
-                      products={selectedProduct}
+                      items={selectedProduct}
+                      subtotal={calculateSubtotal()}
+                      ppn={calculatePPN()}
+                      total={calculateTotal()}
+                      logoBase64=''
                       customerInfo={customerInfo}
                     />
                   )}
