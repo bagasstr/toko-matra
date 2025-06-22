@@ -9,7 +9,7 @@ import path from 'path'
 import { generateCustomId } from '@/lib/helpper'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-mport {
+import {
   uploadBase64ToSupabase,
   uploadToSupabase,
   generateFileName,
