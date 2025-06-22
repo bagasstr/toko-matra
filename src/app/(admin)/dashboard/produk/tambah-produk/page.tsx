@@ -31,7 +31,7 @@ import {
 } from '@/components/ui/command'
 import { ChevronsUpDown, Check, Trash, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { getAllCategories } from '@/app/actions/categoryAction'
+import { getTreeCategories } from '@/app/actions/categoryAction'
 import { createProduct } from '@/app/actions/productAction'
 import { getAllBrands } from '@/app/actions/brandAction'
 import {
@@ -269,8 +269,8 @@ export default function Page() {
 
   async function fetchCategories() {
     try {
-      const result = await getAllCategories()
-      if (result.success && result.treeCategory) {
+      const result = await getTreeCategories()
+      if (result.success && result.treeCategories) {
         function flatten(cats: any[], level = 0, parentPath = ''): any[] {
           return cats.reduce((acc: any[], cat) => {
             const prefix = '—'.repeat(level)
@@ -293,7 +293,7 @@ export default function Page() {
             ]
           }, [])
         }
-        setCategories(flatten(result.treeCategory))
+        setCategories(flatten(result.treeCategories))
       }
     } catch (error) {
       console.error('Error fetching categories:', error)

@@ -25,6 +25,7 @@ import {
   createCategory,
   getAllCategories,
   deleteCategory,
+  getTreeCategories,
 } from '@/app/actions/categoryAction'
 import React from 'react'
 import ProductPagination from '@/components/ProductPagination'
@@ -73,9 +74,9 @@ export default function CategoryPage() {
   }, [isAddDialogOpen])
 
   const fetchCategories = async () => {
-    const result = await getAllCategories()
+    const result = await getTreeCategories()
     if (result.success) {
-      setCategories(result.treeCategory)
+      setCategories(result.treeCategories)
     }
   }
 
