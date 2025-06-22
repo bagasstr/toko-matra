@@ -6,7 +6,13 @@ import { generateBrandId, generateCustomId } from '@/lib/helpper'
 import { writeFile } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { put } from '@vercel/blob'
+import {
+  uploadBase64ToSupabase,
+  uploadToSupabase,
+  deleteFromSupabase,
+  generateFileName,
+  extractSupabasePath,
+} from '@/lib/supabase'
 
 type CreateBrandInput = {
   name: string
@@ -39,21 +45,25 @@ export async function createBrand(data: CreateBrandInput) {
     // Handle logo upload
     let logoPath = ''
     if (data.logo) {
-      const logoBuffer = Buffer.from(data.logo.split(',')[1], 'base64')
-      const logoFileName = `merek/${slug}-${Date.now()}.png`
 
-      // Create file from buffer for Vercel Blob
-      const file = new File([logoBuffer], `${slug}-${Date.now()}.png`, {
-        type: 'image/png',
-      })
+      const filename = generateFileName('logo.png', `brand-${slug}-`)
+      const path = `brands/${filename}`
 
-      // Upload to Vercel Blob
-      const blob = await put(logoFileName, file, {
-        access: 'public',
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      })
+      // Upload to Supabase Storage
+      const { url, error } = await uploadBase64ToSupabase(
+        data.logo,
+        'images',
+        path,
+        'image/png'
+      )
 
-      logoPath = blob.url
+      if (error) {
+        console.error('Failed to upload brand logo:', error)
+        return { success: false, error: 'Failed to upload brand logo' }
+      }
+
+      logoPath = url || ''
+
     }
 
     const brand = await prisma.brand.create({
@@ -87,21 +97,24 @@ export async function updateBrand(
     // Handle logo upload if provided
     let logoPath = undefined
     if (data.logo) {
-      const logoBuffer = Buffer.from(data.logo.split(',')[1], 'base64')
-      const logoFileName = `merek/${slug}-${Date.now()}.png`
+      const filename = generateFileName('logo.png', `brand-${slug}-`)
+      const path = `brands/${filename}`
 
-      // Create file from buffer for Vercel Blob
-      const file = new File([logoBuffer], `${slug}-${Date.now()}.png`, {
-        type: 'image/png',
-      })
+      // Upload to Supabase Storage
+      const { url, error } = await uploadBase64ToSupabase(
+        data.logo,
+        'images',
+        path,
+        'image/png'
+      )
 
-      // Upload to Vercel Blob
-      const blob = await put(logoFileName, file, {
-        access: 'public',
-        token: process.env.BLOB_READ_WRITE_TOKEN,
-      })
+      if (error) {
+        console.error('Failed to upload brand logo:', error)
+        return { success: false, error: 'Failed to upload brand logo' }
+      }
 
-      logoPath = blob.url
+      logoPath = url || ''
+
     }
 
     const brand = await prisma.brand.update({
@@ -139,18 +152,27 @@ export async function deleteBrand(id: string) {
       }
     }
 
-    // Delete logo file from filesystem if exists
+    // Delete logo file from storage (Supabase or local) if exists
     if (brand.logo) {
       try {
-        const fs = require('fs')
-        const path = require('path')
-        const logoPath = path.join(
-          process.cwd(),
-          'public',
-          brand.logo.replace(/^\//, '')
-        )
-        if (fs.existsSync(logoPath)) {
-          fs.unlinkSync(logoPath)
+        if (brand.logo.includes('supabase')) {
+          // Delete from Supabase Storage
+          const path = extractSupabasePath(brand.logo)
+          if (path) {
+            await deleteFromSupabase('images', path)
+          }
+        } else {
+          // Legacy local file deletion
+          const fs = require('fs')
+          const path = require('path')
+          const logoPath = path.join(
+            process.cwd(),
+            'public',
+            brand.logo.replace(/^\//, '')
+          )
+          if (fs.existsSync(logoPath)) {
+            fs.unlinkSync(logoPath)
+          }
         }
       } catch (fsError) {
         console.warn('Failed to delete logo file:', fsError)
@@ -177,19 +199,21 @@ export async function uploadBrandImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-    // Generate unique filename
-    const uniqueId = uuidv4()
-    const extension = file.name.split('.').pop()
-    const filename = `merek/${uniqueId}.${extension}`
 
-    // Upload to Vercel Blob with optimization
-    const blob = await put(filename, file, {
-      access: 'public',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-      cacheControlMaxAge: 31536000, // 1 year cache
-    })
+    // Generate unique filename for Supabase
+    const filename = generateFileName(file.name, 'brand-')
+    const path = `brands/${filename}`
 
-    return { success: true, url: blob.url }
+    // Upload to Supabase Storage
+    const { url, error } = await uploadToSupabase(file, 'images', path)
+
+    if (error) {
+      console.error('Error uploading brand image:', error)
+      return { success: false, error: 'Gagal mengupload gambar brand' }
+    }
+
+    return { success: true, url }
+
   } catch (error) {
     console.error('Error uploading brand image:', error)
     return { success: false, error: 'Gagal mengupload gambar brand' }

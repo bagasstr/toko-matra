@@ -9,7 +9,11 @@ import path from 'path'
 import { generateCustomId } from '@/lib/helpper'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import { put } from '@vercel/blob'
+mport {
+  uploadBase64ToSupabase,
+  uploadToSupabase,
+  generateFileName,
+} from '@/lib/supabase'
 
 interface ProfileData {
   fullName: string
@@ -25,23 +29,24 @@ interface ProfileData {
 
 async function saveImage(base64Image: string, userId: string): Promise<string> {
   try {
-    // Remove data:image/jpeg;base64, from the string
-    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '')
-    const buffer = Buffer.from(base64Data, 'base64')
+   const filename = generateFileName('avatar.jpg', `profile-${userId}-`)
+    const path = `profiles/${filename}`
 
-    // Create file from buffer for Vercel Blob
-    const filename = `assets/avatar/${userId}.jpg`
-    const file = new File([buffer], `${userId}.jpg`, {
-      type: 'image/jpeg',
-    })
+    // Upload to Supabase Storage
+    const { url, error } = await uploadBase64ToSupabase(
+      base64Image,
+      'images',
+      path,
+      'image/jpeg'
+    )
 
-    // Upload to Vercel Blob
-    const blob = await put(filename, file, {
-      access: 'public',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
+    if (error) {
+      console.error('Failed to upload profile image:', error)
+      throw new Error('Failed to save image')
+    }
 
-    return blob.url
+    return url || ''
+
   } catch (error) {
     console.error('Error saving image:', error)
     throw new Error('Failed to save image')
@@ -178,18 +183,21 @@ export async function uploadProfileImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-    // Generate unique filename
-    const uniqueId = uuidv4()
-    const extension = file.name.split('.').pop()
-    const filename = `assets/avatar/${uniqueId}.${extension}`
 
-    // Upload to Vercel Blob
-    const blob = await put(filename, file, {
-      access: 'public',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
-    })
+    // Generate unique filename for Supabase
+    const filename = generateFileName(file.name, 'profile-')
+    const path = `profiles/${filename}`
 
-    return { success: true, url: blob.url }
+    // Upload to Supabase Storage
+    const { url, error } = await uploadToSupabase(file, 'images', path)
+
+    if (error) {
+      console.error('Error uploading profile image:', error)
+      return { success: false, error: 'Gagal mengupload gambar profile' }
+    }
+
+    return { success: true, url }
+
   } catch (error) {
     console.error('Error uploading profile image:', error)
     return { success: false, error: 'Gagal mengupload gambar profile' }
