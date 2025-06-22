@@ -40,25 +40,43 @@ const Category = memo(() => {
     isLoading,
     error,
   } = useQuery({
-    queryKey: queryKeys.categories.all,
+    queryKey: ['categories', 'parent-only'], // Key yang sangat spesifik untuk parent categories
     queryFn: async () => {
       const { categorie, success, error } = await getParentCategories()
       if (!success) {
         throw new Error(error || 'Gagal memuat kategori')
       }
-      return categorie
+      return categorie || []
     },
-    staleTime: 30 * 60 * 1000, // 30 minutes cache
+    staleTime: 30 * 60 * 1000, // 30 minutes cache - optimal untuk production
     gcTime: 60 * 60 * 1000, // 1 hour cache
-    refetchOnWindowFocus: false,
-    refetchOnMount: false, // Don't refetch on mount if data exists
+    refetchOnWindowFocus: false, // Disable untuk performance
+    refetchOnMount: false, // Disable untuk performance
+    retry: 1, // Minimal retry untuk faster failures
+    retryDelay: 1000, // Quick retry
+    refetchInterval: false, // Disable auto refetch
+    enabled: true, // Query enabled
   })
 
-  // Memoize filtered categories (hanya yang aktif dan memiliki nama)
+  // Memoize filtered categories dengan validasi yang lebih ketat
   const displayCategories = useMemo(() => {
+    if (!Array.isArray(categories)) {
+      return []
+    }
+
     return categories
-      .filter((category) => category.name && category.slug)
-      .slice(0, 16) // Limit to 16 categories dengan card yang lebih kecil
+      .filter((category) => {
+        // Pastikan ini adalah parent category (tidak punya parentId)
+        return (
+          category &&
+          category.name &&
+          category.slug &&
+          category.id &&
+          category.parentId === null && // Eksplisit filter hanya parent categories
+          category.isActive !== false // Pastikan kategori aktif
+        )
+      })
+      .slice(0, 16) // Limit to 16 categories
   }, [categories])
 
   if (error) {
@@ -71,12 +89,17 @@ const Category = memo(() => {
             </h2>
           </div>
           <div className='text-center py-8 text-gray-500'>
-            Gagal memuat kategori. Silakan coba lagi nanti.
+            <p>Gagal memuat kategori. Silakan coba lagi nanti.</p>
+            <p className='text-xs mt-2 text-red-500'>
+              Error: {error?.message || 'Unknown error'}
+            </p>
           </div>
         </div>
       </section>
     )
   }
+
+  // Performance monitoring disabled in production
 
   return (
     <section className='mb-8'>
@@ -95,21 +118,35 @@ const Category = memo(() => {
         </div>
 
         {isLoading ? (
-          <CategorySkeleton />
+          <>
+            <CategorySkeleton />
+            <div className='text-center mt-2 text-xs text-gray-400'>
+              Loading categories...
+            </div>
+          </>
         ) : displayCategories.length === 0 ? (
           <div className='text-center py-8 text-gray-500'>
-            Belum ada kategori tersedia.
+            <p>Belum ada kategori tersedia.</p>
+            <p className='text-xs mt-2'>
+              Raw categories count: {categories.length} | Filtered:{' '}
+              {displayCategories.length}
+            </p>
           </div>
         ) : (
-          <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3'>
-            {displayCategories.map((category, index) => (
-              <CategoryCard
-                key={category.id}
-                category={category}
-                index={index}
-              />
-            ))}
-          </div>
+          <>
+            <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3'>
+              {displayCategories.map((category, index) => (
+                <CategoryCard
+                  key={category.id}
+                  category={category}
+                  index={index}
+                />
+              ))}
+            </div>
+            <div className='text-center mt-2 text-xs text-gray-400'>
+              Showing {displayCategories.length} parent categories
+            </div>
+          </>
         )}
       </div>
     </section>

@@ -1,13 +1,41 @@
 import React, { Suspense } from 'react'
 import { cn } from '@/lib/utils'
-import Category from './components/Category'
-import FeaturedProducts from './components/FeaturedProducts'
-import AllProducts from './components/AllProducts'
-import Brand from './components/brand'
-import Benefit from './components/benefit'
-import Faq from './components/faq'
-import MaterialsOffer from './components/materialsOffer'
-import FooterMobile from './components/footerMobile'
+import dynamic from 'next/dynamic'
+
+// Dynamic imports untuk performance yang lebih baik
+const Category = dynamic(() => import('./components/Category'), {
+  ssr: true,
+  loading: () => <CategorySkeleton />,
+})
+
+const FeaturedProducts = dynamic(
+  () => import('./components/FeaturedProducts'),
+  {
+    ssr: true,
+    loading: () => <FeaturedProductsSkeleton />,
+  }
+)
+
+const AllProducts = dynamic(() => import('./components/AllProducts'), {
+  ssr: false, // Client-side only untuk mengurangi server load
+  loading: () => <AllProductsSkeleton />,
+})
+
+// Lower priority components - lazy load
+const Brand = dynamic(() => import('./components/brand'), {
+  ssr: false,
+  loading: () => <BrandSkeleton />,
+})
+
+const Benefit = dynamic(() => import('./components/benefit'), {
+  ssr: false,
+  loading: () => <ContentSkeleton />,
+})
+
+const Faq = dynamic(() => import('./components/faq'), {
+  ssr: false,
+  loading: () => <ContentSkeleton />,
+})
 import { getOrderById } from '../actions/orderAction'
 import { redirect } from 'next/navigation'
 import { validateSession } from '../actions/session'
@@ -127,17 +155,22 @@ const ErrorFallback = ({
 }
 
 const Home = async () => {
-  const session = await validateSession()
+  // Optimisasi: Paralel async calls dan graceful degradation
+  let session = null
   let isProfileComplete = true
 
-  if (session) {
-    try {
-      const profileRes = await getProfile(session.user.id)
-      isProfileComplete = !!profileRes.data?.phoneNumber
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      isProfileComplete = false
-    }
+  try {
+    session = await validateSession()
+
+    // Skip profile check untuk performance - dapat dilakukan di client
+    // if (session) {
+    //   const profileRes = await getProfile(session.user.id)
+    //   isProfileComplete = !!profileRes.data?.phoneNumber
+    // }
+  } catch (error) {
+    // Graceful degradation jika ada error
+    console.error('Error validating session:', error)
+    session = null
   }
 
   return (
@@ -163,34 +196,22 @@ const Home = async () => {
       )}
 
       {/* Category Section - High Priority */}
-      <Suspense fallback={<CategorySkeleton />}>
-        <Category />
-      </Suspense>
+      <Category />
 
       {/* Featured Products Section - High Priority */}
-      <Suspense fallback={<FeaturedProductsSkeleton />}>
-        <FeaturedProducts />
-      </Suspense>
+      <FeaturedProducts />
 
       {/* All Products Section - Medium Priority */}
-      <Suspense fallback={<AllProductsSkeleton />}>
-        <AllProducts />
-      </Suspense>
+      <AllProducts />
 
       {/* Brand Section - Lower Priority */}
-      <Suspense fallback={<BrandSkeleton />}>
-        <Brand />
-      </Suspense>
+      <Brand />
 
       {/* Benefit Section - Lower Priority */}
-      <Suspense fallback={<ContentSkeleton />}>
-        <Benefit />
-      </Suspense>
+      <Benefit />
 
       {/* FAQ Section - Lower Priority */}
-      <Suspense fallback={<ContentSkeleton />}>
-        <Faq />
-      </Suspense>
+      <Faq />
 
       {/* Optional sections - commented out for performance */}
       {/* <MaterialsOffer /> */}
