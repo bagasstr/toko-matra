@@ -152,21 +152,9 @@ const FeaturedProducts = memo(() => {
     return products.filter((product) => product.isActive).slice(0, 18) // Limit display to 18 products untuk grid yang lebih rapi
   }, [products])
 
-  if (error) {
-    return (
-      <section className='mb-8'>
-        <div className='container mx-auto px-4'>
-          <div className='my-6 flex items-center justify-between'>
-            <h2 className='text-lg sm:text-xl lg:text-2xl text-foreground/85 font-bold'>
-              Produk Terlaris
-            </h2>
-          </div>
-          <div className='text-center py-8 text-gray-500'>
-            Gagal memuat produk unggulan. Silakan coba lagi nanti.
-          </div>
-        </div>
-      </section>
-    )
+  // Hide the entire section if there are no products or if loading failed
+  if (error || (!isLoading && displayProducts.length === 0)) {
+    return null
   }
 
   return (
@@ -189,10 +177,6 @@ const FeaturedProducts = memo(() => {
 
         {isLoading ? (
           <FeaturedProductsSkeleton />
-        ) : displayProducts.length === 0 ? (
-          <div className='text-center py-8 text-gray-500'>
-            Belum ada produk unggulan.
-          </div>
         ) : (
           <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 auto-rows-fr'>
             {displayProducts.map((product, index) => (
