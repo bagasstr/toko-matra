@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { ChevronRight } from 'lucide-react'
-import Image from 'next/image'
+import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -100,12 +100,14 @@ const Category = () => {
                     className='group w-[120px] flex-shrink-0'>
                     <Card className='flex flex-col items-stretch justify-between p-2 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
                       <div className='relative w-full aspect-square'>
-                        <Image
+                        <OptimizedImage
                           src={category.imageUrl}
                           alt={category.name}
-                          fill
-                          className='object-contain p-0 transition-transform duration-300 group-hover:scale-105'
+                          width={120}
+                          height={120}
+                          className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
                           sizes='120px'
+                          priority={false}
                         />
                       </div>
                       <CardFooter className='p-0 pt-1 flex justify-center items-center'>
@@ -128,12 +130,14 @@ const Category = () => {
                   className='group'>
                   <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
                     <div className='relative w-full aspect-square'>
-                      <Image
+                      <OptimizedImage
                         src={category.imageUrl}
                         alt={category.name}
-                        fill
-                        className='object-contain p-0 transition-transform duration-300 group-hover:scale-105'
+                        width={150}
+                        height={150}
+                        className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
                         sizes='(max-width: 1024px) 25vw, (max-width: 1280px) 16vw, 12vw'
+                        priority={false}
                       />
                     </div>
                     <CardFooter className='p-0 pt-2 flex justify-center items-center'>

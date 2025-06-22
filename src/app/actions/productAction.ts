@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { writeFile, unlink, access } from 'fs/promises'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
+import { put } from '@vercel/blob'
 import { generateCustomId, generateProductId } from '@/lib/helpper'
 import {
   uploadToSupabase,
@@ -372,7 +373,7 @@ export async function uploadProductImages(formData: FormData) {
     }
 
     const uploadPromises = files.map(async (file) => {
-      // Generate unique filename for Supabase
+     // Generate unique filename for Supabase
       const filename = generateFileName(file.name, 'product-')
       const path = `products/${filename}`
 
@@ -384,6 +385,7 @@ export async function uploadProductImages(formData: FormData) {
       }
 
       return url
+
     })
 
     const urls = await Promise.all(uploadPromises)

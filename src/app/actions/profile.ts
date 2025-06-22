@@ -9,7 +9,7 @@ import path from 'path'
 import { generateCustomId } from '@/lib/helpper'
 import { join } from 'path'
 import { v4 as uuidv4 } from 'uuid'
-import {
+mport {
   uploadBase64ToSupabase,
   uploadToSupabase,
   generateFileName,
@@ -29,7 +29,7 @@ interface ProfileData {
 
 async function saveImage(base64Image: string, userId: string): Promise<string> {
   try {
-    const filename = generateFileName('avatar.jpg', `profile-${userId}-`)
+   const filename = generateFileName('avatar.jpg', `profile-${userId}-`)
     const path = `profiles/${filename}`
 
     // Upload to Supabase Storage
@@ -46,6 +46,7 @@ async function saveImage(base64Image: string, userId: string): Promise<string> {
     }
 
     return url || ''
+
   } catch (error) {
     console.error('Error saving image:', error)
     throw new Error('Failed to save image')
@@ -182,6 +183,7 @@ export async function uploadProfileImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
+
     // Generate unique filename for Supabase
     const filename = generateFileName(file.name, 'profile-')
     const path = `profiles/${filename}`
@@ -195,6 +197,7 @@ export async function uploadProfileImage(formData: FormData) {
     }
 
     return { success: true, url }
+
   } catch (error) {
     console.error('Error uploading profile image:', error)
     return { success: false, error: 'Gagal mengupload gambar profile' }

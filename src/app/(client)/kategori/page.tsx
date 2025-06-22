@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
+import OptimizedImage from '@/components/OptimizedImage'
 import { redirect, usePathname, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
@@ -38,12 +38,13 @@ const CategoryCard = ({ category }) => {
       className='group block border rounded-xl bg-white shadow-sm hover:shadow-md transition overflow-hidden p-4 text-center'>
       {category && (
         <div className='flex justify-center mb-3'>
-          <Image
+          <OptimizedImage
             src={category.imageUrl}
             alt={category.name}
             width={60}
             height={60}
             className='object-contain'
+            priority={false}
           />
         </div>
       )}
