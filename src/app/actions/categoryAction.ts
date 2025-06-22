@@ -154,10 +154,20 @@ export async function getParentCategories() {
         name: 'asc',
       },
     })
-    return { success: true, categorie }
+
+    // Validasi data sebelum return
+    const validCategories = categorie.filter(
+      (cat) => cat.id && cat.name && cat.slug && cat.parentId === null
+    )
+
+    return { success: true, categorie: validCategories }
   } catch (error) {
     console.error('Error fetching parent categories:', error)
-    return { success: false, error: 'Gagal mengambil data kategori' }
+    return {
+      success: false,
+      error: 'Gagal mengambil data kategori',
+      categorie: [],
+    }
   }
 }
 

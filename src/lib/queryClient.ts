@@ -3,36 +3,22 @@ import { QueryClient } from '@tanstack/react-query'
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      // Extended stale time for better caching
-      staleTime: 10 * 60 * 1000, // 10 minutes
-      // Extended cache time
-      gcTime: 15 * 60 * 1000, // 15 minutes
-      // Retry failed requests 3 times with exponential backoff
+      // Production optimized cache settings
+      staleTime: 5 * 60 * 1000, // 5 minutes - shorter for freshness
+      gcTime: 30 * 60 * 1000, // 30 minutes - longer for memory efficiency
+      // Reduced retry attempts for faster failures
       retry: (failureCount, error: any) => {
-        if (error?.status === 404) return false
-        return failureCount < 3
+        if (error?.status === 404 || error?.status >= 400) return false
+        return failureCount < 2 // Reduced from 3 to 2
       },
-      // Retry delay with exponential backoff
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-      // Don't retry on mount if data exists
+      // Faster retry delay
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** attemptIndex, 10000),
+      // Performance optimizations
       retryOnMount: false,
-      // Smart refetch on window focus
-      refetchOnWindowFocus: (query) => {
-        // Only refetch critical data on window focus
-        const criticalKeys = ['user', 'cart', 'orders']
-        return criticalKeys.some((key) => query.queryKey.includes(key))
-      },
-      // Enable background refetch for specific data
-      refetchInterval: (query) => {
-        // Auto-refresh cart and notifications every 30 seconds
-        if (
-          query?.queryKey.includes('cart') ||
-          query?.queryKey.includes('notifications')
-        ) {
-          return 30 * 1000
-        }
-        return false
-      },
+      refetchOnReconnect: true,
+      refetchOnWindowFocus: false, // Disable for better performance
+      // Disable auto-refresh for performance
+      refetchInterval: false,
       // Network mode for better offline experience
       networkMode: 'online',
     },

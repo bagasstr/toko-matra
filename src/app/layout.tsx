@@ -12,10 +12,9 @@ const poppins = Poppins({
   variable: '--font-poppins',
 })
 
-// This enables dynamic rendering for all routes
-export const dynamic = 'force-dynamic'
-
-// This ensures cookies are handled properly
+// Optimize for production performance
+export const dynamic = 'auto' // Let Next.js decide based on usage
+export const revalidate = 300 // 5 minutes for static pages
 export const dynamicParams = true
 
 export const metadata: Metadata = {
