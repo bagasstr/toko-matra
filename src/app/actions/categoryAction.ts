@@ -71,7 +71,6 @@ export async function getCategoryBySlug(slug: string) {
 
 export async function getAllCategories() {
   try {
-    // Only select necessary fields to reduce data transfer
     const categorie = await prisma.category.findMany({
       select: {
         id: true,
@@ -85,6 +84,32 @@ export async function getAllCategories() {
             id: true,
             name: true,
             slug: true,
+          },
+        },
+        children: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            parentId: true,
+            isActive: true,
+            imageUrl: true,
+            children: {
+              select: {
+                id: true,
+                name: true,
+                slug: true,
+                parentId: true,
+                isActive: true,
+                imageUrl: true,
+              },
+              where: {
+                isActive: true,
+              },
+            },
+          },
+          where: {
+            isActive: true,
           },
         },
       },

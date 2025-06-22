@@ -1,21 +1,12 @@
 'use client'
 
-import {
-  getParentCategories,
-  getTreeCategories,
-} from '@/app/actions/categoryAction'
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { ChevronRight } from 'lucide-react'
-import OptimizedImage from '@/components/OptimizedImage'
+import { memo, useMemo } from 'react'
+import { getParentCategories } from '@/app/actions/categoryAction'
+
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
-import { Skeleton } from '@/components/ui/skeleton'
+import { queryKeys } from '@/lib/queryClient'
+import { CategoryCard } from './CategoryCard'
 
 interface IDataCategories {
   id: string
@@ -24,150 +15,107 @@ interface IDataCategories {
   slug: string
 }
 
-const CategorySkeleton = () => {
-  return (
-    <>
-      {/* Mobile Skeleton */}
-      <div className='lg:hidden overflow-x-auto scrollbar-hide'>
-        <div className='flex gap-3 py-2 w-full'>
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className='w-[120px] flex-shrink-0'>
-              <Card className='flex flex-col items-stretch justify-between p-2 h-full'>
-                <div className='relative w-full aspect-square'>
-                  <Skeleton className='w-full h-full' />
-                </div>
-                <CardFooter className='p-0 pt-1 flex justify-center items-center'>
-                  <Skeleton className='h-4 w-20' />
-                </CardFooter>
-              </Card>
-            </div>
-          ))}
+// Skeleton component yang dioptimalkan
+const CategorySkeleton = memo(() => (
+  <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3'>
+    {Array.from({ length: 16 }).map((_, index) => (
+      <div
+        key={index}
+        className='bg-white rounded-md shadow-sm overflow-hidden border border-gray-100'>
+        <div className='w-full aspect-square bg-gray-200 animate-pulse' />
+        <div className='p-2'>
+          <div className='h-3 w-full bg-gray-200 rounded animate-pulse' />
         </div>
       </div>
+    ))}
+  </div>
+))
 
-      {/* Desktop Skeleton */}
-      <div className='hidden lg:grid grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4'>
-        {[...Array(8)].map((_, i) => (
-          <div key={i}>
-            <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full'>
-              <div className='relative w-full aspect-square'>
-                <Skeleton className='w-full h-full' />
-              </div>
-              <CardFooter className='p-0 pt-2 flex justify-center items-center'>
-                <Skeleton className='h-4 w-20' />
-              </CardFooter>
-            </Card>
-          </div>
-        ))}
-      </div>
-    </>
-  )
-}
+CategorySkeleton.displayName = 'CategorySkeleton'
 
-const Category = () => {
-  const { data: categories = [], isLoading } = useQuery({
-    queryKey: ['categories'],
+const Category = memo(() => {
+  // Use optimized query with proper caching
+  const {
+    data: categories = [],
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: queryKeys.categories.all,
     queryFn: async () => {
-      const { categorie, error } = await getParentCategories()
-      if (error) throw error
+      const { categorie, success, error } = await getParentCategories()
+      if (!success) {
+        throw new Error(error || 'Gagal memuat kategori')
+      }
       return categorie
     },
+    staleTime: 30 * 60 * 1000, // 30 minutes cache
+    gcTime: 60 * 60 * 1000, // 1 hour cache
+    refetchOnWindowFocus: false,
+    refetchOnMount: false, // Don't refetch on mount if data exists
   })
 
+  // Memoize filtered categories (hanya yang aktif dan memiliki nama)
+  const displayCategories = useMemo(() => {
+    return categories
+      .filter((category) => category.name && category.slug)
+      .slice(0, 16) // Limit to 16 categories dengan card yang lebih kecil
+  }, [categories])
+
+  if (error) {
+    return (
+      <section className='mb-8'>
+        <div className='container mx-auto px-4'>
+          <div className='my-6 flex items-center justify-between'>
+            <h2 className='text-lg sm:text-xl lg:text-2xl text-foreground/85 font-bold'>
+              Kategori Produk
+            </h2>
+          </div>
+          <div className='text-center py-8 text-gray-500'>
+            Gagal memuat kategori. Silakan coba lagi nanti.
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
-    <section className=''>
+    <section className='mb-8'>
       <div className='container mx-auto px-4'>
         <div className='my-6 flex items-center justify-between'>
           <h2 className='text-lg sm:text-xl lg:text-2xl text-foreground/85 font-bold'>
-            Kategori
+            Kategori Produk
           </h2>
-          <Link
-            href='/kategori'
-            className='flex items-center gap-1 text-primary hover:text-primary/80 transition-colors'>
-            <span className='text-sm md:text-base lg:text-xl'>Lihat Semua</span>
-            <ChevronRight size={16} className='sm:w-[18px] sm:h-[18px]' />
-          </Link>
+          {!isLoading && displayCategories.length > 0 && (
+            <Link
+              href='/kategori'
+              className='text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors'>
+              Lihat Semua
+            </Link>
+          )}
         </div>
 
         {isLoading ? (
           <CategorySkeleton />
+        ) : displayCategories.length === 0 ? (
+          <div className='text-center py-8 text-gray-500'>
+            Belum ada kategori tersedia.
+          </div>
         ) : (
-          <>
-            {/* Mobile Carousel */}
-            <div className='lg:hidden overflow-x-auto scrollbar-hide'>
-              <div className='flex gap-3 py-2 w-full'>
-                {categories
-                  .filter((cat: IDataCategories) => cat.imageUrl)
-                  .map((category: IDataCategories) => (
-                    <Link
-                      href={`/kategori/${category.slug}`}
-                      key={category.id}
-                      className='group w-[120px] flex-shrink-0'>
-                      <Card className='flex flex-col items-stretch justify-between p-2 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
-                        <div className='relative w-full aspect-square'>
-                          {category.imageUrl ? (
-                            <OptimizedImage
-                              src={category.imageUrl}
-                              alt={category.name}
-                              width={120}
-                              height={120}
-                              className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
-                              sizes='120px'
-                              priority={false}
-                            />
-                          ) : (
-                            <div className='w-full h-full bg-gray-100 flex items-center justify-center'>
-                              <span className='text-gray-400 text-xs'>
-                                No Image
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                        <CardFooter className='p-0 pt-1 flex justify-center items-center'>
-                          <p className='text-sm text-center font-medium text-foreground/80 group-hover:text-primary transition-colors line-clamp-2'>
-                            {category.name}
-                          </p>
-                        </CardFooter>
-                      </Card>
-                    </Link>
-                  ))}
-              </div>
-            </div>
-
-            {/* Desktop Grid */}
-            <div className='hidden lg:grid grid-cols-6 xl:grid-cols-8 gap-3 md:gap-4'>
-              {categories
-                .filter((cat: IDataCategories) => cat.imageUrl)
-                .map((category: IDataCategories) => (
-                  <Link
-                    href={`/kategori/${category.slug}`}
-                    key={category.id}
-                    className='group'>
-                    <Card className='flex flex-col items-stretch justify-between p-3 md:p-4 h-full transition-all duration-300 hover:shadow-md hover:border-primary/20'>
-                      <div className='relative w-full aspect-square'>
-                        <OptimizedImage
-                          src={category.imageUrl}
-                          alt={category.name}
-                          width={150}
-                          height={150}
-                          className='w-full h-full object-contain p-0 transition-transform duration-300 group-hover:scale-105'
-                          sizes='(max-width: 1024px) 25vw, (max-width: 1280px) 16vw, 12vw'
-                          priority={false}
-                        />
-                      </div>
-                      <CardFooter className='p-0 pt-2 flex justify-center items-center'>
-                        <p className='text-xs md:text-sm text-center font-medium text-foreground/80 group-hover:text-primary transition-colors line-clamp-2'>
-                          {category.name}
-                        </p>
-                      </CardFooter>
-                    </Card>
-                  </Link>
-                ))}
-            </div>
-          </>
+          <div className='grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-8 gap-3'>
+            {displayCategories.map((category, index) => (
+              <CategoryCard
+                key={category.id}
+                category={category}
+                index={index}
+              />
+            ))}
+          </div>
         )}
       </div>
     </section>
   )
-}
+})
+
+Category.displayName = 'Category'
+
 export default Category

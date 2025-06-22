@@ -43,6 +43,9 @@ const DashboardNav = () => {
   const { data: user } = useQuery({
     queryKey: ['user'],
     queryFn: () => fetch('/api/user').then((res) => res.json()),
+    staleTime: 10 * 60 * 1000, // 10 minutes cache
+    gcTime: 30 * 60 * 1000, // 30 minutes cache
+    refetchOnWindowFocus: false,
   })
 
   const toggleGroup = (group: string) => {
@@ -61,10 +64,11 @@ const DashboardNav = () => {
   const { data: stats } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: fetchDashboardStats,
-    refetchInterval: 1000,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: Infinity,
+    refetchInterval: 30000, // Reduced from 1 second to 30 seconds
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 30 * 1000, // 30 seconds cache
+    gcTime: 2 * 60 * 1000, // 2 minutes cache
   })
 
   return (

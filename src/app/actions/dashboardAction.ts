@@ -14,58 +14,51 @@ export async function getDashboardStats() {
       }
     }
 
-    // Get new orders in last 7 days
-    const newOrders = await prisma.order.count({
-      where: {
-        createdAt: {
-          gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        },
-        status: 'CONFIRMED',
-      },
-    })
-
-    // Get total customers
-    const totalCustomers = await prisma.user.count({
-      where: {
-        role: 'CUSTOMER',
-      },
-    })
-
-    // Get low stock products (less than 10)
-    const lowStockProducts = await prisma.product.count({
-      where: {
-        stock: {
-          lte: 10,
-        },
-      },
-    })
-
-    // Get best selling product this month
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     const firstDay = new Date()
     firstDay.setDate(1)
     firstDay.setHours(0, 0, 0, 0)
 
-    const bestSellingProduct: { productId: string; totalSold: number }[] =
-      await prisma.$queryRaw`
-      SELECT "productId", SUM(quantity) as "totalSold"
-      FROM "order_items"
-      WHERE "createdAt" >= ${firstDay}
-      GROUP BY "productId"
-      ORDER BY "totalSold" DESC
-      LIMIT 1
-    `
+    // Parallel execution of all queries for better performance
+    const [newOrders, totalCustomers, lowStockProducts, bestSellingProduct] =
+      await Promise.all([
+        // Get new orders in last 7 days
+        prisma.order.count({
+          where: {
+            createdAt: { gte: sevenDaysAgo },
+            status: 'CONFIRMED',
+          },
+        }),
 
-    let bestProduct = null
-    if (bestSellingProduct.length > 0) {
-      bestProduct = await prisma.product.findUnique({
-        where: {
-          id: bestSellingProduct[0].productId,
-        },
-        select: {
-          name: true,
-        },
-      })
-    }
+        // Get total customers
+        prisma.user.count({
+          where: { role: 'CUSTOMER' },
+        }),
+
+        // Get low stock products (less than 10)
+        prisma.product.count({
+          where: {
+            stock: { lte: 10 },
+            isActive: true,
+          },
+        }),
+
+        // Get best selling product this month with product name in one query
+        prisma.$queryRaw<
+          { productId: string; totalSold: bigint; productName: string }[]
+        >`
+        SELECT 
+          oi."productId",
+          SUM(oi.quantity) as "totalSold",
+          p.name as "productName"
+        FROM "order_items" oi
+        JOIN "products" p ON oi."productId" = p.id
+        WHERE oi."createdAt" >= ${firstDay}
+        GROUP BY oi."productId", p.name
+        ORDER BY "totalSold" DESC
+        LIMIT 1
+      `,
+      ])
 
     return {
       success: true,
@@ -73,7 +66,7 @@ export async function getDashboardStats() {
         newOrders,
         totalCustomers,
         lowStockProducts,
-        bestSellingProduct: bestProduct?.name || 'Tidak ada',
+        bestSellingProduct: bestSellingProduct[0]?.productName || 'Tidak ada',
       },
     }
   } catch (error) {
