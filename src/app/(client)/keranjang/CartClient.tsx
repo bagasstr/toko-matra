@@ -424,12 +424,10 @@ const CartClient = memo(
 
     return (
       <div className='container mx-auto px-4 py-8'>
-        <h1 className='text-2xl font-bold mb-6'>Keranjang Belanja</h1>
-
         {cart.length === 0 ? (
           <div className='text-center py-8'>
             <p className='text-gray-500 mb-4'>Keranjang Anda kosong</p>
-            <Link href='/kategori'>
+            <Link href='/'>
               <Button>Mulai Belanja</Button>
             </Link>
           </div>
