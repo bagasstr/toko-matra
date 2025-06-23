@@ -59,8 +59,7 @@ const LoginPage = () => {
 
       if (result.success) {
         toast.success('Login berhasil')
-        router.push('/')
-        router.refresh()
+        router.replace('/')
       }
     } catch (error) {
       console.error('Login error:', error)
