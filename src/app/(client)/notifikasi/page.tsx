@@ -64,18 +64,6 @@ const NotificationsPage = () => {
     gcTime: 5 * 60 * 1000, // 5 minutes
   })
 
-  // Handle loading state
-  if (isLoading) {
-    return (
-      <div className='max-w-2xl mx-auto py-10 px-4'>
-        <div className='text-center py-10'>
-          <div className='animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto'></div>
-          <p className='mt-2 text-gray-600'>Loading notifications...</p>
-        </div>
-      </div>
-    )
-  }
-
   if (error) {
     return (
       <div className='max-w-2xl mx-auto py-10 px-4'>
