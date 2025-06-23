@@ -38,12 +38,14 @@ export const createSession = async (id: string) => {
 }
 
 export const validateSession = async () => {
-  console.time('session')
+  const start = process.hrtime.bigint()
+
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('sessionToken')?.value
   if (!sessionToken) {
     return null
   }
+
   const session = await prisma.session.findUnique({
     where: { sessionToken },
     select: {
@@ -63,10 +65,13 @@ export const validateSession = async () => {
     },
   })
 
-  console.timeEnd('session')
+  // Log execution time only in development to avoid noisy production logs
+  if (process.env.NODE_ENV !== 'production') {
+    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000
+    console.info(`validateSession executed in ${durationMs.toFixed(2)}ms`)
+  }
 
   // Convert any Decimal objects to plain JavaScript numbers/strings
-  // by serializing and deserializing the session object
   return session ? JSON.parse(JSON.stringify(session)) : null
 }
 
