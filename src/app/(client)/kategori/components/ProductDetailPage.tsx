@@ -79,12 +79,12 @@ export function ProductDetailPage({
     const fetchWishlist = async () => {
       if (!safeProduct) return
 
-      const res = await getWishlist()
+      const res = await getWishlist(session?.user?.id)
       console.log('Wishlist:', res)
       setIsWishlistMarked(res.some((item) => item.productId === safeProduct.id))
     }
     fetchWishlist()
-  }, [safeProduct?.id])
+  }, [safeProduct?.id, session?.user?.id])
 
   // Validate product data
   if (loading || !safeProduct) {
