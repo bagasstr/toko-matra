@@ -51,13 +51,6 @@ const FAQ = dynamic(() => import('./faq'), {
   ),
 })
 
-const MaterialsOffer = dynamic(() => import('./materialsOffer'), {
-  ssr: false,
-  loading: () => (
-    <div className='animate-pulse bg-gray-200 h-64 rounded-md m-4' />
-  ),
-})
-
 export default function ClientSideComponents() {
   return (
     <>
@@ -89,14 +82,6 @@ export default function ClientSideComponents() {
           </div>
         }>
         <Brand />
-      </Suspense>
-
-      {/* Materials Offer - Can be loaded later */}
-      <Suspense
-        fallback={
-          <div className='animate-pulse bg-gray-200 h-64 rounded-md m-4' />
-        }>
-        <MaterialsOffer />
       </Suspense>
 
       {/* Benefit Section - Lower priority */}

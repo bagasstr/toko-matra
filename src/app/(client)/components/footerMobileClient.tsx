@@ -48,9 +48,9 @@ const FooterMobileServer = ({ userId }: FooterMobileServerProps) => {
           </Link>
 
           <Link
-            href='/menu'
+            href='/kategori'
             className={`flex flex-col items-center gap-1 ${
-              pathname === '/menu' || pathname.startsWith('/kategori')
+              pathname === '/kategori' || pathname.startsWith('/kategori')
                 ? 'text-blue-600'
                 : 'text-gray-600'
             }`}>

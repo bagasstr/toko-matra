@@ -18,15 +18,13 @@ export default async function HomeLayout({
     // Graceful degradation - continue without session if there's an error
     console.error('Session validation error:', error)
   }
+  const userId = session?.user?.profile.id.toLowerCase()
 
   return (
     <ClientLayoutWrapper>
       <div className='min-h-screen flex flex-col'>
-        {/* Navbar dengan optimasi preload */}
-        <Suspense
-          fallback={<div className='h-16 bg-white border-b animate-pulse' />}>
-          <Navbar />
-        </Suspense>
+        {/* Navbar tanpa suspense */}
+        <Navbar userId={userId} />
 
         {/* Main content area dengan optimasi spacing */}
         <main className='flex-1 pt-16 lg:pt-20 pb-20 lg:pb-0'>{children}</main>
