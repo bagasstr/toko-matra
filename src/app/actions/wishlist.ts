@@ -57,19 +57,21 @@ export const toggleWishlist = async (productId: string) => {
 }
 
 export async function addToWishlist(userId: string, productId: string) {
-  return prisma.wishlist.create({
+  await prisma.wishlist.create({
     data: {
       id: randomUUID(),
       user: { connect: { id: userId } },
       product: { connect: { id: productId } },
     },
   })
+  return { success: true }
 }
 
 export async function removeFromWishlist(userId: string, productId: string) {
-  return prisma.wishlist.deleteMany({
+  await prisma.wishlist.deleteMany({
     where: { userId, productId },
   })
+  return { success: true }
 }
 
 export async function getWishlist(userId: string) {
