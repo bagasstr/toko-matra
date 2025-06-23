@@ -37,7 +37,8 @@ export function ProductCard({
       isWishlisted
         ? removeFromWishlist(userId!, product.id)
         : addToWishlist(userId!, product.id),
-    onSuccess: () => queryClient.invalidateQueries(['wishlist', userId]),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ['wishlist', userId] }),
   })
   return (
     <Link
