@@ -62,6 +62,8 @@ export const validateSession = async () => {
     },
   })
 
+  console.log('session', session)
+
   // Convert any Decimal objects to plain JavaScript numbers/strings
   // by serializing and deserializing the session object
   return session ? JSON.parse(JSON.stringify(session)) : null

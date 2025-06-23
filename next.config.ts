@@ -16,9 +16,9 @@ const nextConfig: NextConfig = {
   /* config options here */
 
   // Enable removing console logs in production for better performance
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
-  },
+  // compiler: {
+  //   removeConsole: process.env.NODE_ENV === 'production',
+  // },
 
   // output: 'standalone',
   images: {
@@ -84,7 +84,7 @@ const nextConfig: NextConfig = {
     cookieSecret: process.env.COOKIE_SECRET || 'your-cookie-secret',
   },
   // Disable static optimization for dynamic routes
-  staticPageGenerationTimeout: 120,
+  // staticPageGenerationTimeout: 120,
   // Enable dynamic imports
   webpack: (config, { isServer, dev }) => {
     if (!isServer) {
