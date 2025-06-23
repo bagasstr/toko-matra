@@ -38,7 +38,6 @@ export default async function FeaturedProducts() {
               key={product.id}
               product={product}
               index={index}
-              priority={index < 6}
             />
           ))}
         </div>
