@@ -8,10 +8,10 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 export default async function CartPage() {
-  const cartData = await getCartItems()
-  console.log(cartData)
-
-  const validate = await validateSession()
+  const [cartData, validate] = await Promise.all([
+    getCartItems(),
+    validateSession(),
+  ])
 
   return (
     <div className='container mx-auto py-10 px-4'>

@@ -9,8 +9,6 @@ import { useRouter } from 'next/navigation'
 import { updateCartItemQuantity, clearCart } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { Skeleton } from '@/components/ui/skeleton'
-import { validateSession } from '@/app/actions/session'
-import { generateCartPDF } from '@/lib/pdfCartFormatter'
 import dynamic from 'next/dynamic'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -254,29 +252,21 @@ const CartClient = memo(
 
     // Get customer information from session
     useEffect(() => {
-      const getCustomerInfo = async () => {
-        try {
-          const session = await validateSession()
-          if (session?.user) {
-            const customerData = {
-              name: session.user.profile?.fullName || '-',
-              email: session.user.email || '-',
-              phone: session.user.profile?.phoneNumber || '-',
-              address: session.user.address?.[0]
-                ? `${session.user.address[0].address || '-'}, ${
-                    session.user.address[0].city || '-'
-                  }, ${session.user.address[0].province || '-'}`
-                : '-',
-              company: session.user.profile?.companyName || '-',
-            }
-            setCustomerInfo(customerData)
-          }
-        } catch (error) {
-          console.error('Error getting customer info:', error)
+      if (validate?.user) {
+        const customerData = {
+          name: validate.user.profile?.fullName || '-',
+          email: validate.user.email || '-',
+          phone: validate.user.profile?.phoneNumber || '-',
+          address: validate.user.address?.[0]
+            ? `${validate.user.address[0].address || '-'}, ${
+                validate.user.address[0].city || '-'
+              }, ${validate.user.address[0].province || '-'}`
+            : '-',
+          company: validate.user.profile?.companyName || '-',
         }
+        setCustomerInfo(customerData)
       }
-      getCustomerInfo()
-    }, [])
+    }, [validate])
 
     // Sync database cart with state if state is empty
     useEffect(() => {
@@ -294,7 +284,7 @@ const CartClient = memo(
 
       try {
         setIsUpdating(true)
-        const session = await validateSession()
+        const session = validate
         if (!session) {
           router.push('/login')
           return
