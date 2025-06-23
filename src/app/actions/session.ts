@@ -66,10 +66,9 @@ export const validateSession = async () => {
   })
 
   // Log execution time only in development to avoid noisy production logs
-  if (process.env.NODE_ENV !== 'production') {
-    const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000
-    console.info(`validateSession executed in ${durationMs.toFixed(2)}ms`)
-  }
+
+  const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000
+  console.info(`validateSession executed in ${durationMs.toFixed(2)}ms`)
 
   // Convert any Decimal objects to plain JavaScript numbers/strings
   return session ? JSON.parse(JSON.stringify(session)) : null
