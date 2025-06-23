@@ -1,47 +1,29 @@
-import React from 'react'
+import React, { Suspense } from 'react'
 import { cn } from '@/lib/utils'
+
+// Server components (no dynamic needed)
+import Category from './components/Category'
+import FeaturedProducts from './components/FeaturedProducts'
+
+// Skeletons for Suspense fallback
+import {
+  CategorySkeleton,
+  FeaturedProductsSkeleton,
+} from './components/Skeletons'
+
+// Client-only bundle untuk komponen besar non-kritis
 import dynamic from 'next/dynamic'
-
-// Dynamic imports untuk performance yang lebih baik
-const Category = dynamic(() => import('./components/Category'), {
-  ssr: true,
-  loading: () => <CategorySkeleton />,
-})
-
-const FeaturedProducts = dynamic(
-  () => import('./components/FeaturedProducts'),
-  {
-    ssr: true,
-    loading: () => <FeaturedProductsSkeleton />,
-  }
-)
-
-// Client-side components wrapper
-const ClientSideComponents = dynamic(
-  () => import('./components/ClientSideComponents'),
-  {
-    loading: () => (
-      <div>
-        <AllProductsSkeleton />
-        <BrandSkeleton />
-        <ContentSkeleton />
-        <ContentSkeleton />
-      </div>
-    ),
-  }
-)
 
 import { validateSession } from '../actions/session'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
-import {
-  AllProductsSkeleton,
-  BrandSkeleton,
-  CategorySkeleton,
-  ContentSkeleton,
-  FeaturedProductsSkeleton,
-} from './components/Skeletons'
+
+// Dynamic import untuk bundel client besar
+const ClientSideComponents = dynamic(
+  () => import('./components/ClientSideComponents'),
+  { ssr: false, loading: () => null }
+)
 
 // Error Boundary component
 const ErrorFallback = ({
@@ -99,11 +81,15 @@ const Home = async () => {
         </Alert>
       )}
 
-      {/* Category Section - High Priority */}
-      <Category />
+      {/* Category Section - High Priority (wrapped in Suspense) */}
+      <Suspense fallback={<CategorySkeleton />}>
+        <Category />
+      </Suspense>
 
-      {/* Featured Products Section - High Priority */}
-      <FeaturedProducts />
+      {/* Featured Products Section - High Priority (wrapped in Suspense) */}
+      <Suspense fallback={<FeaturedProductsSkeleton />}>
+        <FeaturedProducts />
+      </Suspense>
 
       {/* Client-side components - All Products, Brand, Benefit, FAQ */}
       <ClientSideComponents />
