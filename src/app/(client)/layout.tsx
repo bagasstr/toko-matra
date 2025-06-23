@@ -18,7 +18,7 @@ export default async function HomeLayout({
     // Graceful degradation - continue without session if there's an error
     console.error('Session validation error:', error)
   }
-  const userId = session?.user?.profile.id.toLowerCase()
+  const userId = session?.user?.id?.toLowerCase()
 
   return (
     <ClientLayoutWrapper>
