@@ -17,8 +17,8 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
-// Wrapper client component untuk memuat bundel besar hanya di client
-import ClientComponentsWrapper from './components/ClientSideComponentsWrapper'
+// Direct import of client components (already optimized with dynamic imports internally)
+import ClientSideComponents from './components/ClientSideComponents'
 
 // Error Boundary component
 const ErrorFallback = ({
@@ -87,7 +87,7 @@ const Home = async () => {
       </Suspense>
 
       {/* Client-side components - All Products, Brand, Benefit, FAQ */}
-      <ClientComponentsWrapper />
+      <ClientSideComponents />
 
       {/* Optional sections - commented out for performance */}
       {/* <MaterialsOffer /> */}
