@@ -1,18 +1,9 @@
 import { Suspense } from 'react'
-import dynamic from 'next/dynamic'
 import { validateSession } from '../actions/session'
 import Navbar from './components/navbar/navbar'
 import Footer from './components/footer'
-import FooterMobileClient from './components/footerMobileClient'
-
-// Performance optimizations - lazy load PerformanceProvider
-const PerformanceProvider = dynamic(
-  () => import('@/components/PerformanceProvider'),
-  {
-    ssr: false,
-    loading: () => null,
-  }
-)
+import FooterMobileWrapper from './components/FooterMobileWrapper'
+import ClientLayoutWrapper from './components/ClientLayoutWrapper'
 
 export default async function HomeLayout({
   children,
@@ -29,7 +20,7 @@ export default async function HomeLayout({
   }
 
   return (
-    <PerformanceProvider>
+    <ClientLayoutWrapper>
       <div className='min-h-screen flex flex-col'>
         {/* Navbar dengan optimasi preload */}
         <Suspense
@@ -46,9 +37,9 @@ export default async function HomeLayout({
         </Suspense>
 
         <Suspense fallback={null}>
-          <FooterMobileClient />
+          <FooterMobileWrapper />
         </Suspense>
       </div>
-    </PerformanceProvider>
+    </ClientLayoutWrapper>
   )
 }
