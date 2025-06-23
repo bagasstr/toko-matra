@@ -55,11 +55,37 @@ export const validateSession = async () => {
           role: true,
           email: true,
           emailVerified: true,
-          profile: true,
-          address: true,
-          cart: true,
-          order: true,
           typeUser: true,
+          profile: {
+            select: {
+              fullName: true,
+              imageUrl: true,
+              phoneNumber: true,
+            },
+          },
+          address: {
+            select: {
+              id: true,
+              labelAddress: true,
+              address: true,
+              city: true,
+              province: true,
+              district: true,
+              village: true,
+              postalCode: true,
+              isPrimary: true,
+              isActive: true,
+              recipientName: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+          _count: {
+            select: {
+              order: true,
+            },
+          },
         },
       },
     },
