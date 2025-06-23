@@ -64,7 +64,7 @@ export interface UserProfile {
     imageUrl?: string
   }
   address?: Address[]
-  order?: any[]
+  orderCount?: number
 }
 
 interface Address {
@@ -343,13 +343,13 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                   </div>
                   <div className='bg-green-50 rounded-lg p-3 text-center'>
                     <p className='text-2xl font-bold text-green-700'>
-                      {user.order?.length || 0}
+                      {user.orderCount ?? 0}
                     </p>
                     <p className='text-xs text-green-600'>Pesanan</p>
                   </div>
                 </div>
 
-                {user.order && user.order.length > 0 && (
+                {user.orderCount && user.orderCount > 0 && (
                   <Button
                     variant='ghost'
                     className='w-full justify-center mt-4 text-blue-600 hover:bg-blue-50'

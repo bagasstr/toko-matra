@@ -38,11 +38,14 @@ export const createSession = async (id: string) => {
 }
 
 export const validateSession = async () => {
+  const start = process.hrtime.bigint()
+
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('sessionToken')?.value
   if (!sessionToken) {
     return null
   }
+
   const session = await prisma.session.findUnique({
     where: { sessionToken },
     select: {
@@ -52,18 +55,49 @@ export const validateSession = async () => {
           role: true,
           email: true,
           emailVerified: true,
-          profile: true,
-          address: true,
-          cart: true,
-          order: true,
           typeUser: true,
+          profile: {
+            select: {
+              id: true,
+              fullName: true,
+              imageUrl: true,
+              phoneNumber: true,
+            },
+          },
+          address: {
+            select: {
+              id: true,
+              labelAddress: true,
+              address: true,
+              city: true,
+              province: true,
+              district: true,
+              village: true,
+              postalCode: true,
+              isPrimary: true,
+              isActive: true,
+              recipientName: true,
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          },
+          _count: {
+            select: {
+              order: true,
+            },
+          },
         },
       },
     },
   })
 
+  // Log execution time only in development to avoid noisy production logs
+
+  const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000
+  console.info(`validateSession executed in ${durationMs.toFixed(2)}ms`)
+
   // Convert any Decimal objects to plain JavaScript numbers/strings
-  // by serializing and deserializing the session object
   return session ? JSON.parse(JSON.stringify(session)) : null
 }
 
