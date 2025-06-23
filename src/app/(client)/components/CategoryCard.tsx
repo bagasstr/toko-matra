@@ -27,8 +27,8 @@ export const CategoryCard = memo(
             alt={category.name}
             width={100}
             height={100}
-            priority={priority || index < 4}
-            quality={70}
+            priority={priority || index === 0}
+            quality={60}
             className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200'
             sizes='(max-width: 640px) 33vw, (max-width: 768px) 25vw, (max-width: 1024px) 20vw, 12.5vw'
             fallback='/assets/categories/default.png'

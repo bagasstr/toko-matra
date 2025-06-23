@@ -46,8 +46,8 @@ const BestSellingProductCard = memo(
             alt={product.name}
             width={100}
             height={100}
-            priority={priority || index < 6}
-            quality={75}
+            priority={priority || index === 0}
+            quality={60}
             className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200'
             sizes='(max-width:480px) 45vw, (max-width:768px) 30vw, (max-width:1024px) 22vw, 16vw'
             fallback='/assets/products/placeholder.png'
