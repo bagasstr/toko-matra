@@ -90,7 +90,6 @@ const Home = async () => {
       <ClientSideComponents />
 
       {/* Optional sections - commented out for performance */}
-      {/* <MaterialsOffer /> */}
       {/* <FooterMobile /> */}
     </div>
   )
