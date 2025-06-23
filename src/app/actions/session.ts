@@ -58,6 +58,7 @@ export const validateSession = async () => {
           typeUser: true,
           profile: {
             select: {
+              id: true,
               fullName: true,
               imageUrl: true,
               phoneNumber: true,
