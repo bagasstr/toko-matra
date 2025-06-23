@@ -12,18 +12,13 @@ import {
 } from './components/Skeletons'
 
 // Client-only bundle untuk komponen besar non-kritis
-import dynamic from 'next/dynamic'
-
 import { validateSession } from '../actions/session'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
-// Dynamic import untuk bundel client besar
-const ClientSideComponents = dynamic(
-  () => import('./components/ClientSideComponents'),
-  { ssr: false, loading: () => null }
-)
+// Wrapper client component untuk memuat bundel besar hanya di client
+import ClientComponentsWrapper from './components/ClientSideComponentsWrapper'
 
 // Error Boundary component
 const ErrorFallback = ({
@@ -92,7 +87,7 @@ const Home = async () => {
       </Suspense>
 
       {/* Client-side components - All Products, Brand, Benefit, FAQ */}
-      <ClientSideComponents />
+      <ClientComponentsWrapper />
 
       {/* Optional sections - commented out for performance */}
       {/* <MaterialsOffer /> */}
