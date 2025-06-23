@@ -1,6 +1,12 @@
 import { getUserOrders } from '@/app/actions/orderAction'
 import { Button } from '@/components/ui/button'
-import { AlertCircle, Package, ShoppingBag } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowBigLeft,
+  ChevronLeft,
+  Package,
+  ShoppingBag,
+} from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
 import AuthSection from '@/components/ui/AuthSection'
@@ -11,12 +17,12 @@ export default async function PesananSayaPage() {
   const result = await getUserOrders()
   orderResult = { success: result.success, data: result.data || [] }
   const orders = orderResult.success ? orderResult.data : []
+  const session = await validateSession()
+  const userId = session?.user?.id
 
   if (!orderResult.success) {
     return (
       <div className='max-w-5xl mx-auto py-10 px-4'>
-        <h1 className='text-2xl font-bold mb-6'>Pesanan Saya</h1>
-
         <div className='bg-red-50 text-red-800 p-4 rounded-md flex items-center gap-2 mb-6'>
           <AlertCircle className='w-5 h-5' />
           <p>Terjadi kesalahan saat memuat data pesanan.</p>
@@ -31,7 +37,17 @@ export default async function PesananSayaPage() {
 
   return (
     <div className='max-w-5xl mx-auto py-10 px-4'>
-      <h1 className='text-2xl font-bold mb-6'>Pesanan Saya</h1>
+      <Link
+        className='flex items-center gap-2 mb-6'
+        href={{
+          pathname: '/profile',
+          query: {
+            user: userId,
+          },
+        }}>
+        <ChevronLeft />
+        <span className='text-2xl font-bold'>Pesanan Saya</span>
+      </Link>
 
       {orders.length === 0 ? (
         <div className='text-center py-16 border rounded-lg'>

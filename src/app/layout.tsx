@@ -173,8 +173,8 @@ export default function RootLayout({
               }
             }
 
-            // Track vitals in production
-            if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
+            // Track vitals in browser only
+            if (typeof window !== 'undefined') {
               getCLS(console.log);
               getFCP(console.log);
               getLCP(console.log);

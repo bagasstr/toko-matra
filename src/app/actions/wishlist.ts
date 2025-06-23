@@ -3,6 +3,7 @@
 import { prisma } from '@/lib/prisma'
 import { validateSession } from './session'
 import { generateCustomId } from '@/lib/helpper'
+import { randomUUID } from 'crypto'
 
 export const toggleWishlist = async (productId: string) => {
   try {
@@ -55,97 +56,25 @@ export const toggleWishlist = async (productId: string) => {
   }
 }
 
-export const addToWishlist = async (productId: string) => {
-  try {
-    const session = await validateSession()
-    if (!session?.user) {
-      throw new Error('Unauthorized')
-    }
-
-    console.log('productId', productId)
-    const wishlist = await prisma.wishlist.findUnique({
-      where: {
-        productId,
-      },
-    })
-    if (wishlist) {
-      throw new Error('Produk sudah ada di wishlist')
-    }
-    await prisma.wishlist.create({
-      data: {
-        id: generateCustomId('wis'),
-        user: {
-          connect: {
-            id: session.user.id,
-          },
-        },
-        product: {
-          connect: {
-            id: productId,
-          },
-        },
-      },
-    })
-    return {
-      success: true,
-      message: 'Produk berhasil ditambahkan ke wishlist',
-    }
-  } catch (error) {
-    console.log('error', error)
-    return {
-      success: false,
-      message: 'gagal menambahkan ke wishlist',
-    }
-  }
-}
-
-export const removeFromWishlist = async (productId: string) => {
-  const session = await validateSession()
-  if (!session?.user) {
-    throw new Error('Unauthorized')
-  }
-  await prisma.wishlist.delete({
-    where: {
-      id: productId,
+export async function addToWishlist(userId: string, productId: string) {
+  return prisma.wishlist.create({
+    data: {
+      id: randomUUID(),
+      user: { connect: { id: userId } },
+      product: { connect: { id: productId } },
     },
   })
-  return {
-    success: true,
-    message: 'Produk berhasil dihapus dari wishlist',
-  }
 }
 
-export const getWishlist = async () => {
-  try {
-    const session = await validateSession()
-    if (!session?.user) {
-      return [] // Return empty array instead of throwing error
-    }
+export async function removeFromWishlist(userId: string, productId: string) {
+  return prisma.wishlist.deleteMany({
+    where: { userId, productId },
+  })
+}
 
-    const wishlist = await prisma.wishlist.findMany({
-      where: {
-        userId: session.user.id,
-      },
-      select: {
-        productId: true,
-        id: true,
-
-        product: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            slug: true,
-            images: true,
-            category: true,
-          },
-        },
-      },
-    })
-
-    return wishlist
-  } catch (error) {
-    console.error('Error fetching wishlist:', error)
-    return [] // Return empty array on any error
-  }
+export async function getWishlist(userId: string) {
+  return prisma.wishlist.findMany({
+    where: { userId },
+    include: { product: true },
+  })
 }
