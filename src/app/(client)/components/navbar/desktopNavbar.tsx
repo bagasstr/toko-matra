@@ -1,16 +1,16 @@
 import React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { validateSession } from '@/app/actions/session'
 import { NavbarActions } from './navbarActions'
 import { CategoryDropdown } from './categoryDropdown'
 
 export const dynamic = 'force-dynamic'
 
-const DesktopNavbar = async () => {
-  const session = await validateSession()
-  const userId = session?.user?.profile.id.toLowerCase()
+interface DesktopNavbarProps {
+  userId?: string
+}
 
+const DesktopNavbar = ({ userId }: DesktopNavbarProps) => {
   return (
     <div className='hidden lg:block'>
       {/* Background with gradient */}
