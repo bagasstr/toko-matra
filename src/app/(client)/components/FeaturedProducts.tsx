@@ -6,6 +6,7 @@ import React from 'react'
 /**
  * Section "Produk Unggulan" kini Server Component.
  * Data diambil di server sehingga grid sudah terisi pada HTML awal.
+ * Optimized untuk LCP dengan prioritas loading gambar critical.
  */
 export default async function FeaturedProducts() {
   const { products = [], error } = await getBestSellingProducts(18)
@@ -27,7 +28,8 @@ export default async function FeaturedProducts() {
           </h2>
           <Link
             href='/kategori'
-            className='text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors'>
+            className='text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors'
+            prefetch={false}>
             Lihat Semua
           </Link>
         </div>
@@ -38,6 +40,7 @@ export default async function FeaturedProducts() {
               key={product.id}
               product={product}
               index={index}
+              priority={index < 6} // Prioritas tinggi untuk 6 produk pertama (above the fold)
             />
           ))}
         </div>

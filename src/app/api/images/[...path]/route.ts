@@ -40,19 +40,37 @@ export async function GET(
       case 'webp':
         contentType = 'image/webp'
         break
+      case 'avif':
+        contentType = 'image/avif'
+        break
       case 'svg':
         contentType = 'image/svg+xml'
         break
     }
 
-    // Return image with proper headers
+    // Optimized cache headers based on environment
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cacheHeaders = isProduction
+      ? {
+          'Cache-Control': 'public, max-age=31536000, immutable', // 1 year cache
+          Expires: new Date(Date.now() + 31536000000).toUTCString(),
+          ETag: `"${Date.now()}"`, // Simple ETag for cache validation
+        }
+      : {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          Pragma: 'no-cache',
+          Expires: '0',
+        }
+
+    // Return image with optimized headers
     return new NextResponse(imageBuffer, {
       status: 200,
       headers: {
         'Content-Type': contentType,
-        'Cache-Control': 'no-cache, no-store, must-revalidate', // No cache untuk development
-        Pragma: 'no-cache',
-        Expires: '0',
+        'Content-Length': imageBuffer.length.toString(),
+        'X-Content-Type-Options': 'nosniff',
+        'Cross-Origin-Resource-Policy': 'cross-origin',
+        ...cacheHeaders,
       },
     })
   } catch (error) {
