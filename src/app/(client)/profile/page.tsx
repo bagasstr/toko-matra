@@ -19,7 +19,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
     return <AuthSection />
   }
 
-  const userId = userSession?.user?.profile.id
+  const userId = userSession?.user?.id
 
   console.log(userId)
 
@@ -28,7 +28,7 @@ export default async function ProfilePage({ searchParams }: PageProps) {
   }
 
   const userProfile: UserProfile = {
-    id: userSession?.user?.profile.id,
+    id: userSession?.user?.id,
     role: userSession?.user?.role,
     email: userSession?.user?.email,
     emailVerified: userSession?.user?.emailVerified,
