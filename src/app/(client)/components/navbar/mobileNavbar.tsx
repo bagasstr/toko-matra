@@ -1,38 +1,52 @@
+'use client'
 import React from 'react'
 import { Bell, Search, ShoppingCart } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import Image from 'next/image'
-import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { useQuery } from '@tanstack/react-query'
 import { getCartItems } from '@/app/actions/cartAction'
-import { getAllProducts } from '@/app/actions/productAction'
 import { getNotifications } from '@/app/actions/notificationAction'
-
-export const dynamic = 'force-dynamic'
 
 interface MobileNavbarProps {
   userId?: string
 }
 
-const MobileNavbar = async ({ userId }: MobileNavbarProps) => {
-  const { data: cartData } = await getCartItems()
-  const { products } = await getAllProducts()
-  let notifications = []
-  if (userId) {
-    const notifRes = await getNotifications(userId)
-    notifications = notifRes.data || []
-  }
-  const stockProduct = (products || [])
-    .map((product) => product.stock)
-    .reduce((acc, stock) => acc + stock, 0)
+const MobileNavbar = ({ userId }: MobileNavbarProps) => {
+  const { data: cartData } = useQuery({
+    queryKey: ['cart'],
+    queryFn: async () => {
+      const response = await getCartItems()
+      return response.success ? response.data || [] : []
+    },
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
+    refetchInterval: 5000, // auto refetch setiap 5 detik
+  })
+
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications', userId],
+    queryFn: async () => {
+      if (!userId) return []
+      const response = await getNotifications(userId)
+      return response.data || []
+    },
+    enabled: !!userId,
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
+    refetchInterval: 5000, // auto refetch setiap 5 detik
+  })
 
   const items = cartData || []
   const uniqueProductCount = items.length
-  const totalQuantity = items.reduce((acc, item) => acc + item.quantity, 0)
-  const unreadNotifications = notifications.filter((n) => !n.isRead).length || 0
+  const unreadNotifications =
+    notificationsData?.filter((n) => !n.isRead).length || 0
 
   return (
     <div className='lg:hidden'>

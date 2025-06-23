@@ -27,6 +27,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
     refetchOnMount: true,
     staleTime: 0,
     gcTime: 0,
+    refetchInterval: 5000,
   })
 
   const { data: notificationsData } = useQuery({
@@ -41,6 +42,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
     refetchOnMount: true,
     staleTime: 0,
     gcTime: 0,
+    refetchInterval: 5000,
   })
 
   // --- Badge Calculation ---
@@ -65,12 +67,6 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
 
   const unreadNotifications =
     notificationsData?.filter((n) => !n.isRead).length || 0
-
-  // Debug logging
-  console.log('=== Cart Badge Debug ===')
-  console.log('Cart data in navbar:', cartData)
-  console.log('Calculated badge count:', calculatedBadgeCount)
-  console.log('========================')
 
   const handleUpdateQuantity = async (itemId: string, newQuantity: number) => {
     // Validate quantity parameter
