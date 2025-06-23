@@ -38,6 +38,7 @@ export const createSession = async (id: string) => {
 }
 
 export const validateSession = async () => {
+  console.time('session')
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('sessionToken')?.value
   if (!sessionToken) {
@@ -62,7 +63,7 @@ export const validateSession = async () => {
     },
   })
 
-  console.log('session', session)
+  console.timeEnd('session')
 
   // Convert any Decimal objects to plain JavaScript numbers/strings
   // by serializing and deserializing the session object
