@@ -46,6 +46,9 @@ import { Badge } from '@/components/ui/badge'
 import AddAddressForm from '@/components/ui/AddAddressForm'
 import EditAddressForm from '@/components/ui/EditAddressForm'
 import { cn } from '@/lib/utils'
+import { useQuery } from '@tanstack/react-query'
+import { getWishlist } from '@/app/actions/wishlist'
+import Link from 'next/link'
 
 export interface UserProfile {
   id: string
@@ -103,6 +106,12 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
   const [selectAddress, setSelectAddress] = useState<string>(() => {
     const active = user.address?.find((item) => item.isActive)
     return active ? active.id : user.address?.[0]?.id || ''
+  })
+
+  const { data: wishlist = [] } = useQuery({
+    queryKey: ['wishlist', user.id],
+    queryFn: () => getWishlist(user.id),
+    enabled: !!user.id,
   })
 
   const handleLogout = async () => {
@@ -330,33 +339,28 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
               <CardHeader className='pb-2'>
                 <CardTitle className='text-lg font-medium flex items-center gap-2'>
                   <ShoppingBag className='h-4 w-4 text-blue-600' />
-                  Statistik
+                  Riwayat
                 </CardTitle>
               </CardHeader>
               <CardContent className='pt-2'>
                 <div className='grid grid-cols-2 gap-4'>
-                  <div className='bg-blue-50 rounded-lg p-3 text-center'>
+                  <Link
+                    href='/wishlist'
+                    className='bg-blue-50 rounded-lg p-3 text-center'>
                     <p className='text-2xl font-bold text-blue-700'>
-                      {user.address?.length || 0}
+                      {wishlist?.length || 0}
                     </p>
-                    <p className='text-xs text-blue-600'>Alamat</p>
-                  </div>
-                  <div className='bg-green-50 rounded-lg p-3 text-center'>
+                    <p className='text-xs text-blue-600'>Wishlist</p>
+                  </Link>
+                  <Link
+                    href='/profile/pesanan-saya'
+                    className='bg-green-50 rounded-lg p-3 text-center'>
                     <p className='text-2xl font-bold text-green-700'>
                       {user.orderCount ?? 0}
                     </p>
                     <p className='text-xs text-green-600'>Pesanan</p>
-                  </div>
+                  </Link>
                 </div>
-
-                {user.orderCount && user.orderCount > 0 && (
-                  <Button
-                    variant='ghost'
-                    className='w-full justify-center mt-4 text-blue-600 hover:bg-blue-50'
-                    onClick={() => router.push('/profile/pesanan-saya')}>
-                    Lihat Riwayat Pesanan
-                  </Button>
-                )}
               </CardContent>
             </Card>
 

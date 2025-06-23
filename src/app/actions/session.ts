@@ -114,8 +114,24 @@ export const logout = async () => {
     return
   }
 
+  // Temukan userId dari sessionToken
+  const session = await prisma.session.findUnique({
+    where: { sessionToken },
+    select: { userId: true },
+  })
+
   await prisma.session.delete({
     where: { sessionToken },
   })
   ;(await cookies()).delete('sessionToken')
+
+  // Hapus notifikasi login user
+  if (session?.userId) {
+    await prisma.notification.deleteMany({
+      where: {
+        userId: session.userId,
+        title: 'Login Berhasil',
+      },
+    })
+  }
 }
