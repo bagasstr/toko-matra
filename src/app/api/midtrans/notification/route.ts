@@ -22,6 +22,10 @@ export async function POST(request: Request) {
 
     console.log('=== MIDTRANS NOTIFICATION RECEIVED ===')
     console.log('Full body:', JSON.stringify(body, null, 2))
+    console.log(
+      'Request headers:',
+      Object.fromEntries(request.headers.entries())
+    )
 
     if (!body || typeof body !== 'object') {
       console.log('ERROR: Invalid notification body')
@@ -48,28 +52,36 @@ export async function POST(request: Request) {
       gross_amount,
     } = body
 
-    console.log(
+    console.log('=== EXTRACTED FIELDS ===')
+    console.log({
+      order_id,
       transaction_status,
       fraud_status,
-      signature_key,
       status_code,
       gross_amount,
-      transaction_time,
-      settlement_time,
       payment_type,
       merchant_id,
-      currency,
-      status_message,
-      order_id,
-      transaction_id,
-      va_numbers
-    )
+    })
 
     if (!order_id || !transaction_status) {
+      console.log(
+        'ERROR: Missing required fields - order_id or transaction_status'
+      )
       return NextResponse.json(
         { success: false, message: 'Missing required notification fields' },
         { status: 400 }
       )
+    }
+
+    // Handle test notifications
+    if (order_id.includes('payment_notif_test') || order_id.includes('test')) {
+      console.log('=== TEST NOTIFICATION DETECTED ===')
+      console.log('Test notification received, acknowledging...')
+      return NextResponse.json({
+        success: true,
+        message: 'Test notification acknowledged',
+        data: { order_id, test: true },
+      })
     }
 
     // Verify signature
@@ -80,12 +92,22 @@ export async function POST(request: Request) {
         .update(`${order_id}${status_code}${gross_amount}${serverKey}`)
         .digest('hex')
 
+      console.log('=== SIGNATURE VERIFICATION ===')
+      console.log('Expected signature:', expectedSignature)
+      console.log('Received signature:', signature_key)
+      console.log('Signature match:', signature_key === expectedSignature)
+
       if (signature_key !== expectedSignature) {
+        console.log('ERROR: Invalid signature')
         return NextResponse.json(
           { success: false, message: 'Invalid signature' },
           { status: 400 }
         )
       }
+    } else {
+      console.log(
+        'WARNING: Signature verification skipped (missing server key or signature)'
+      )
     }
 
     // Update status based on notification
@@ -113,16 +135,72 @@ export async function POST(request: Request) {
       paymentStatus = 'PENDING'
     }
 
-    // Update payment and order
+    console.log('=== STATUS MAPPING ===')
+    console.log('Transaction status:', transaction_status)
+    console.log('Mapped payment status:', paymentStatus)
+    console.log('Mapped order status:', orderStatus)
+
+    // Search for payment with multiple strategies
+    console.log('=== PAYMENT LOOKUP ===')
     console.log('Looking for payment with transactionId:', order_id)
-    const payment = await prisma.payment.findFirst({
+
+    let payment = await prisma.payment.findFirst({
       where: { transactionId: order_id },
       include: { order: true },
     })
 
-    console.log('Found payment:', payment ? 'Yes' : 'No')
+    console.log(
+      'Payment found with exact transactionId match:',
+      payment ? 'Yes' : 'No'
+    )
+
+    // Fallback: search by partial match (for custom transaction IDs)
+    if (!payment) {
+      console.log('Trying fallback search strategies...')
+
+      // Try to find by order ID if it contains recognizable pattern
+      if (order_id.startsWith('ord-')) {
+        payment = await prisma.payment.findFirst({
+          where: { transactionId: order_id },
+          include: { order: true },
+        })
+        console.log(
+          'Payment found with ord- prefix match:',
+          payment ? 'Yes' : 'No'
+        )
+      }
+
+      // Try to find recent pending payment (last resort)
+      if (!payment) {
+        console.log('Searching for recent pending payments...')
+        const recentPayments = await prisma.payment.findMany({
+          where: {
+            status: 'PENDING',
+            createdAt: {
+              gte: new Date(Date.now() - 24 * 60 * 60 * 1000), // Last 24 hours
+            },
+          },
+          include: { order: true },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+        })
+
+        console.log('Recent pending payments found:', recentPayments.length)
+        recentPayments.forEach((p, i) => {
+          console.log(`Payment ${i + 1}:`, {
+            id: p.id,
+            transactionId: p.transactionId,
+            amount: p.amount,
+            orderId: p.orderId,
+          })
+        })
+      }
+    }
 
     if (payment) {
+      console.log('=== UPDATING PAYMENT ===')
+      console.log('Payment ID:', payment.id)
+      console.log('Order ID:', payment.orderId)
       console.log(
         'Updating payment status from',
         payment.status,
@@ -170,11 +248,31 @@ export async function POST(request: Request) {
         await sendPaymentWaitingNotification(payment.orderId, va_numbers)
       }
     } else {
-      console.log('Payment not found for transactionId:', order_id)
+      console.log('=== PAYMENT NOT FOUND ===')
+      console.log('Transaction ID searched:', order_id)
+      console.log('Available transaction IDs in database:')
+
+      // Debug: show recent transaction IDs
+      const recentTransactions = await prisma.payment.findMany({
+        select: { transactionId: true, createdAt: true, status: true },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      })
+
+      recentTransactions.forEach((t, i) => {
+        console.log(
+          `${i + 1}. ${t.transactionId} (${t.status}) - ${t.createdAt}`
+        )
+      })
+
       return NextResponse.json(
         {
           success: false,
           message: 'Payment not found for transaction ID',
+          debug: {
+            searched_transaction_id: order_id,
+            recent_transactions: recentTransactions.map((t) => t.transactionId),
+          },
         },
         { status: 404 }
       )
@@ -190,7 +288,13 @@ export async function POST(request: Request) {
       },
     })
   } catch (error) {
-    console.error('Notification processing error:', error)
+    console.error('=== NOTIFICATION PROCESSING ERROR ===')
+    console.error('Error details:', error)
+    console.error(
+      'Stack trace:',
+      error instanceof Error ? error.stack : 'No stack trace'
+    )
+
     return NextResponse.json(
       {
         success: false,
