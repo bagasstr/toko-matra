@@ -10,6 +10,7 @@ import { ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import CopyButton from '@/app/(client)/components/CopyButton'
 import { PdfFakturButton } from '@/app/(client)/components/DownloadPdfButton'
+import { useEffect, useState } from 'react'
 
 export default async function OrderDetailPage({
   params,
