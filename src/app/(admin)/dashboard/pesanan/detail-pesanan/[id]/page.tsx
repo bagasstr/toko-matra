@@ -79,7 +79,15 @@ export default async function DetailPesananPage({
   const paymentRes = await getPaymentByOrderId(id)
   const payment = paymentRes.success ? paymentRes.data : null
   console.log(order)
-  const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
+
+  // Load logo directly since this is a server component
+  let logoBase64 = ''
+  try {
+    const { getCompanyLogoBase64 } = await import('@/lib/utils')
+    logoBase64 = await getCompanyLogoBase64()
+  } catch (error) {
+    console.error('Failed to load logo:', error)
+  }
 
   // Calculate data for PDF
   const subtotal = order.items.reduce(

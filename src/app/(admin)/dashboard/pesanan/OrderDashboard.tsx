@@ -117,6 +117,20 @@ export default function OrderDashboard({
 }: {
   initialOrders: any[]
 }) {
+  const [logoBase64, setLogoBase64] = useState<string>('')
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const { getCompanyLogoBase64 } = await import('@/lib/utils')
+        const logoData = await getCompanyLogoBase64()
+        setLogoBase64(logoData)
+      } catch (error) {
+        console.error('Failed to load logo:', error)
+      }
+    }
+    loadLogo()
+  }, [])
   const [statusFilter, setStatusFilter] = useState('Semua Status')
   const [resi, setResi] = useState('')
   const [showSupplierAlert, setShowSupplierAlert] = useState(false)
@@ -705,9 +719,7 @@ export default function OrderDashboard({
                               subtotal={order.totalAmount}
                               ppn={Math.round(order.totalAmount * 0.11)}
                               total={Math.round(order.totalAmount * 1.11)}
-                              logoBase64={
-                                process.env.NEXT_PUBLIC_LOGO_BASE64 || ''
-                              }
+                              logoBase64={logoBase64}
                               poNumber={order.id}
                               poDate={new Date(
                                 order.createdAt

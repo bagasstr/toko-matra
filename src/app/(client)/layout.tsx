@@ -19,12 +19,12 @@ export default async function HomeLayout({
     console.error('Session validation error:', error)
   }
   const userId = session?.user?.id?.toLowerCase()
-
+  console.log('userId', userId)
   return (
     <ClientLayoutWrapper>
       <div className='min-h-screen flex flex-col'>
         {/* Navbar tanpa suspense */}
-        <Navbar userId={userId} />
+        <Navbar userId={userId || ''} />
 
         {/* Main content area dengan optimasi spacing */}
         <main className='flex-1 pt-16 lg:pt-20 pb-20 lg:pb-0'>{children}</main>

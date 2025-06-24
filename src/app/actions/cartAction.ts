@@ -28,6 +28,30 @@ export async function getCartItems() {
       where: {
         userId: session.user.id,
       },
+      select: {
+        id: true,
+        items: {
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                images: true,
+                stock: true,
+                unit: true,
+                minOrder: true,
+                multiOrder: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: {
+            items: true,
+          },
+        },
+      },
     })
 
     // If cart doesn't exist, return empty array
@@ -51,6 +75,7 @@ export async function getCartItems() {
             unit: true,
             minOrder: true,
             multiOrder: true,
+            weight: true,
           },
         },
       },
@@ -149,6 +174,7 @@ export async function addToCart(
               images: true,
               stock: true,
               unit: true,
+              weight: true,
             },
           },
         },
@@ -175,6 +201,7 @@ export async function addToCart(
               images: true,
               stock: true,
               unit: true,
+              weight: true,
             },
           },
         },

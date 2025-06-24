@@ -26,6 +26,7 @@ import {
   getAllCategories,
   deleteCategory,
   getTreeCategories,
+  updateCategory,
 } from '@/app/actions/categoryAction'
 import React from 'react'
 import ProductPagination from '@/components/ProductPagination'
@@ -45,11 +46,13 @@ export default function CategoryPage() {
     null
   )
   const [newCategoryName, setNewCategoryName] = useState('')
+  const [editCategoryName, setEditCategoryName] = useState('')
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   )
   const [isAddingSubCategory, setIsAddingSubCategory] = useState(false)
   const [isLoadingAdd, setIsLoadingAdd] = useState(false)
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
@@ -125,6 +128,36 @@ export default function CategoryPage() {
     setIsAddDialogOpen(true)
   }
 
+  const handleEditCategory = (category: Category) => {
+    setSelectedCategory(category)
+    setEditCategoryName(category.name)
+    setIsEditDialogOpen(true)
+  }
+
+  const handleUpdateCategory = async () => {
+    if (!editCategoryName.trim()) {
+      toast.error('Nama kategori tidak boleh kosong')
+      return
+    }
+    if (!selectedCategory) return
+
+    setIsLoadingEdit(true)
+    const result = await updateCategory(selectedCategory.id, {
+      name: editCategoryName,
+    })
+    setIsLoadingEdit(false)
+
+    if (result.success) {
+      toast.success('Kategori berhasil diupdate')
+      setEditCategoryName('')
+      setIsEditDialogOpen(false)
+      setSelectedCategory(null)
+      fetchCategories()
+    } else {
+      toast.error('Gagal mengupdate kategori')
+    }
+  }
+
   const handleDeleteCategory = async (category: Category) => {
     setSelectedCategory(category)
     setIsDeleteDialogOpen(true)
@@ -190,7 +223,8 @@ export default function CategoryPage() {
                 variant='outline'
                 size='icon'
                 onClick={(e) => {
-                  e.stopPropagation() /* TODO: handleEditCategory(category) */
+                  e.stopPropagation()
+                  handleEditCategory(category)
                 }}>
                 <Pencil className='h-4 w-4' />
               </Button>
@@ -219,7 +253,7 @@ export default function CategoryPage() {
     <div className='space-y-4'>
       <div className='flex justify-between items-center'>
         <h1 className='text-2xl font-bold'>Kategori</h1>
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        {/* <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className='h-4 w-4 mr-2' />
@@ -277,7 +311,7 @@ export default function CategoryPage() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog> */}
       </div>
 
       <Table>
@@ -307,6 +341,61 @@ export default function CategoryPage() {
         totalPages={totalPages || 1}
         onPageChange={setCurrentPage}
       />
+
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Kategori</DialogTitle>
+          </DialogHeader>
+          <div className='space-y-4'>
+            <div className='space-y-2'>
+              <Label htmlFor='edit-name'>Nama Kategori</Label>
+              <Input
+                id='edit-name'
+                value={editCategoryName}
+                onChange={(e) => setEditCategoryName(e.target.value)}
+                placeholder='Masukkan nama kategori'
+              />
+            </div>
+            <div className='flex justify-end gap-2'>
+              <Button
+                variant='outline'
+                onClick={() => {
+                  setIsEditDialogOpen(false)
+                  setEditCategoryName('')
+                  setSelectedCategory(null)
+                }}>
+                Batal
+              </Button>
+              <Button onClick={handleUpdateCategory} disabled={isLoadingEdit}>
+                {isLoadingEdit ? (
+                  <span className='flex items-center gap-2'>
+                    <svg className='animate-spin h-4 w-4' viewBox='0 0 24 24'>
+                      <circle
+                        className='opacity-25'
+                        cx='12'
+                        cy='12'
+                        r='10'
+                        stroke='currentColor'
+                        strokeWidth='4'
+                        fill='none'
+                      />
+                      <path
+                        className='opacity-75'
+                        fill='currentColor'
+                        d='M4 12a8 8 0 018-8v8z'
+                      />
+                    </svg>
+                    Menyimpan...
+                  </span>
+                ) : (
+                  'Simpan'
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>

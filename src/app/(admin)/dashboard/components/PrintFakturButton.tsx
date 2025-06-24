@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
 import { generateFakturPDF } from '@/lib/pdfFakturFormatter'
@@ -9,9 +10,22 @@ interface PrintInvoiceButtonProps {
 }
 
 export function PrintInvoiceButton({ order }: PrintInvoiceButtonProps) {
+  const [logoBase64, setLogoBase64] = useState<string>('')
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const { getCompanyLogoBase64 } = await import('@/lib/utils')
+        const logoData = await getCompanyLogoBase64()
+        setLogoBase64(logoData)
+      } catch (error) {
+        console.error('Failed to load logo:', error)
+      }
+    }
+    loadLogo()
+  }, [])
+
   const handlePrintInvoice = async () => {
-    // Ambil logo base64 jika ada, atau gunakan string kosong
-    const logoBase64 = '' // TODO: ganti dengan logo base64 jika ada
     const invoiceNumber = order.id
     const invoiceDate = new Date(order.createdAt).toLocaleString('id-ID')
     const customerName = order.user?.profile?.fullName || '-'
