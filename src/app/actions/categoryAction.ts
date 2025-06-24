@@ -211,6 +211,28 @@ export async function getTreeCategories() {
   }
 }
 
+export async function updateCategory(id: string, data: { name: string }) {
+  try {
+    const category = await prisma.category.update({
+      where: { id },
+      data: {
+        name: data.name,
+        slug: createSlug(data.name),
+      },
+      include: {
+        parent: true,
+        children: true,
+      },
+    })
+
+    revalidatePath('/dashboard/produk/tambah-produk')
+    return { success: true, category }
+  } catch (error) {
+    console.error('Failed to update category:', error)
+    return { success: false, error: 'Gagal mengupdate kategori.' }
+  }
+}
+
 export async function deleteCategory(id: string) {
   try {
     // Check if category has children

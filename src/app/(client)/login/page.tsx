@@ -19,6 +19,7 @@ import { login } from '@/app/actions/login'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
+import { queryClient } from '@/lib/queryClient'
 
 const formSchema = z.object({
   email: z
@@ -57,8 +58,10 @@ const LoginPage = () => {
         return
       }
 
-      if (result.success) {
+      if (result?.success) {
         toast.success('Login berhasil')
+        queryClient.invalidateQueries({ queryKey: ['cart'] })
+        queryClient.invalidateQueries({ queryKey: ['notifications'] })
         router.replace('/')
       }
     } catch (error) {

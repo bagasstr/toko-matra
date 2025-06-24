@@ -6,6 +6,7 @@ interface InvoiceItem {
     unit: string
     sku?: string
     description?: string
+    weight?: number
   }
   quantity: number
 }
@@ -22,7 +23,8 @@ export const generateProformaPDF = (
   customerAddress: string,
   customerEmail?: string,
   customerPhone?: string,
-  notes?: string
+  notes?: string,
+  totalWeight?: number
 ) => {
   const formatRupiah = (num: number) =>
     `Rp ${num.toLocaleString('id-ID', {
@@ -354,6 +356,18 @@ export const generateProformaPDF = (
               <td class="label">PPN (11%)</td>
               <td class="value">${formatRupiah(ppn)}</td>
             </tr>
+            ${
+              totalWeight
+                ? `
+            <tr>
+              <td class="label">Total Berat</td>
+              <td class="value">${totalWeight.toLocaleString('id-ID', {
+                maximumFractionDigits: 2,
+              })} kg</td>
+            </tr>
+            `
+                : ''
+            }
             <tr class="border-top border-bottom">
               <td class="label bold">Total Tagihan</td>
               <td class="value bold">${formatRupiah(totalTagihan)}</td>

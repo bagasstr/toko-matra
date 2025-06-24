@@ -3,14 +3,20 @@
 import React, { useState, useEffect, memo, useCallback, useMemo } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { Trash2, Download } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { updateCartItemQuantity, clearCart } from '@/app/actions/cartAction'
+import {
+  updateCartItemQuantity,
+  clearCart,
+  getCartItems,
+} from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { Skeleton } from '@/components/ui/skeleton'
 import dynamic from 'next/dynamic'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQueryClient, useQuery } from '@tanstack/react-query'
+import { formatPrice } from '@/lib/utils'
+import { Checkbox } from '@/components/ui/checkbox'
 
 // Dynamic import untuk menghindari SSR error
 const PdfCartButton = dynamic(
@@ -82,10 +88,9 @@ const CartItem = memo(
 
     return (
       <div className='flex items-center space-x-4 p-4 border-b'>
-        <input
-          type='checkbox'
+        <Checkbox
           checked={isSelected}
-          onChange={() => onSelectItem(item.id)}
+          onCheckedChange={() => onSelectItem(item.id)}
           className='w-5 h-5'
         />
         <div className='flex-shrink-0'>
@@ -104,9 +109,16 @@ const CartItem = memo(
           <p className='text-sm text-gray-500'>{formattedPrice}</p>
           <div className='flex items-center mt-2 space-x-2'>
             <button
-              onClick={() => setLocalQuantity(Math.max(1, localQuantity - 1))}
+              onClick={() =>
+                setLocalQuantity(
+                  Math.max(
+                    item.product.minOrder,
+                    localQuantity - item.product.multiOrder
+                  )
+                )
+              }
               className='w-8 h-8 flex items-center justify-center border rounded'
-              disabled={localQuantity <= 1}>
+              disabled={localQuantity <= item.product.minOrder}>
               -
             </button>
             <input
@@ -114,10 +126,12 @@ const CartItem = memo(
               value={localQuantity}
               onChange={(e) => setLocalQuantity(parseInt(e.target.value) || 1)}
               className='w-16 text-center border rounded px-2 py-1'
-              min={1}
+              min={item.product.minOrder}
             />
             <button
-              onClick={() => setLocalQuantity(localQuantity + 1)}
+              onClick={() =>
+                setLocalQuantity(localQuantity + item.product.multiOrder)
+              }
               className='w-8 h-8 flex items-center justify-center border rounded'>
               +
             </button>
@@ -182,6 +196,7 @@ const CartClient = memo(
     const [selectedItems, setSelectedItems] = useState<string[]>([])
     const [customerInfo, setCustomerInfo] = useState<any>(null)
     const [isUpdating, setIsUpdating] = useState(false)
+    const [logoBase64, setLogoBase64] = useState<string>('')
 
     // Memoized calculations
     const selectedProduct = useMemo(
@@ -203,6 +218,14 @@ const CartClient = memo(
     const calculateTotal = useCallback(() => {
       return calculateSubtotal() + calculatePPN()
     }, [calculateSubtotal, calculatePPN])
+
+    const calculateTotalWeight = useCallback(() => {
+      return selectedProduct.reduce(
+        (sum: number, item: any) =>
+          sum + (Number(item.product.weight) || 0) * item.quantity,
+        0
+      )
+    }, [selectedProduct])
 
     // Memoized formatted values
     const formattedSubtotal = useMemo(
@@ -235,12 +258,27 @@ const CartClient = memo(
       [calculateTotal]
     )
 
+    const { data: fetchedCartData, isLoading: loadingCart } = useQuery({
+      queryKey: ['cart'],
+      queryFn: getCartItems,
+      initialData: initialCartData,
+      refetchOnWindowFocus: false,
+      staleTime: 30000,
+    })
+
+    // Load logo on component mount
     useEffect(() => {
+      const loadLogo = async () => {
+        try {
+          const { getCompanyLogoBase64 } = await import('@/lib/utils')
+          const logoData = await getCompanyLogoBase64()
+          setLogoBase64(logoData)
+        } catch (error) {
+          console.error('Failed to load logo:', error)
+        }
+      }
+      loadLogo()
       setMounted(true)
-      const timer = setTimeout(() => {
-        setLoading(false)
-      }, 500) // Reduced loading time
-      return () => clearTimeout(timer)
     }, [])
 
     useEffect(() => {
@@ -354,7 +392,7 @@ const CartClient = memo(
             await removeItem(itemId)
             return
           }
-
+          queryClient.invalidateQueries({ queryKey: ['cart'] })
           const response = await updateCartItemQuantity(itemId, validQuantity)
           if (response.success) {
             // Update local state optimistically
@@ -366,7 +404,6 @@ const CartClient = memo(
             }))
 
             // Invalidate and refetch cart data
-            queryClient.invalidateQueries({ queryKey: ['cart'] })
           }
         } catch (error) {
           console.error('Error updating quantity:', error)
@@ -437,10 +474,9 @@ const CartClient = memo(
               <div className='bg-white rounded-lg shadow'>
                 <div className='p-4 border-b'>
                   <label className='flex items-center'>
-                    <input
-                      type='checkbox'
+                    <Checkbox
                       checked={selectedItems.length === cart.length}
-                      onChange={handleSelectAll}
+                      onCheckedChange={handleSelectAll}
                       className='w-5 h-5 mr-3'
                     />
                     Pilih Semua ({cart.length} produk)
@@ -475,6 +511,15 @@ const CartClient = memo(
                     <span>PPN (11%)</span>
                     <span>{formattedPPN}</span>
                   </div>
+                  <div className='flex justify-between'>
+                    <span>Total Berat</span>
+                    <span>
+                      {calculateTotalWeight().toLocaleString('id-ID', {
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      kg
+                    </span>
+                  </div>
                   <div className='border-t pt-2'>
                     <div className='flex justify-between font-semibold text-lg'>
                       <span>Total</span>
@@ -497,7 +542,8 @@ const CartClient = memo(
                       subtotal={calculateSubtotal()}
                       ppn={calculatePPN()}
                       total={calculateTotal()}
-                      logoBase64=''
+                      totalWeight={calculateTotalWeight()}
+                      logoBase64={logoBase64}
                       customerInfo={customerInfo}
                     />
                   )}

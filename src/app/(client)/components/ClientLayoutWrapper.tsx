@@ -1,6 +1,6 @@
+// components/ClientLayoutWrapper.tsx
 'use client'
-
-import { ReactNode } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 import { PerformanceProvider } from '@/components/PerformanceProvider'
 
 interface ClientLayoutWrapperProps {
@@ -10,5 +10,15 @@ interface ClientLayoutWrapperProps {
 export default function ClientLayoutWrapper({
   children,
 }: ClientLayoutWrapperProps) {
+  const [isMounted, setIsMounted] = useState(false)
+
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
+
+  if (!isMounted) {
+    return <div>Loading...</div>
+  }
+
   return <PerformanceProvider>{children}</PerformanceProvider>
 }

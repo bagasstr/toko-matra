@@ -35,7 +35,20 @@ export default async function OrderDetailPage({
   const order = orderResult.data
   console.log(order)
 
-  const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
+  const [logoBase64, setLogoBase64] = useState<string>('')
+
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const { getCompanyLogoBase64 } = await import('@/lib/utils')
+        const logoData = await getCompanyLogoBase64()
+        setLogoBase64(logoData)
+      } catch (error) {
+        console.error('Failed to load logo:', error)
+      }
+    }
+    loadLogo()
+  }, [])
 
   // Jika status PENDING, ambil detail pembayaran
   let paymentDetail = null

@@ -51,6 +51,7 @@ interface PaymentResponse {
   message: string
   data?: any
   error?: string
+  isTemporary?: boolean
 }
 
 // Validation helper functions
@@ -193,9 +194,21 @@ export async function createMidtransPayment(
       customer_details: params.customerDetails,
       item_details: adjustedItemDetails,
       callbacks: {
-        finish: `http://localhost:3000/payment/success`,
-        unfinish: `http://localhost:3000/payment/pending`,
-        error: `http://localhost:3000/payment/error`,
+        finish: `${
+          process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        }/payment/success`,
+        unfinish: `${
+          process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        }/payment/pending`,
+        error: `${
+          process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        }/payment/error`,
+      },
+      // Tambahkan webhook notification URL
+      notifications: {
+        notification_url: `${
+          process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'
+        }/api/midtrans/notification`,
       },
     }
 
@@ -277,8 +290,9 @@ export async function checkMidtransTransaction(
     if (!statusResponse.success) {
       return {
         success: false,
-        message: 'Gagal mengecek status transaksi',
+        message: statusResponse.error || 'Gagal mengecek status transaksi',
         error: statusResponse.error,
+        isTemporary: statusResponse.isTemporary,
       }
     }
 
@@ -344,6 +358,9 @@ export async function checkMidtransTransaction(
         }
       }
     }
+
+    revalidatePath('/orders')
+    revalidatePath('/dashboard/orders')
 
     return {
       success: true,
@@ -631,6 +648,7 @@ export async function getPaymentByOrderId(
         bank: true,
         vaNumber: true,
         transactionId: true,
+        rawResponse: true,
         order: {
           select: {
             id: true,

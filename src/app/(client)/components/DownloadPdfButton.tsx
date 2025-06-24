@@ -28,12 +28,14 @@ type CartButtonProps = {
       unit: string
       sku?: string
       priceExclPPN?: number
+      weight?: number
     }
     quantity: number
   }[]
   subtotal: number
   ppn: number
   total: number
+  totalWeight?: number
   logoBase64: string
   customerInfo?: {
     name?: string
@@ -132,12 +134,14 @@ type ProInvoicePdfButtonProps = {
       unit: string
       sku?: string
       description?: string
+      weight?: number
     }
     quantity: number
   }[]
   subtotal: number
   ppn: number
   total: number
+  totalWeight?: number
   logoBase64: string
   proInvoiceNumber: string
   proInvoiceDate: string
@@ -214,6 +218,7 @@ export function PdfCartButton({
   subtotal,
   ppn,
   total,
+  totalWeight,
   logoBase64,
   customerInfo,
   disabled,
@@ -231,6 +236,7 @@ export function PdfCartButton({
             subtotal,
             ppn,
             total,
+            totalWeight,
             logoBase64,
             customerInfo,
             type: 'cart',
@@ -564,6 +570,7 @@ export function ProInvoicePdfButton({
   subtotal,
   ppn,
   total,
+  totalWeight,
   logoBase64,
   proInvoiceNumber,
   proInvoiceDate,
@@ -590,6 +597,7 @@ export function ProInvoicePdfButton({
             subtotal,
             ppn,
             total,
+            totalWeight,
             logoBase64,
             proInvoiceNumber,
             proInvoiceDate,

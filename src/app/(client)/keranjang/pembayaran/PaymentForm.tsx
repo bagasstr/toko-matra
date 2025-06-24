@@ -113,6 +113,13 @@ const PaymentForm = ({
     0
   )
 
+  // Hitung total berat
+  const totalWeight = cartItems.reduce(
+    (sum: number, item: any) =>
+      sum + (Number(item.product.weight) || 0) * item.quantity,
+    0
+  )
+
   const total = subtotal + subtotal * 0.11
   const ppn = subtotal * 0.11
 
@@ -290,7 +297,21 @@ const PaymentForm = ({
     )
   }
 
-  const logoBase64 = process.env.NEXT_PUBLIC_LOGO_BASE64 ?? ''
+  const [logoBase64, setLogoBase64] = useState<string>('')
+
+  // Load logo on component mount
+  useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const { getCompanyLogoBase64 } = await import('@/lib/utils')
+        const logoData = await getCompanyLogoBase64()
+        setLogoBase64(logoData)
+      } catch (error) {
+        console.error('Failed to load logo:', error)
+      }
+    }
+    loadLogo()
+  }, [])
 
   // Siapkan data invoice
   const invoiceNumber = 'PI-' + Date.now() // Bisa diganti dengan nomor invoice dari backend
@@ -474,6 +495,15 @@ const PaymentForm = ({
                     Rp {(subtotal * 0.11).toLocaleString('id-ID')}
                   </span>
                 </div>
+                <div className='flex justify-between'>
+                  <span className='text-gray-600'>Total Berat</span>
+                  <span className='font-medium'>
+                    {totalWeight.toLocaleString('id-ID', {
+                      maximumFractionDigits: 2,
+                    })}{' '}
+                    kg
+                  </span>
+                </div>
                 <div className='flex justify-between border-t pt-2 mt-2'>
                   <span className='font-bold'>Total</span>
                   <span className='font-bold text-primary text-lg'>
@@ -490,12 +520,14 @@ const PaymentForm = ({
                       unit: item.product.unit,
                       sku: item.product.sku,
                       description: item.product.description,
+                      weight: item.product.weight,
                     },
                     quantity: item.quantity,
                   }))}
                   subtotal={subtotal}
                   ppn={ppn}
                   total={total}
+                  totalWeight={totalWeight}
                   logoBase64={logoBase64}
                   proInvoiceNumber={`PI-${new Date().getFullYear()}${String(
                     new Date().getMonth() + 1

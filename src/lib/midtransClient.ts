@@ -37,8 +37,14 @@ export const createTransaction = async (transactionDetails: any) => {
   }
 }
 
-// Helper function to check transaction status
-export const checkTransaction = async (transactionId: string) => {
+// Helper function to check transaction status with retry logic
+export const checkTransaction = async (
+  transactionId: string,
+  retryCount = 0
+) => {
+  const maxRetries = 3
+  const retryDelay = 1000 * (retryCount + 1) // 1s, 2s, 3s
+
   try {
     const response = await coreApi.transaction.status(transactionId)
     return {
@@ -46,11 +52,39 @@ export const checkTransaction = async (transactionId: string) => {
       data: response,
     }
   } catch (error: any) {
-    console.error('Midtrans Status Check Error:', error)
+    console.error(
+      `Midtrans Status Check Error (attempt ${retryCount + 1}):`,
+      error
+    )
+
+    // Check if it's a temporary server error (500) and we haven't exceeded max retries
+    const isServerError =
+      error?.httpStatusCode === '500' ||
+      error?.ApiResponse?.status_code === '500'
+    const shouldRetry = isServerError && retryCount < maxRetries
+
+    if (shouldRetry) {
+      console.log(`Retrying in ${retryDelay}ms...`)
+      await new Promise((resolve) => setTimeout(resolve, retryDelay))
+      return checkTransaction(transactionId, retryCount + 1)
+    }
+
+    // Determine error type for better user messaging
+    let userMessage = 'Failed to check transaction status'
+    if (isServerError) {
+      userMessage =
+        'Midtrans server is temporarily unavailable. Please try again later.'
+    } else if (error?.httpStatusCode === '404') {
+      userMessage = 'Transaction not found. Please check your transaction ID.'
+    } else if (error?.httpStatusCode === '401') {
+      userMessage = 'Authentication failed. Please contact support.'
+    }
+
     return {
       success: false,
-      error: error.message || 'Failed to check transaction status',
+      error: userMessage,
       details: error,
+      isTemporary: isServerError,
     }
   }
 }

@@ -157,6 +157,7 @@ interface CartItem {
     unit: string
     sku?: string
     priceExclPPN?: number
+    weight?: number
   }
   quantity: number
 }
@@ -167,6 +168,7 @@ interface PdfDocumentProps {
     subtotal: number
     ppn: number
     total: number
+    totalWeight?: number
     logoBase64: string
     type?:
       | 'cart'
@@ -484,6 +486,17 @@ export const PdfDocument = ({ content }: PdfDocumentProps) => {
                 {formatRupiah(content.ppn)}
               </Text>
             </View>
+            {content.totalWeight && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Total Berat</Text>
+                <Text style={styles.summaryValue}>
+                  {content.totalWeight.toLocaleString('id-ID', {
+                    maximumFractionDigits: 2,
+                  })}{' '}
+                  kg
+                </Text>
+              </View>
+            )}
             <View style={[styles.summaryRow, styles.summaryTotal]}>
               <Text style={styles.summaryLabel}>Total</Text>
               <Text style={styles.summaryValue}>

@@ -33,7 +33,7 @@ const DesktopNavbar = ({ userId }: DesktopNavbarProps) => {
           </Link>
 
           {/* Navigation Links */}
-          <nav className='hidden xl:flex items-center gap-8'>
+          <nav className='hidden lg:flex items-center gap-8'>
             <Link
               href='/'
               className='text-foreground hover:text-primary transition-colors font-medium'>

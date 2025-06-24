@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
+import { revalidatePath } from 'next/cache'
 import {
   sendPaymentSuccessNotification,
   sendPaymentWaitingNotification,
@@ -19,7 +20,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json()
 
+    console.log('=== MIDTRANS NOTIFICATION RECEIVED ===')
+    console.log('Full body:', JSON.stringify(body, null, 2))
+
     if (!body || typeof body !== 'object') {
+      console.log('ERROR: Invalid notification body')
       return NextResponse.json(
         { success: false, message: 'Invalid notification body' },
         { status: 400 }
@@ -109,12 +114,28 @@ export async function POST(request: Request) {
     }
 
     // Update payment and order
+    console.log('Looking for payment with transactionId:', order_id)
     const payment = await prisma.payment.findFirst({
       where: { transactionId: order_id },
       include: { order: true },
     })
 
+    console.log('Found payment:', payment ? 'Yes' : 'No')
+
     if (payment) {
+      console.log(
+        'Updating payment status from',
+        payment.status,
+        'to',
+        paymentStatus
+      )
+      console.log(
+        'Updating order status from',
+        payment.order.status,
+        'to',
+        orderStatus
+      )
+
       await prisma.$transaction(async (tx) => {
         await tx.payment.update({
           where: { id: payment.id },
@@ -133,14 +154,30 @@ export async function POST(request: Request) {
         })
       })
 
-      // Send payment success notification if payment is successful
+      console.log('Payment and order status updated successfully')
 
+      // Revalidate cache untuk halaman yang terkait
+      revalidatePath(`/orders/${payment.orderId}`)
+      revalidatePath('/orders')
+      revalidatePath('/dashboard/pesanan')
+      revalidatePath(`/dashboard/pesanan/detail-pesanan/${payment.orderId}`)
+
+      // Send payment success notification if payment is successful
       if (paymentStatus === 'SUCCESS') {
         await sendPaymentSuccessNotification(payment.orderId)
         await sendOrderConfirmedNotification(payment.orderId)
       } else if (paymentStatus === 'PENDING') {
         await sendPaymentWaitingNotification(payment.orderId, va_numbers)
       }
+    } else {
+      console.log('Payment not found for transactionId:', order_id)
+      return NextResponse.json(
+        {
+          success: false,
+          message: 'Payment not found for transaction ID',
+        },
+        { status: 404 }
+      )
     }
 
     return NextResponse.json({

@@ -8,15 +8,15 @@ const globalForPrisma = globalThis as unknown as {
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
-    log:
-      process.env.NODE_ENV === 'development'
-        ? ['query', 'error', 'warn']
-        : ['error'],
     datasources: {
       db: {
         url: process.env.DATABASE_URL,
       },
     },
+    // Explicitly disable all logging
+    log: [],
+    // Additional logging configuration to ensure no logs
+    errorFormat: 'minimal',
     // Optimize connection pooling for Vercel
     ...(process.env.NODE_ENV === 'production' && {
       transactionOptions: {
