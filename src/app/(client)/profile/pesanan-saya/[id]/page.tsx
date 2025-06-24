@@ -10,7 +10,6 @@ import { ArrowLeft } from 'lucide-react'
 import Image from 'next/image'
 import CopyButton from '@/app/(client)/components/CopyButton'
 import { PdfFakturButton } from '@/app/(client)/components/DownloadPdfButton'
-import { useEffect, useState } from 'react'
 
 export default async function OrderDetailPage({
   params,
@@ -36,20 +35,14 @@ export default async function OrderDetailPage({
   const order = orderResult.data
   console.log(order)
 
-  const [logoBase64, setLogoBase64] = useState<string>('')
-
-  useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const { getCompanyLogoBase64 } = await import('@/lib/utils')
-        const logoData = await getCompanyLogoBase64()
-        setLogoBase64(logoData)
-      } catch (error) {
-        console.error('Failed to load logo:', error)
-      }
-    }
-    loadLogo()
-  }, [])
+  // Load logo directly in server component
+  let logoBase64 = ''
+  try {
+    const { getCompanyLogoBase64 } = await import('@/lib/utils')
+    logoBase64 = await getCompanyLogoBase64()
+  } catch (error) {
+    console.error('Failed to load logo:', error)
+  }
 
   // Jika status PENDING, ambil detail pembayaran
   let paymentDetail = null
