@@ -2,8 +2,8 @@
 
 import { memo, useMemo } from 'react'
 import Link from 'next/link'
-import OptimizedImage from '@/components/OptimizedImage'
 import { Badge } from '@/components/ui/badge'
+import Image from 'next/image'
 
 interface ProductCardProps {
   product: any // Replace with proper Product type if available
@@ -41,7 +41,7 @@ const BestSellingProductCard = memo(
         href={`/${categoryPath}`}
         className='group bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 hover:border-primary/20  h-full flex flex-col'>
         <div className='relative w-full aspect-square bg-gray-50'>
-          <OptimizedImage
+          <Image
             src={product.images?.[0] || '/assets/products/placeholder.png'}
             alt={product.name}
             width={100}
@@ -50,7 +50,6 @@ const BestSellingProductCard = memo(
             quality={60}
             className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200'
             sizes='(max-width:480px) 45vw, (max-width:768px) 30vw, (max-width:1024px) 22vw, 16vw'
-            fallback='/assets/products/placeholder.png'
           />
 
           {/* Status overlay when out of stock */}

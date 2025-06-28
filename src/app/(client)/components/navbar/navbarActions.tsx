@@ -7,13 +7,12 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { getCartItems } from '@/app/actions/cartAction'
 import { getNotifications } from '@/app/actions/notificationAction'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import OptimizedImage from '@/components/OptimizedImage'
 import { useDebounce } from '@/hooks/useDebounce'
-import Image from 'next/image'
+import { useSessionStore } from '@/hooks/zustandStore'
 
 interface NavbarActionsProps {
   userId?: string
@@ -24,20 +23,25 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [mounted, setMounted] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { isLoggedIn } = useSessionStore()
 
   // Debounce search query untuk performance dengan delay lebih lama
   const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-  const { data: cartData } = useQuery({
-    queryKey: ['cart'],
+  const { data: cartData, refetch: refetchCart } = useQuery({
+    queryKey: ['cart', userId],
     queryFn: async () => {
-      const response = await getCartItems()
+      if (!userId) return []
+      const response = await getCartItems(userId)
       return response.success ? response.data || [] : []
-    },
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    }, // 2 minutes - cart doesn't change that often
+    enabled: !!userId,
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Only refetch when component mounts
   })
 
   const { data: notificationsData } = useQuery({
@@ -48,12 +52,19 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
       return response.data || []
     },
     enabled: !!userId,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 0,
-    gcTime: 0,
-    refetchInterval: 5000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - only refetch when admin updates
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Only refetch when component mounts
+    // NO refetchInterval - only update when admin triggers invalidation
   })
+
+  // Fetch cart data when login state changes
+  useEffect(() => {
+    if (isLoggedIn()) {
+      refetchCart()
+    }
+  }, [isLoggedIn, refetchCart])
 
   // Search suggestions query dengan API endpoint yang lebih efisien
   const { data: searchSuggestions = [], isLoading: isSearchLoading } = useQuery(
@@ -114,6 +125,11 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
 
   const unreadNotifications =
     notificationsData?.filter((n) => !n.isRead).length || 0
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Handle click outside to close suggestions
   useEffect(() => {
@@ -361,7 +377,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
         <Link href='/notifikasi'>
           <Button size='icon' variant='ghost' className='relative'>
             <Bell size={20} className='text-foreground' />
-            {unreadNotifications > 0 && (
+            {mounted && unreadNotifications > 0 && (
               <Badge
                 variant='destructive'
                 className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
@@ -374,7 +390,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
           <Link href='/keranjang'>
             <Button size='icon' variant='ghost' className='relative'>
               <ShoppingCart size={20} className='text-foreground' />
-              {calculatedBadgeCount > 0 && (
+              {mounted && calculatedBadgeCount > 0 && (
                 <Badge
                   variant='default'
                   className='absolute -top-1 -right-1 h-5 min-w-[1.25rem] flex items-center justify-center p-1 text-xs'>

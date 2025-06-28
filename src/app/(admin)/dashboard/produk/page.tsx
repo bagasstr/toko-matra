@@ -7,15 +7,17 @@ import { Button } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 import ProductsTable from '../components/Product-table'
 
-import { redirect } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 
 const Produk = () => {
+  const router = useRouter()
+
   return (
     <DashboardWrap>
       <DashboardHeader heading='Produk' text='Produk'>
         <div className={cn('')}>
           <Button
-            onClick={() => redirect('/dashboard/produk/tambah-produk')}
+            onClick={() => router.push('/dashboard/produk/tambah-produk')}
             className='mb-4'>
             <span className='flex items-center gap-x-2'>
               <Plus className='h-4 w-4' />

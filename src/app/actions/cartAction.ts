@@ -16,17 +16,12 @@ interface ServerCartItem {
   quantity: number
 }
 
-export async function getCartItems() {
+export async function getCartItems(userId: string) {
   try {
-    const session = await validateSession()
-    if (!session?.user?.id) {
-      return { success: false, error: 'User not authenticated' }
-    }
-
     // Get user's cart first
     let cart = await prisma.cart.findFirst({
       where: {
-        userId: session.user.id,
+        userId: userId,
       },
       select: {
         id: true,

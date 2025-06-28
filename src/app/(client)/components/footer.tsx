@@ -1,9 +1,9 @@
 'use client'
 
 import React from 'react'
-import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 
 const Footer = () => {
   const pathname = usePathname()
@@ -21,7 +21,7 @@ const Footer = () => {
         <div>
           <div className='flex items-center gap-2 mb-2'>
             <Link href='/' className='relative w-10 h-10'>
-              <OptimizedImage
+              <Image
                 src='/assets/Logo.png'
                 alt='Logo'
                 width={40}

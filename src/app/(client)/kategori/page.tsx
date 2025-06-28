@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import OptimizedImage from '@/components/OptimizedImage'
+import Image from 'next/image'
 import {
   redirect,
   usePathname,
@@ -56,13 +56,12 @@ const CategoryCard = ({ category }) => {
       className='group block border rounded-xl bg-white shadow-sm hover:shadow-md transition overflow-hidden p-4 text-center'>
       {category && (
         <div className='flex justify-center mb-3'>
-          <OptimizedImage
+          <Image
             src={category.imageUrl}
             alt={category.name}
             width={60}
             height={60}
             className='object-contain'
-            priority={false}
           />
         </div>
       )}
@@ -110,12 +109,11 @@ const ProductCard = ({ product }) => {
       className='group block border rounded-xl bg-white shadow-sm hover:shadow-md transition overflow-hidden'>
       <div className='p-4'>
         <div className='aspect-square relative mb-3 bg-gray-50 rounded-lg overflow-hidden'>
-          <OptimizedImage
+          <Image
             src={product.images?.[0]?.url || '/default-product.png'}
             alt={product.name}
             fill
             className='object-contain group-hover:scale-105 transition-transform duration-300'
-            priority={false}
           />
         </div>
         <div className='space-y-2'>
