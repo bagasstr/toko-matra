@@ -8,8 +8,9 @@ import Link from 'next/link'
 export const dynamic = 'force-dynamic'
 
 export default async function CartPage() {
+  const session = await validateSession()
   const [cartData, validate] = await Promise.all([
-    getCartItems(),
+    getCartItems(session?.user?.id),
     validateSession(),
   ])
 
