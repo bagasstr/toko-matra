@@ -624,11 +624,37 @@ export async function getPaymentByOrderId(
       }
     }
 
-    const session = await validateSession()
+    // Handle session validation more gracefully
+    let session
+    try {
+      session = await validateSession()
+    } catch (sessionError) {
+      console.error('Session validation error:', sessionError)
+      return {
+        success: false,
+        message: 'Sesi tidak valid, silakan login kembali',
+      }
+    }
+
     if (!session?.user) {
       return {
         success: false,
         message: 'User tidak terautentikasi',
+      }
+    }
+
+    // Check if order exists first
+    const orderExists = await prisma.order.findUnique({
+      where: {
+        id: orderId,
+      },
+      select: { id: true },
+    })
+
+    if (!orderExists) {
+      return {
+        success: false,
+        message: 'Order tidak ditemukan',
       }
     }
 
@@ -687,6 +713,14 @@ export async function getPaymentByOrderId(
       return {
         success: false,
         message: 'Payment tidak ditemukan untuk order ini',
+      }
+    }
+
+    // Ensure order data is valid
+    if (!payment.order) {
+      return {
+        success: false,
+        message: 'Data order tidak lengkap',
       }
     }
 
