@@ -30,7 +30,7 @@ const MobileNavbar = ({ userId }: MobileNavbarProps) => {
       return response.success ? response.data || [] : []
     },
     enabled: !!userId,
-    staleTime: 2 * 60 * 1000, // 2 minutes - cart doesn't change that often
+    // staleTime: 2 * 60 * 1000, // 2 minutes - cart doesn't change that often
     gcTime: 5 * 60 * 1000, // 5 minutes cache
     refetchOnWindowFocus: false, // Don't refetch on window focus
     refetchOnMount: true, // Only refetch when component mounts

@@ -38,7 +38,7 @@ type FormValues = z.infer<typeof formSchema>
 const LoginPage = () => {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
-  const { session } = useSessionStore()
+  const { isLoggedIn, userId } = useSessionStore()
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -64,7 +64,7 @@ const LoginPage = () => {
       // Check if result exists and has success
       if (result?.success) {
         toast.success('Login berhasil')
-        queryClient.invalidateQueries({ queryKey: ['cart', session?.user?.id] })
+        queryClient.invalidateQueries({ queryKey: ['cart', userId] })
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
         router.replace('/')
       } else if (!result) {

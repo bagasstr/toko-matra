@@ -199,8 +199,6 @@ const PaymentForm = ({
         return
       }
 
-      console.log(resultPayment)
-
       // Create payment transaction
       const resultMidtrans = await fetch('/api/payment', {
         method: 'POST',

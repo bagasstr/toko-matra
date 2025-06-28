@@ -20,79 +20,85 @@ type RefreshStore = {
 }
 
 interface SessionStore {
-  session: any | null
+  isLoggedIn: boolean
+  userId: string | null
   isLoading: boolean
   isInitialized: boolean
   initializeSession: () => Promise<void>
-  setSession: (sessionData: any) => void
+  setSession: (isLoggedIn: boolean, userId: string | null) => void
   clearSession: () => void
   validateAndRefresh: () => Promise<void>
-  isLoggedIn: () => boolean
-  getUserId: () => string | null
 }
 
 export const useSessionStore = create<SessionStore>()((set, get) => ({
-  session: null,
+  isLoggedIn: false,
+  userId: null,
   isLoading: false,
   isInitialized: false,
 
   initializeSession: async () => {
     if (get().isInitialized) {
-      console.log('🔐 Session already initialized, skipping...')
+      // Skip initialization if already done
       return
     }
 
-    console.log('🔐 INITIALIZING SESSION...')
+    // Initialize session
     set({ isLoading: true })
     try {
       const session = await validateSession()
-      console.log('🔐 Session validation result:', session)
       set({
-        session,
+        isLoggedIn: !!session?.user?.id,
+        userId: session?.user?.id || null,
         isLoading: false,
         isInitialized: true,
       })
     } catch (error) {
-      console.error('🔐 Session validation failed:', error)
+      console.error('Session validation failed')
       set({
-        session: null,
+        isLoggedIn: false,
+        userId: null,
         isLoading: false,
         isInitialized: true,
       })
     }
   },
 
-  setSession: (sessionData) => {
-    console.log('🔐 SETTING SESSION:', sessionData)
-    set({ session: sessionData, isInitialized: true })
+  setSession: (isLoggedIn, userId) => {
+    // Set session data
+    set({
+      isLoggedIn,
+      userId,
+      isInitialized: true,
+    })
   },
 
   clearSession: () => {
-    console.log('🔐 CLEARING SESSION')
-    set({ session: null, isInitialized: true })
+    // Clear session data
+    set({
+      isLoggedIn: false,
+      userId: null,
+      isInitialized: true,
+    })
   },
 
   validateAndRefresh: async () => {
-    console.log('🔐 REFRESHING SESSION...')
+    // Refresh session
     set({ isLoading: true })
     try {
       const session = await validateSession()
-      console.log('🔐 Session refresh result:', session)
-      set({ session, isLoading: false })
+      set({
+        isLoggedIn: !!session?.user?.id,
+        userId: session?.user?.id || null,
+        isLoading: false,
+      })
     } catch (error) {
-      console.error('🔐 Session refresh failed:', error)
-      set({ session: null, isLoading: false })
+      console.error('Session refresh failed')
+      set({
+        isLoggedIn: false,
+        userId: null,
+        isLoading: false,
+      })
     }
-  },
-
-  isLoggedIn: () => {
-    const session = get().session
-    return !!session?.user?.id
-  },
-
-  getUserId: () => {
-    const session = get().session
-    return session?.user?.id || null
   },
 }))
 
@@ -286,14 +292,27 @@ export const useCartStore = create<CartStore>()((set, get) => ({
     set({ loading: true, error: null })
     try {
       const result = await getCartItems()
-      if (result.success) {
+      if (result && result.success && Array.isArray(result.data)) {
         set({
           items: result.data,
           loading: false,
         })
+      } else {
+        // Handle case where result is not as expected
+        set({
+          items: [],
+          loading: false,
+          error: 'Invalid cart data format',
+        })
       }
     } catch (error) {
-      set({ error: 'Gagal memuat keranjang', loading: false })
+      console.error('Error fetching cart:', error)
+      set({
+        error:
+          error instanceof Error ? error.message : 'Gagal memuat keranjang',
+        loading: false,
+        items: [], // Reset items on error to prevent stale data
+      })
     }
   },
 

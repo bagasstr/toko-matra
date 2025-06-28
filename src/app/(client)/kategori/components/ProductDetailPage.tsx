@@ -39,18 +39,13 @@ export function ProductDetailPage({
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   // Use Zustand session store
-  const {
-    session,
-    isLoading: sessionLoading,
-    isLoggedIn,
-    getUserId,
-  } = useSessionStore()
+  const { isLoggedIn, userId } = useSessionStore()
 
   // Wishlist query - only fetch when product and user session exist
   const { data: wishlistData = [] } = useQuery({
-    queryKey: ['wishlist', getUserId()],
-    queryFn: () => getWishlist(getUserId()),
-    enabled: !!safeProduct?.id && isLoggedIn(),
+    queryKey: ['wishlist', userId],
+    queryFn: () => getWishlist(userId),
+    enabled: !!safeProduct?.id && isLoggedIn,
     staleTime: 5 * 60 * 1000,
     gcTime: 10 * 60 * 1000,
     retry: false,
@@ -81,7 +76,7 @@ export function ProductDetailPage({
       onSuccess: (result) => {
         if (result.success) {
           queryClient.invalidateQueries({
-            queryKey: ['wishlist', getUserId()],
+            queryKey: ['wishlist', userId],
           })
           toast.success(
             isWishlistMarked
@@ -128,13 +123,13 @@ export function ProductDetailPage({
   }
 
   const handleBuyNow = () => {
-    if (!safeProduct || !getUserId()) {
+    if (!safeProduct || !userId) {
       toast.error('Silakan login terlebih dahulu')
       return
     }
     const actualQuantity = calculateActualQuantity(quantity)
     addToCartMutation({
-      userId: getUserId(),
+      userId: userId,
       productId: safeProduct.id,
       quantity: actualQuantity,
     })
@@ -146,13 +141,13 @@ export function ProductDetailPage({
   }
 
   const handleAddToCart = () => {
-    if (!safeProduct || !getUserId()) {
+    if (!safeProduct || !userId) {
       toast.error('Silakan login terlebih dahulu')
       return
     }
     const actualQuantity = calculateActualQuantity(quantity)
     addToCartMutation({
-      userId: getUserId(),
+      userId: userId,
       productId: safeProduct.id,
       quantity: actualQuantity,
     })

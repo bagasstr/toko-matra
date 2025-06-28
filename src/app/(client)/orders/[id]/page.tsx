@@ -50,7 +50,7 @@ export default function OrderPage() {
     isLoading,
     error,
     refetch,
-  } = useOrderData(param.id.toString())
+  } = useOrderData(param.id ? param.id.toString() : '')
 
   // Memoize derived values to prevent unnecessary re-renders
   const paymentStatus = useMemo(
@@ -112,29 +112,34 @@ export default function OrderPage() {
     if (!orderData?.payment) return
 
     const { payment } = orderData
-    if (payment.status !== 'SUCCESS') return
+    if (!payment || payment.status !== 'SUCCESS' || !payment.order?.id) return
 
     try {
       // Clear cart items that have been purchased
       await clearCartAfterOrder(payment.order.id)
-      // Refresh cart data in the store
-      await fetchCart()
+
+      // Safely call fetchCart if it exists
+      if (typeof fetchCart === 'function') {
+        await fetchCart()
+      }
 
       // Create notifications
-      await Promise.all([
-        createNotification(
-          payment.order.userId,
-          'Pembayaran Terverifikasi',
-          'Pembayaran kamu sudah kami terima. Terima kasih!',
-          false
-        ),
-        createNotification(
-          payment.order.userId,
-          'Pesanan Dikonfirmasi',
-          `Pesanan #${payment.order.id} telah dikonfirmasi dan sedang diproses.`,
-          false
-        ),
-      ])
+      if (payment.order.userId) {
+        await Promise.all([
+          createNotification(
+            payment.order.userId,
+            'Pembayaran Terverifikasi',
+            'Pembayaran kamu sudah kami terima. Terima kasih!',
+            false
+          ),
+          createNotification(
+            payment.order.userId,
+            'Pesanan Dikonfirmasi',
+            `Pesanan #${payment.order.id} telah dikonfirmasi dan sedang diproses.`,
+            false
+          ),
+        ])
+      }
 
       // Redirect to success page with transaction ID
       const transactionId = payment.transactionId
@@ -193,17 +198,6 @@ export default function OrderPage() {
             <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>
               Detail Pesanan
             </h1>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={handleForceRefresh}
-              disabled={isRefreshing}
-              className='flex items-center gap-2'>
-              <RefreshCw
-                className={cn('w-4 h-4', isRefreshing && 'animate-spin')}
-              />
-              {isRefreshing ? 'Memuat...' : 'Refresh Data'}
-            </Button>
           </div>
         </div>
 

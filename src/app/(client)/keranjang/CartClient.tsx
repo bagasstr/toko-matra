@@ -17,6 +17,10 @@ import dynamic from 'next/dynamic'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { formatPrice } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Card, CardContent } from '@/components/ui/card'
+import { toast } from 'sonner'
+// import { formatRupiah } from '@/lib/helpper'
+import { getSafeUserData } from '@/app/actions/login'
 
 // Dynamic import untuk menghindari SSR error
 const PdfCartButton = dynamic(
@@ -179,392 +183,402 @@ const CartSkeleton = memo(() => (
 
 CartSkeleton.displayName = 'CartSkeleton'
 
-const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const [cartData, setCartData] = useState(initialCartData)
-  const { session, isLoggedIn, getUserId } = useSessionStore()
-  const cart = cartData?.data || []
-  const { items: cartItems, getCartItems } = useCartStore()
-  const [mounted, setMounted] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [selectedItems, setSelectedItems] = useState<string[]>([])
-  const [customerInfo, setCustomerInfo] = useState<any>(null)
-  const [isUpdating, setIsUpdating] = useState(false)
-  const [logoBase64, setLogoBase64] = useState<string>('')
+const CartClient = memo(
+  ({ initialCartData, removeItem, validate }: CartClientProps) => {
+    const router = useRouter()
+    const queryClient = useQueryClient()
+    const [cartData, setCartData] = useState(initialCartData)
+    const cart = cartData?.data || []
+    const { items: cartItems, getCartItems } = useCartStore()
+    const [mounted, setMounted] = useState(false)
+    const [loading, setLoading] = useState(true)
+    const [selectedItems, setSelectedItems] = useState<string[]>([])
+    const [customerInfo, setCustomerInfo] = useState<any>(null)
+    const [isUpdating, setIsUpdating] = useState(false)
+    const [logoBase64, setLogoBase64] = useState<string>('')
 
-  // Memoized calculations
-  const selectedProduct = useMemo(
-    () => cart.filter((item: any) => selectedItems.includes(item.id)),
-    [cart, selectedItems]
-  )
-
-  const calculateSubtotal = useCallback(() => {
-    return selectedProduct.reduce(
-      (sum: number, item: any) => sum + item.product.price * item.quantity,
-      0
+    // Memoized calculations
+    const selectedProduct = useMemo(
+      () => cart.filter((item: any) => selectedItems.includes(item.id)),
+      [cart, selectedItems]
     )
-  }, [selectedProduct])
 
-  const calculatePPN = useCallback(() => {
-    return calculateSubtotal() * 0.11
-  }, [calculateSubtotal])
+    const calculateSubtotal = useCallback(() => {
+      return selectedProduct.reduce(
+        (sum: number, item: any) => sum + item.product.price * item.quantity,
+        0
+      )
+    }, [selectedProduct])
 
-  const calculateTotal = useCallback(() => {
-    return calculateSubtotal() + calculatePPN()
-  }, [calculateSubtotal, calculatePPN])
+    const calculatePPN = useCallback(() => {
+      return calculateSubtotal() * 0.11
+    }, [calculateSubtotal])
 
-  const calculateTotalWeight = useCallback(() => {
-    return selectedProduct.reduce(
-      (sum: number, item: any) =>
-        sum + (Number(item.product.weight) || 0) * item.quantity,
-      0
+    const calculateTotal = useCallback(() => {
+      return calculateSubtotal() + calculatePPN()
+    }, [calculateSubtotal, calculatePPN])
+
+    const calculateTotalWeight = useCallback(() => {
+      return selectedProduct.reduce(
+        (sum: number, item: any) =>
+          sum + (Number(item.product.weight) || 0) * item.quantity,
+        0
+      )
+    }, [selectedProduct])
+
+    // Memoized formatted values
+    const formattedSubtotal = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculateSubtotal()),
+      [calculateSubtotal]
     )
-  }, [selectedProduct])
 
-  // Memoized formatted values
-  const formattedSubtotal = useMemo(
-    () =>
-      new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(calculateSubtotal()),
-    [calculateSubtotal]
-  )
+    const formattedPPN = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculatePPN()),
+      [calculatePPN]
+    )
 
-  const formattedPPN = useMemo(
-    () =>
-      new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(calculatePPN()),
-    [calculatePPN]
-  )
+    const formattedTotal = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculateTotal()),
+      [calculateTotal]
+    )
 
-  const formattedTotal = useMemo(
-    () =>
-      new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-      }).format(calculateTotal()),
-    [calculateTotal]
-  )
+    const { data: fetchedCartData, isLoading: loadingCart } = useQuery({
+      queryKey: ['cart', validate?.user?.id],
+      queryFn: () => getCartItems(),
+      initialData: initialCartData,
+      refetchOnWindowFocus: false,
+      // staleTime: 30000,
+    })
 
-  const { data: fetchedCartData, isLoading: loadingCart } = useQuery({
-    queryKey: ['cart', session?.user?.id],
-    queryFn: () => getCartItems(),
-    initialData: initialCartData,
-    refetchOnWindowFocus: false,
-    // staleTime: 30000,
-  })
-
-  // Load logo on component mount
-  useEffect(() => {
-    const loadLogo = async () => {
-      try {
-        const { getCompanyLogoBase64 } = await import('@/lib/utils')
-        const logoData = await getCompanyLogoBase64()
-        setLogoBase64(logoData)
-      } catch (error) {
-        console.error('Failed to load logo:', error)
+    // Load logo on component mount
+    useEffect(() => {
+      const loadLogo = async () => {
+        try {
+          const { getCompanyLogoBase64 } = await import('@/lib/utils')
+          const logoData = await getCompanyLogoBase64()
+          setLogoBase64(logoData)
+        } catch (error) {
+          console.error('Failed to load logo:', error)
+        }
       }
-    }
-    loadLogo()
-    setMounted(true)
-  }, [])
+      loadLogo()
+      setMounted(true)
+    }, [])
 
-  useEffect(() => {
-    if (initialCartData?.success) {
-      setCartData(initialCartData)
-      setLoading(false)
-    }
-  }, [initialCartData])
-
-  // Get customer information from session
-  useEffect(() => {
-    if (session?.user) {
-      const customerData = {
-        name: session.user.profile?.fullName || '-',
-        email: session.user.email || '-',
-        phone: session.user.profile?.phoneNumber || '-',
-        address: session.user.address?.[0]
-          ? `${session.user.address[0].address || '-'}, ${
-              session.user.address[0].city || '-'
-            }, ${session.user.address[0].province || '-'}`
-          : '-',
-        company: session.user.profile?.companyName || '-',
+    useEffect(() => {
+      if (initialCartData?.success) {
+        setCartData(initialCartData)
+        setLoading(false)
       }
-      setCustomerInfo(customerData)
-    }
-  }, [session])
+    }, [initialCartData])
 
-  // Sync database cart with state if state is empty
-  useEffect(() => {
-    const syncCartWithState = async () => {
-      try {
-        if (cartItems.length === 0 && cart.length > 0 && isLoggedIn) {
-          // Use getCartItems instead of fetchCart to avoid the hook error
-          const cartData = await getCartItems()
-          if (cartData.success) {
-            queryClient.setQueryData(['cart'], cartData.data)
+    // Get customer information from session
+    useEffect(() => {
+      const fetchCustomerData = async () => {
+        if (validate?.user?.id) {
+          try {
+            const userData = await getSafeUserData(validate?.user?.id)
+            if (userData) {
+              const customerData = {
+                name: userData.profile?.fullName || '-',
+                email: userData.email || '-',
+                phone: userData.profile?.phoneNumber || '-',
+                address: '-', // Alamat harus diambil dari endpoint terpisah jika diperlukan
+                company: userData.profile?.companyName || '-',
+              }
+              setCustomerInfo(customerData)
+            }
+          } catch (error) {
+            console.error('Error fetching customer data:', error)
           }
         }
+      }
+
+      fetchCustomerData()
+    }, [validate?.user?.id])
+
+    // Sync database cart with state if state is empty
+    useEffect(() => {
+      const syncCartWithState = async () => {
+        try {
+          if (cartItems.length === 0 && cart.length > 0 && validate?.user?.id) {
+            // Use getCartItems instead of fetchCart to avoid the hook error
+            const cartData = await getCartItems()
+            if (cartData.success) {
+              queryClient.setQueryData(['cart'], cartData.data)
+            }
+          }
+        } catch (error) {
+          console.error('Error syncing cart:', error)
+        }
+      }
+
+      if (mounted) {
+        syncCartWithState()
+      }
+    }, [
+      cartItems.length,
+      cart.length,
+      mounted,
+      validate?.user?.id,
+      getCartItems,
+      queryClient,
+    ])
+
+    // Optimized handlers with useCallback
+    const handleCheckout = useCallback(async () => {
+      if (isUpdating) return
+
+      try {
+        setIsUpdating(true)
+        if (!validate?.user?.id) {
+          router.push('/login')
+          return
+        }
+
+        if (selectedItems.length === 0) {
+          alert('Pilih minimal satu item untuk checkout')
+          return
+        }
+
+        await getCartItems()
+        const latestCartData = await getCartItems()
+        if (!latestCartData.success) {
+          alert('Gagal memuat data keranjang')
+          return
+        }
+
+        const validSelectedItems = selectedItems.filter((itemId) =>
+          latestCartData.data.some((item: any) => item.id === itemId)
+        )
+
+        if (validSelectedItems.length === 0) {
+          alert('Item yang dipilih tidak valid')
+          return
+        }
+
+        const selectedItemsParam = validSelectedItems.join(',')
+        router.push(`/keranjang/pembayaran?items=${selectedItemsParam}`)
       } catch (error) {
-        console.error('Error syncing cart:', error)
+        console.error('Error during checkout:', error)
+        alert('Terjadi kesalahan saat checkout')
+      } finally {
+        setIsUpdating(false)
       }
-    }
+    }, [isUpdating, selectedItems, router, getCartItems])
 
-    if (mounted) {
-      syncCartWithState()
-    }
-  }, [
-    cartItems.length,
-    cart.length,
-    mounted,
-    isLoggedIn,
-    getCartItems,
-    queryClient,
-  ])
-
-  // Optimized handlers with useCallback
-  const handleCheckout = useCallback(async () => {
-    if (isUpdating) return
-
-    try {
-      setIsUpdating(true)
-      if (!isLoggedIn) {
-        router.push('/login')
-        return
-      }
-
-      if (selectedItems.length === 0) {
-        alert('Pilih minimal satu item untuk checkout')
-        return
-      }
-
-      await getCartItems()
-      const latestCartData = await getCartItems()
-      if (!latestCartData.success) {
-        alert('Gagal memuat data keranjang')
-        return
-      }
-
-      const validSelectedItems = selectedItems.filter((itemId) =>
-        latestCartData.data.some((item: any) => item.id === itemId)
+    const handleSelectItem = useCallback((itemId: string) => {
+      setSelectedItems((prev) =>
+        prev.includes(itemId)
+          ? prev.filter((id) => id !== itemId)
+          : [...prev, itemId]
       )
+    }, [])
 
-      if (validSelectedItems.length === 0) {
-        alert('Item yang dipilih tidak valid')
-        return
+    const handleSelectAll = useCallback(() => {
+      if (selectedItems.length === cart.length) {
+        setSelectedItems([])
+      } else {
+        setSelectedItems(cart.map((item: any) => item.id))
       }
+    }, [selectedItems.length, cart])
 
-      const selectedItemsParam = validSelectedItems.join(',')
-      router.push(`/keranjang/pembayaran?items=${selectedItemsParam}`)
-    } catch (error) {
-      console.error('Error during checkout:', error)
-      alert('Terjadi kesalahan saat checkout')
-    } finally {
-      setIsUpdating(false)
-    }
-  }, [isUpdating, selectedItems, router, getCartItems])
+    const handleUpdateQuantity = useCallback(
+      async (itemId: string, newQuantity: number) => {
+        try {
+          if (
+            typeof newQuantity !== 'number' ||
+            isNaN(newQuantity) ||
+            newQuantity < 0
+          ) {
+            console.error('Invalid quantity parameter:', newQuantity)
+            return
+          }
 
-  const handleSelectItem = useCallback((itemId: string) => {
-    setSelectedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
-    )
-  }, [])
-
-  const handleSelectAll = useCallback(() => {
-    if (selectedItems.length === cart.length) {
-      setSelectedItems([])
-    } else {
-      setSelectedItems(cart.map((item: any) => item.id))
-    }
-  }, [selectedItems.length, cart])
-
-  const handleUpdateQuantity = useCallback(
-    async (itemId: string, newQuantity: number) => {
-      try {
-        if (
-          typeof newQuantity !== 'number' ||
-          isNaN(newQuantity) ||
-          newQuantity < 0
-        ) {
-          console.error('Invalid quantity parameter:', newQuantity)
-          return
-        }
-
-        const validQuantity = Math.floor(newQuantity)
-        if (validQuantity === 0) {
-          await removeItem(itemId)
-          return
-        }
-        queryClient.invalidateQueries({ queryKey: ['cart'] })
-        const response = await updateCartItemQuantity(itemId, validQuantity)
-        if (response.success) {
-          // Update local state optimistically
-          setCartData((prev: any) => ({
-            ...prev,
-            data: prev.data.map((item: any) =>
-              item.id === itemId ? { ...item, quantity: validQuantity } : item
-            ),
-          }))
-
-          // Invalidate and refetch cart data
-        }
-      } catch (error) {
-        console.error('Error updating quantity:', error)
-      }
-    },
-    [removeItem, queryClient]
-  )
-
-  const handleRemoveItem = useCallback(
-    async (itemId: string) => {
-      try {
-        const response = await removeItem(itemId)
-        if (response.success) {
-          // Update local state optimistically
-          setCartData((prev: any) => ({
-            ...prev,
-            data: prev.data.filter((item: any) => item.id !== itemId),
-          }))
-
-          // Remove from selected items if it was selected
-          setSelectedItems((prev) => prev.filter((id) => id !== itemId))
-
-          // Invalidate and refetch cart data
+          const validQuantity = Math.floor(newQuantity)
+          if (validQuantity === 0) {
+            await removeItem(itemId)
+            return
+          }
           queryClient.invalidateQueries({ queryKey: ['cart'] })
+          const response = await updateCartItemQuantity(itemId, validQuantity)
+          if (response.success) {
+            // Update local state optimistically
+            setCartData((prev: any) => ({
+              ...prev,
+              data: prev.data.map((item: any) =>
+                item.id === itemId ? { ...item, quantity: validQuantity } : item
+              ),
+            }))
+
+            // Invalidate and refetch cart data
+          }
+        } catch (error) {
+          console.error('Error updating quantity:', error)
         }
-      } catch (error) {
-        console.error('Error removing item:', error)
-      }
-    },
-    [removeItem, queryClient]
-  )
-
-  if (!isLoggedIn) {
-    return (
-      <div className='text-gray-400 text-center flex flex-col gap-4 py-10'>
-        Silahkan login terlebih dahulu.
-        <Link href='/login' className='text-blue-500'>
-          <Button>Login</Button>
-        </Link>
-      </div>
+      },
+      [removeItem, queryClient]
     )
-  }
 
-  if (!cartData?.success) {
-    return (
-      <div className='text-gray-400 text-center py-10'>
-        Tidak ada produk di keranjang.
-      </div>
+    const handleRemoveItem = useCallback(
+      async (itemId: string) => {
+        try {
+          const response = await removeItem(itemId)
+          if (response.success) {
+            // Update local state optimistically
+            setCartData((prev: any) => ({
+              ...prev,
+              data: prev.data.filter((item: any) => item.id !== itemId),
+            }))
+
+            // Remove from selected items if it was selected
+            setSelectedItems((prev) => prev.filter((id) => id !== itemId))
+
+            // Invalidate and refetch cart data
+            queryClient.invalidateQueries({ queryKey: ['cart'] })
+          }
+        } catch (error) {
+          console.error('Error removing item:', error)
+        }
+      },
+      [removeItem, queryClient]
     )
-  }
 
-  if (loading || !mounted) {
-    return <CartSkeleton />
-  }
-
-  return (
-    <div className='container mx-auto px-4 py-8'>
-      {cart.length === 0 ? (
-        <div className='text-center py-8'>
-          <p className='text-gray-500 mb-4'>Keranjang Anda kosong</p>
-          <Link href='/'>
-            <Button>Mulai Belanja</Button>
+    if (!validate?.user?.id) {
+      return (
+        <div className='text-gray-400 text-center flex flex-col gap-4 py-10'>
+          Silahkan login terlebih dahulu.
+          <Link href='/login' className='text-blue-500'>
+            <Button>Login</Button>
           </Link>
         </div>
-      ) : (
-        <div className='grid lg:grid-cols-3 gap-8'>
-          <div className='lg:col-span-2'>
-            <div className='bg-white rounded-lg shadow'>
-              <div className='p-4 border-b'>
-                <label className='flex items-center'>
-                  <Checkbox
-                    checked={selectedItems.length === cart.length}
-                    onCheckedChange={handleSelectAll}
-                    className='w-5 h-5 mr-3'
-                  />
-                  Pilih Semua ({cart.length} produk)
-                </label>
-              </div>
-              <div className='divide-y'>
-                {cart.map((item: any) => (
-                  <CartItem
-                    key={item.id}
-                    item={item}
-                    onUpdateQuantity={handleUpdateQuantity}
-                    onRemove={handleRemoveItem}
-                    onSelectItem={handleSelectItem}
-                    isSelected={selectedItems.includes(item.id)}
-                  />
-                ))}
+      )
+    }
+
+    if (!cartData?.success) {
+      return (
+        <div className='text-gray-400 text-center py-10'>
+          Tidak ada produk di keranjang.
+        </div>
+      )
+    }
+
+    if (loading || !mounted) {
+      return <CartSkeleton />
+    }
+
+    return (
+      <div className='container mx-auto px-4 py-8'>
+        {cart.length === 0 ? (
+          <div className='text-center py-8'>
+            <p className='text-gray-500 mb-4'>Keranjang Anda kosong</p>
+            <Link href='/'>
+              <Button>Mulai Belanja</Button>
+            </Link>
+          </div>
+        ) : (
+          <div className='grid lg:grid-cols-3 gap-8'>
+            <div className='lg:col-span-2'>
+              <div className='bg-white rounded-lg shadow'>
+                <div className='p-4 border-b'>
+                  <label className='flex items-center'>
+                    <Checkbox
+                      checked={selectedItems.length === cart.length}
+                      onCheckedChange={handleSelectAll}
+                      className='w-5 h-5 mr-3'
+                    />
+                    Pilih Semua ({cart.length} produk)
+                  </label>
+                </div>
+                <div className='divide-y'>
+                  {cart.map((item: any) => (
+                    <CartItem
+                      key={item.id}
+                      item={item}
+                      onUpdateQuantity={handleUpdateQuantity}
+                      onRemove={handleRemoveItem}
+                      onSelectItem={handleSelectItem}
+                      isSelected={selectedItems.includes(item.id)}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className='lg:col-span-1'>
-            <div className='bg-white rounded-lg shadow p-6 sticky top-4'>
-              <h3 className='text-lg font-semibold mb-4'>Ringkasan Pesanan</h3>
-              <div className='space-y-2 mb-4'>
-                <div className='flex justify-between'>
-                  <span>Subtotal ({selectedItems.length} produk)</span>
-                  <span>{formattedSubtotal}</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>PPN (11%)</span>
-                  <span>{formattedPPN}</span>
-                </div>
-                <div className='flex justify-between'>
-                  <span>Total Berat</span>
-                  <span>
-                    {calculateTotalWeight().toLocaleString('id-ID', {
-                      maximumFractionDigits: 2,
-                    })}{' '}
-                    kg
-                  </span>
-                </div>
-                <div className='border-t pt-2'>
-                  <div className='flex justify-between font-semibold text-lg'>
-                    <span>Total</span>
-                    <span>{formattedTotal}</span>
+            <div className='lg:col-span-1'>
+              <div className='bg-white rounded-lg shadow p-6 sticky top-4'>
+                <h3 className='text-lg font-semibold mb-4'>
+                  Ringkasan Pesanan
+                </h3>
+                <div className='space-y-2 mb-4'>
+                  <div className='flex justify-between'>
+                    <span>Subtotal ({selectedItems.length} produk)</span>
+                    <span>{formattedSubtotal}</span>
+                  </div>
+                  <div className='flex justify-between'>
+                    <span>PPN (11%)</span>
+                    <span>{formattedPPN}</span>
+                  </div>
+                  <div className='flex justify-between'>
+                    <span>Total Berat</span>
+                    <span>
+                      {calculateTotalWeight().toLocaleString('id-ID', {
+                        maximumFractionDigits: 2,
+                      })}{' '}
+                      kg
+                    </span>
+                  </div>
+                  <div className='border-t pt-2'>
+                    <div className='flex justify-between font-semibold text-lg'>
+                      <span>Total</span>
+                      <span>{formattedTotal}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className='space-y-3'>
-                <Button
-                  onClick={handleCheckout}
-                  disabled={selectedItems.length === 0 || isUpdating}
-                  className='w-full'>
-                  {isUpdating ? 'Memproses...' : 'Checkout'}
-                </Button>
+                <div className='space-y-3'>
+                  <Button
+                    onClick={handleCheckout}
+                    disabled={selectedItems.length === 0 || isUpdating}
+                    className='w-full'>
+                    {isUpdating ? 'Memproses...' : 'Checkout'}
+                  </Button>
 
-                {customerInfo && selectedProduct.length > 0 && (
-                  <PdfCartButton
-                    items={selectedProduct}
-                    subtotal={calculateSubtotal()}
-                    ppn={calculatePPN()}
-                    total={calculateTotal()}
-                    totalWeight={calculateTotalWeight()}
-                    logoBase64={logoBase64}
-                    customerInfo={customerInfo}
-                  />
-                )}
+                  {customerInfo && selectedProduct.length > 0 && (
+                    <PdfCartButton
+                      items={selectedProduct}
+                      subtotal={calculateSubtotal()}
+                      ppn={calculatePPN()}
+                      total={calculateTotal()}
+                      totalWeight={calculateTotalWeight()}
+                      logoBase64={logoBase64}
+                      customerInfo={customerInfo}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  )
-})
+        )}
+      </div>
+    )
+  }
+)
 
 CartClient.displayName = 'CartClient'
 

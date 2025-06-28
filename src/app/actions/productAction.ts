@@ -38,7 +38,6 @@ export async function createProduct(data: {
 }) {
   try {
     const session = await validateSession()
-    console.log(session)
     if (!session) {
       return { success: false, error: 'Silakan login terlebih dahulu' }
     }
