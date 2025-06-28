@@ -64,3 +64,36 @@ export const login = async (formData: FormData) => {
     }
   }
 }
+
+// Fungsi untuk mendapatkan data user yang aman (tanpa data sensitif)
+export const getSafeUserData = async (userId: string) => {
+  if (!userId) return null
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        typeUser: true,
+        emailVerified: true,
+        profile: {
+          select: {
+            id: true,
+            fullName: true,
+            userName: true,
+            imageUrl: true,
+            phoneNumber: true,
+            companyName: true,
+          },
+        },
+      },
+    })
+
+    return user
+  } catch (error) {
+    console.error('Error fetching user data:', error)
+    return null
+  }
+}

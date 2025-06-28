@@ -20,19 +20,19 @@ type RefreshStore = {
 }
 
 interface SessionStore {
-  session: any | null
+  isLoggedIn: boolean
+  userId: string | null
   isLoading: boolean
   isInitialized: boolean
   initializeSession: () => Promise<void>
-  setSession: (sessionData: any) => void
+  setSession: (isLoggedIn: boolean, userId: string | null) => void
   clearSession: () => void
   validateAndRefresh: () => Promise<void>
-  isLoggedIn: () => boolean
-  getUserId: () => string | null
 }
 
 export const useSessionStore = create<SessionStore>()((set, get) => ({
-  session: null,
+  isLoggedIn: false,
+  userId: null,
   isLoading: false,
   isInitialized: false,
 
@@ -47,28 +47,38 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
     try {
       const session = await validateSession()
       set({
-        session,
+        isLoggedIn: !!session?.user?.id,
+        userId: session?.user?.id || null,
         isLoading: false,
         isInitialized: true,
       })
     } catch (error) {
       console.error('Session validation failed')
       set({
-        session: null,
+        isLoggedIn: false,
+        userId: null,
         isLoading: false,
         isInitialized: true,
       })
     }
   },
 
-  setSession: (sessionData) => {
+  setSession: (isLoggedIn, userId) => {
     // Set session data
-    set({ session: sessionData, isInitialized: true })
+    set({
+      isLoggedIn,
+      userId,
+      isInitialized: true,
+    })
   },
 
   clearSession: () => {
     // Clear session data
-    set({ session: null, isInitialized: true })
+    set({
+      isLoggedIn: false,
+      userId: null,
+      isInitialized: true,
+    })
   },
 
   validateAndRefresh: async () => {
@@ -76,21 +86,19 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
     set({ isLoading: true })
     try {
       const session = await validateSession()
-      set({ session, isLoading: false })
+      set({
+        isLoggedIn: !!session?.user?.id,
+        userId: session?.user?.id || null,
+        isLoading: false,
+      })
     } catch (error) {
       console.error('Session refresh failed')
-      set({ session: null, isLoading: false })
+      set({
+        isLoggedIn: false,
+        userId: null,
+        isLoading: false,
+      })
     }
-  },
-
-  isLoggedIn: () => {
-    const session = get().session
-    return !!session?.user?.id
-  },
-
-  getUserId: () => {
-    const session = get().session
-    return session?.user?.id || null
   },
 }))
 

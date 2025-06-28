@@ -61,7 +61,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
 
   // Fetch cart data when login state changes
   useEffect(() => {
-    if (isLoggedIn()) {
+    if (isLoggedIn) {
       refetchCart()
     }
   }, [isLoggedIn, refetchCart])

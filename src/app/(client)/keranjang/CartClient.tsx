@@ -17,6 +17,10 @@ import dynamic from 'next/dynamic'
 import { useQueryClient, useQuery } from '@tanstack/react-query'
 import { formatPrice } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Card, CardContent } from '@/components/ui/card'
+import { toast } from 'sonner'
+// import { formatRupiah } from '@/lib/helpper'
+import { getSafeUserData } from '@/app/actions/login'
 
 // Dynamic import untuk menghindari SSR error
 const PdfCartButton = dynamic(
@@ -183,7 +187,7 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [cartData, setCartData] = useState(initialCartData)
-  const { session, isLoggedIn, getUserId } = useSessionStore()
+  const { isLoggedIn, userId } = useSessionStore()
   const cart = cartData?.data || []
   const { items: cartItems, getCartItems } = useCartStore()
   const [mounted, setMounted] = useState(false)
@@ -254,7 +258,7 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
   )
 
   const { data: fetchedCartData, isLoading: loadingCart } = useQuery({
-    queryKey: ['cart', session?.user?.id],
+    queryKey: ['cart', userId],
     queryFn: () => getCartItems(),
     initialData: initialCartData,
     refetchOnWindowFocus: false,
@@ -285,21 +289,28 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
 
   // Get customer information from session
   useEffect(() => {
-    if (session?.user) {
-      const customerData = {
-        name: session.user.profile?.fullName || '-',
-        email: session.user.email || '-',
-        phone: session.user.profile?.phoneNumber || '-',
-        address: session.user.address?.[0]
-          ? `${session.user.address[0].address || '-'}, ${
-              session.user.address[0].city || '-'
-            }, ${session.user.address[0].province || '-'}`
-          : '-',
-        company: session.user.profile?.companyName || '-',
+    const fetchCustomerData = async () => {
+      if (userId) {
+        try {
+          const userData = await getSafeUserData(userId)
+          if (userData) {
+            const customerData = {
+              name: userData.profile?.fullName || '-',
+              email: userData.email || '-',
+              phone: userData.profile?.phoneNumber || '-',
+              address: '-', // Alamat harus diambil dari endpoint terpisah jika diperlukan
+              company: userData.profile?.companyName || '-',
+            }
+            setCustomerInfo(customerData)
+          }
+        } catch (error) {
+          console.error('Error fetching customer data:', error)
+        }
       }
-      setCustomerInfo(customerData)
     }
-  }, [session])
+
+    fetchCustomerData()
+  }, [userId])
 
   // Sync database cart with state if state is empty
   useEffect(() => {
