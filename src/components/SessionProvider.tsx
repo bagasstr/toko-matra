@@ -19,7 +19,6 @@ const SessionProvider = ({ children }: SessionProviderProps) => {
   // Initialize session only after component is mounted (client-side)
   useEffect(() => {
     if (mounted && !isInitialized) {
-      console.log('🔐 SessionProvider: Initializing session after mount')
       initializeSession()
     }
   }, [mounted, initializeSession, isInitialized])

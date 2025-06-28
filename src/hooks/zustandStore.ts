@@ -38,22 +38,21 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
 
   initializeSession: async () => {
     if (get().isInitialized) {
-      console.log('🔐 Session already initialized, skipping...')
+      // Skip initialization if already done
       return
     }
 
-    console.log('🔐 INITIALIZING SESSION...')
+    // Initialize session
     set({ isLoading: true })
     try {
       const session = await validateSession()
-      console.log('🔐 Session validation result:', session)
       set({
         session,
         isLoading: false,
         isInitialized: true,
       })
     } catch (error) {
-      console.error('🔐 Session validation failed:', error)
+      console.error('Session validation failed')
       set({
         session: null,
         isLoading: false,
@@ -63,24 +62,23 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
   },
 
   setSession: (sessionData) => {
-    console.log('🔐 SETTING SESSION:', sessionData)
+    // Set session data
     set({ session: sessionData, isInitialized: true })
   },
 
   clearSession: () => {
-    console.log('🔐 CLEARING SESSION')
+    // Clear session data
     set({ session: null, isInitialized: true })
   },
 
   validateAndRefresh: async () => {
-    console.log('🔐 REFRESHING SESSION...')
+    // Refresh session
     set({ isLoading: true })
     try {
       const session = await validateSession()
-      console.log('🔐 Session refresh result:', session)
       set({ session, isLoading: false })
     } catch (error) {
-      console.error('🔐 Session refresh failed:', error)
+      console.error('Session refresh failed')
       set({ session: null, isLoading: false })
     }
   },
