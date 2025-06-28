@@ -198,17 +198,6 @@ export default function OrderPage() {
             <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>
               Detail Pesanan
             </h1>
-            <Button
-              variant='outline'
-              size='sm'
-              onClick={handleForceRefresh}
-              disabled={isRefreshing}
-              className='flex items-center gap-2'>
-              <RefreshCw
-                className={cn('w-4 h-4', isRefreshing && 'animate-spin')}
-              />
-              {isRefreshing ? 'Memuat...' : 'Refresh Data'}
-            </Button>
           </div>
         </div>
 
