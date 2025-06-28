@@ -7,7 +7,6 @@ import {
 import { getCartItems } from '@/app/actions/cartAction'
 import { validateSession } from '@/app/actions/session'
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
 
 type ModalLoginStore = {
   isOpen: boolean
@@ -20,6 +19,84 @@ type RefreshStore = {
   triggerRefresh: () => void
 }
 
+interface SessionStore {
+  session: any | null
+  isLoading: boolean
+  isInitialized: boolean
+  initializeSession: () => Promise<void>
+  setSession: (sessionData: any) => void
+  clearSession: () => void
+  validateAndRefresh: () => Promise<void>
+  isLoggedIn: () => boolean
+  getUserId: () => string | null
+}
+
+export const useSessionStore = create<SessionStore>()((set, get) => ({
+  session: null,
+  isLoading: false,
+  isInitialized: false,
+
+  initializeSession: async () => {
+    if (get().isInitialized) {
+      console.log('🔐 Session already initialized, skipping...')
+      return
+    }
+
+    console.log('🔐 INITIALIZING SESSION...')
+    set({ isLoading: true })
+    try {
+      const session = await validateSession()
+      console.log('🔐 Session validation result:', session)
+      set({
+        session,
+        isLoading: false,
+        isInitialized: true,
+      })
+    } catch (error) {
+      console.error('🔐 Session validation failed:', error)
+      set({
+        session: null,
+        isLoading: false,
+        isInitialized: true,
+      })
+    }
+  },
+
+  setSession: (sessionData) => {
+    console.log('🔐 SETTING SESSION:', sessionData)
+    set({ session: sessionData, isInitialized: true })
+  },
+
+  clearSession: () => {
+    console.log('🔐 CLEARING SESSION')
+    set({ session: null, isInitialized: true })
+  },
+
+  validateAndRefresh: async () => {
+    console.log('🔐 REFRESHING SESSION...')
+    set({ isLoading: true })
+    try {
+      const session = await validateSession()
+      console.log('🔐 Session refresh result:', session)
+      set({ session, isLoading: false })
+    } catch (error) {
+      console.error('🔐 Session refresh failed:', error)
+      set({ session: null, isLoading: false })
+    }
+  },
+
+  isLoggedIn: () => {
+    const session = get().session
+    return !!session?.user?.id
+  },
+
+  getUserId: () => {
+    const session = get().session
+    return session?.user?.id || null
+  },
+}))
+
+// Keep existing AuthStore for backward compatibility but mark as deprecated
 interface AuthStore {
   user: any
   isOpenModal: boolean
@@ -157,93 +234,85 @@ interface CartStore {
   getSubtotal: () => number
 }
 
-export const useCartStore = create<CartStore>()(
-  persist(
-    (set, get) => ({
-      items: [],
-      loading: false,
-      error: null,
-      selectedItems: [],
+export const useCartStore = create<CartStore>()((set, get) => ({
+  items: [],
+  loading: false,
+  error: null,
+  selectedItems: [],
 
-      addToCart: (item) => {
-        set((state) => ({
-          items: [...state.items, item],
-        }))
-      },
+  addToCart: (item) => {
+    set((state) => ({
+      items: [...state.items, item],
+    }))
+  },
 
-      removeFromCart: (id) => {
-        set((state) => ({
-          items: state.items.filter((item) => item.id !== id),
-          selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
-        }))
-      },
+  removeFromCart: (id) => {
+    set((state) => ({
+      items: state.items.filter((item) => item.id !== id),
+      selectedItems: state.selectedItems.filter((itemId) => itemId !== id),
+    }))
+  },
 
-      updateQuantity: (id, quantity) => {
-        set((state) => ({
-          items: state.items.map((item) =>
-            item.id === id ? { ...item, quantity } : item
-          ),
-        }))
-      },
+  updateQuantity: (id, quantity) => {
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, quantity } : item
+      ),
+    }))
+  },
 
-      selectItem: (id) => {
-        set((state) => ({
-          selectedItems: state.selectedItems.includes(id)
-            ? state.selectedItems.filter((itemId) => itemId !== id)
-            : [...state.selectedItems, id],
-        }))
-      },
+  selectItem: (id) => {
+    set((state) => ({
+      selectedItems: state.selectedItems.includes(id)
+        ? state.selectedItems.filter((itemId) => itemId !== id)
+        : [...state.selectedItems, id],
+    }))
+  },
 
-      selectAll: () => {
-        set((state) => ({
-          selectedItems:
-            state.selectedItems.length === state.items.length
-              ? []
-              : state.items.map((item) => item.id),
-        }))
-      },
+  selectAll: () => {
+    set((state) => ({
+      selectedItems:
+        state.selectedItems.length === state.items.length
+          ? []
+          : state.items.map((item) => item.id),
+    }))
+  },
 
-      clearCart: () => {
-        set({ items: [], selectedItems: [] })
-      },
+  clearCart: () => {
+    set({ items: [], selectedItems: [] })
+  },
 
-      fetchCart: async () => {
-        set({ loading: true, error: null })
-
-        try {
-          const result = await getCartItems()
-          if (result.success) {
-            set({
-              items: result.data,
-              loading: false,
-            })
-          }
-        } catch (error) {
-          set({ error: 'Gagal memuat keranjang', loading: false })
-        }
-      },
-
-      getCartItems: async () => {
-        return await getCartItems()
-      },
-
-      getUniqueProductCount: () => {
-        return get().items.length
-      },
-
-      getTotalItems: () => {
-        return get().items.reduce((total, item) => total + item.quantity, 0)
-      },
-
-      getSubtotal: () => {
-        return get().items.reduce(
-          (total, item) => total + item.product.price * item.quantity,
-          0
-        )
-      },
-    }),
-    {
-      name: 'cart-storage',
+  fetchCart: async () => {
+    set({ loading: true, error: null })
+    try {
+      const result = await getCartItems()
+      if (result.success) {
+        set({
+          items: result.data,
+          loading: false,
+        })
+      }
+    } catch (error) {
+      set({ error: 'Gagal memuat keranjang', loading: false })
     }
-  )
-)
+  },
+
+  getCartItems: async () => {
+    return await getCartItems()
+  },
+
+  getUniqueProductCount: () => {
+    return get().items.length
+  },
+
+  getTotalItems: () => {
+    return get().items.reduce((total, item) => total + item.quantity, 0)
+  },
+
+  getSubtotal: () => {
+    return get().items.reduce(
+      (total, item) => total + item.product.price * item.quantity,
+      0
+    )
+  },
+}))

@@ -3,7 +3,7 @@
 import { memo, useMemo } from 'react'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
-import OptimizedImage from '@/components/OptimizedImage'
+import Image from 'next/image'
 
 interface Product {
   id: string
@@ -65,7 +65,7 @@ export const FeaturedProductCard = memo(
         href={`/${categoryPath}`}
         className='group bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden border border-gray-100 hover:border-primary/20  h-full flex flex-col'>
         <div className='relative w-full aspect-square bg-gray-50'>
-          <OptimizedImage
+          <Image
             src={product.images[0] || '/assets/products/placeholder.png'}
             alt={product.name}
             width={100}
@@ -74,7 +74,6 @@ export const FeaturedProductCard = memo(
             quality={75}
             className='w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-200'
             sizes='(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1024px) 25vw, 16.67vw'
-            fallback='/assets/products/placeholder.png'
           />
 
           {/* Status overlay for out of stock */}

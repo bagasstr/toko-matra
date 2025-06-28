@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Eye, EyeOff } from 'lucide-react'
 import { queryClient } from '@/lib/queryClient'
+import { useSessionStore } from '@/hooks/zustandStore'
 
 const formSchema = z.object({
   email: z
@@ -37,6 +38,7 @@ type FormValues = z.infer<typeof formSchema>
 const LoginPage = () => {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
+  const { session } = useSessionStore()
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,16 +55,21 @@ const LoginPage = () => {
 
       const result = await login(formData)
 
-      if (result.error) {
+      // Check if result exists and has error
+      if (result?.error) {
         toast.error(result.error)
         return
       }
 
+      // Check if result exists and has success
       if (result?.success) {
         toast.success('Login berhasil')
-        queryClient.invalidateQueries({ queryKey: ['cart'] })
+        queryClient.invalidateQueries({ queryKey: ['cart', session?.user?.id] })
         queryClient.invalidateQueries({ queryKey: ['notifications'] })
         router.replace('/')
+      } else if (!result) {
+        // Handle case where result is undefined
+        toast.error('Terjadi kesalahan pada server')
       }
     } catch (error) {
       console.error('Login error:', error)

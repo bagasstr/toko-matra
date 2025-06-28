@@ -3,7 +3,6 @@ import { validateSession } from '../actions/session'
 import Navbar from './components/navbar/navbar'
 import Footer from './components/footer'
 import FooterMobileWrapper from './components/FooterMobileWrapper'
-import ClientLayoutWrapper from './components/ClientLayoutWrapper'
 
 export default async function HomeLayout({
   children,
@@ -19,25 +18,22 @@ export default async function HomeLayout({
     console.error('Session validation error:', error)
   }
   const userId = session?.user?.id?.toLowerCase()
-  console.log('userId', userId)
   return (
-    <ClientLayoutWrapper>
-      <div className='min-h-screen flex flex-col'>
-        {/* Navbar tanpa suspense */}
-        <Navbar userId={userId || ''} />
+    <div className='min-h-screen flex flex-col'>
+      {/* Navbar tanpa suspense */}
+      <Navbar userId={userId || ''} />
 
-        {/* Main content area dengan optimasi spacing */}
-        <main className='flex-1 pt-16 lg:pt-20 pb-20 lg:pb-0'>{children}</main>
+      {/* Main content area dengan optimasi spacing */}
+      <main className='flex-1 pt-16 lg:pt-20 pb-20 lg:pb-0'>{children}</main>
 
-        {/* Footer components dengan lazy loading untuk mengurangi initial bundle */}
-        <Suspense fallback={null}>
-          <Footer />
-        </Suspense>
+      {/* Footer components dengan lazy loading untuk mengurangi initial bundle */}
+      <Suspense fallback={null}>
+        <Footer />
+      </Suspense>
 
-        <Suspense fallback={null}>
-          <FooterMobileWrapper />
-        </Suspense>
-      </div>
-    </ClientLayoutWrapper>
+      <Suspense fallback={null}>
+        <FooterMobileWrapper />
+      </Suspense>
+    </div>
   )
 }

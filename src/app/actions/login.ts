@@ -7,7 +7,7 @@ import { redirect } from 'next/navigation'
 import { ZodError, type z } from 'zod'
 import { createSession, validateSession } from './session'
 import { revalidatePath } from 'next/cache'
-import { createNotification } from './notificationAction'
+import { createNotification, existingNotification } from './notificationAction'
 
 export const login = async (formData: FormData) => {
   try {
@@ -34,19 +34,27 @@ export const login = async (formData: FormData) => {
     }
 
     await createSession(existsUser.id)
-
     // Create login notification
     try {
-      await createNotification(
-        existsUser.id,
-        'Login Berhasil',
-        'Anda telah berhasil masuk ke akun Anda.',
-        false
+      const existingLoginNotification = await existingNotification(
+        existsUser.id
       )
+      if (!existingLoginNotification) {
+        await createNotification(
+          existsUser.id,
+          'Login Berhasil',
+          'Anda telah berhasil masuk ke akun Anda.',
+          false
+        )
+      }
     } catch (notificationError) {
       console.warn('Failed to create login notification:', notificationError)
       // Don't fail login if notification fails
     }
+
+    // Invalidate cart data to ensure it's refreshed after login
+    revalidatePath('/keranjang')
+    revalidatePath('/')
 
     return { success: true }
   } catch (error: any) {

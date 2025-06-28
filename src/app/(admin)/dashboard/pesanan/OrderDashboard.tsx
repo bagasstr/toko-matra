@@ -203,7 +203,7 @@ export default function OrderDashboard({
             'Pesanan Dikonfirmasi',
             'Pesanan kamu sudah kami konfirmasi dan sedang diproses.'
           )
-
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
           // Send email notification
           try {
             await sendOrderConfirmedNotification(orderId)
@@ -220,6 +220,7 @@ export default function OrderDashboard({
             'Pesanan Dikirim',
             'Pesanan kamu sudah kami kirim. Terima kasih telah berbelanja di Matrakosala!'
           )
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
           console.log('SHIPPED notification result:', notificationResult)
 
           // Send email notification
@@ -237,7 +238,7 @@ export default function OrderDashboard({
             'Pesanan Selesai',
             'Pesanan kamu sudah selesai. Terima kasih telah berbelanja di Matrakosala!'
           )
-
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
           // Send email notification
           try {
             await sendOrderDeliveredNotification(orderId)
@@ -253,7 +254,7 @@ export default function OrderDashboard({
             'Pesanan Dibatalkan',
             'Mohon maaf, pesanan kamu dibatalkan. Silakan hubungi kami untuk informasi lebih lanjut.'
           )
-
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId] })
           // Send email notification
           try {
             await sendOrderCancelledNotification(orderId)

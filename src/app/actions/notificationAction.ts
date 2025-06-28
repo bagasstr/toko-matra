@@ -45,6 +45,17 @@ export async function updateNotificationStatus(
   }
 }
 
+export async function existingNotification(userId: string) {
+  const existingNotification = await prisma.notification.findFirst({
+    where: {
+      userId,
+      title: 'Login Berhasil',
+      message: 'Anda telah berhasil masuk ke akun Anda.',
+    },
+  })
+  return existingNotification
+}
+
 export async function createNotification(
   userId: string,
   title: string,
@@ -52,7 +63,7 @@ export async function createNotification(
   type?: boolean
 ) {
   try {
-    const notification = await prisma.notification.create({
+    await prisma.notification.create({
       data: {
         id: generateCustomId('notif'),
         userId,
@@ -63,7 +74,7 @@ export async function createNotification(
     })
 
     revalidatePath('/notifikasi')
-    return { success: true, data: notification }
+    return { success: true }
   } catch (error) {
     console.error('Error creating notification:', error)
     return { success: false, error: 'Failed to create notification' }

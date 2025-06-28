@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { Bell, Search, ShoppingCart } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -15,17 +15,25 @@ interface MobileNavbarProps {
 }
 
 const MobileNavbar = ({ userId }: MobileNavbarProps) => {
+  const [mounted, setMounted] = useState(false)
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const { data: cartData } = useQuery({
-    queryKey: ['cart'],
+    queryKey: ['cart', userId],
     queryFn: async () => {
+      if (!userId) return []
       const response = await getCartItems()
       return response.success ? response.data || [] : []
     },
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 0,
-    gcTime: 0,
-    refetchInterval: 5000, // auto refetch setiap 5 detik
+    enabled: !!userId,
+    staleTime: 2 * 60 * 1000, // 2 minutes - cart doesn't change that often
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Only refetch when component mounts
   })
 
   const { data: notificationsData } = useQuery({
@@ -36,11 +44,11 @@ const MobileNavbar = ({ userId }: MobileNavbarProps) => {
       return response.data || []
     },
     enabled: !!userId,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 0,
-    gcTime: 0,
-    refetchInterval: 5000, // auto refetch setiap 5 detik
+    staleTime: 5 * 60 * 1000, // 5 minutes - only refetch when admin updates
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Only refetch when component mounts
+    // NO refetchInterval - only update when admin triggers invalidation
   })
 
   const items = cartData || []
@@ -78,7 +86,7 @@ const MobileNavbar = ({ userId }: MobileNavbarProps) => {
               href='/notifikasi'
               className='size-10 flex items-center justify-center relative'>
               <Bell size={20} className='text-foreground' />
-              {unreadNotifications > 0 && (
+              {mounted && unreadNotifications > 0 && (
                 <Badge
                   variant='destructive'
                   className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
@@ -90,7 +98,7 @@ const MobileNavbar = ({ userId }: MobileNavbarProps) => {
               <Link href='/keranjang'>
                 <Button size='icon' variant='ghost' className='relative'>
                   <ShoppingCart size={20} className='text-foreground' />
-                  {items.length > 0 && (
+                  {mounted && items.length > 0 && (
                     <Badge
                       variant='destructive'
                       className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>

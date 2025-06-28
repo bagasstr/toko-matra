@@ -7,8 +7,6 @@ export async function GET(request: NextRequest) {
     const query = searchParams.get('q')
     const limit = parseInt(searchParams.get('limit') || '5')
 
-    console.log('Search API called with query:', query, 'limit:', limit)
-
     if (!query || query.length < 2) {
       return NextResponse.json({ products: [] })
     }
@@ -81,8 +79,6 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    console.log('Found products:', products.length)
-
     // Transform images array to match expected format
     const transformedProducts = products.map((product) => ({
       ...product,
@@ -93,7 +89,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Search error:', error)
     return NextResponse.json(
-      { error: 'Internal server error', details: error.message },
+      { error: 'Internal server error', products: [] },
       { status: 500 }
     )
   }

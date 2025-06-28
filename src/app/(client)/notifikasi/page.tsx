@@ -58,9 +58,9 @@ const NotificationsPage = () => {
       }
     },
     enabled: !!userId,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
     refetchOnMount: true,
-    staleTime: 30000, // 30 seconds
+    // staleTime: 30000,
     gcTime: 5 * 60 * 1000, // 5 minutes
   })
 
@@ -80,7 +80,6 @@ const NotificationsPage = () => {
         <h1 className='text-2xl font-bold flex items-center gap-2'>
           <Bell /> Notifikasi
         </h1>
-        <NotificationBadge count={unreadCount} />
       </div>
       {!notifications || notifications.length === 0 ? (
         <div className='text-gray-400 text-center py-10'>

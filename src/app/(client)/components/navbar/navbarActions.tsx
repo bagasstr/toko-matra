@@ -7,13 +7,12 @@ import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { getCartItems } from '@/app/actions/cartAction'
 import { getNotifications } from '@/app/actions/notificationAction'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import OptimizedImage from '@/components/OptimizedImage'
 import { useDebounce } from '@/hooks/useDebounce'
-import Image from 'next/image'
+import { useSessionStore } from '@/hooks/zustandStore'
 
 interface NavbarActionsProps {
   userId?: string
@@ -24,20 +23,25 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState(-1)
+  const [mounted, setMounted] = useState(false)
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const { isLoggedIn } = useSessionStore()
 
   // Debounce search query untuk performance dengan delay lebih lama
   const debouncedSearchQuery = useDebounce(searchQuery, 500)
 
-  const { data: cartData } = useQuery({
-    queryKey: ['cart'],
+  const { data: cartData, refetch: refetchCart } = useQuery({
+    queryKey: ['cart', userId],
     queryFn: async () => {
+      if (!userId) return []
       const response = await getCartItems()
       return response.success ? response.data || [] : []
-    },
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
+    }, // 2 minutes - cart doesn't change that often
+    enabled: !!userId,
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Only refetch when component mounts
   })
 
   const { data: notificationsData } = useQuery({
@@ -48,12 +52,19 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
       return response.data || []
     },
     enabled: !!userId,
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 0,
-    gcTime: 0,
-    refetchInterval: 5000,
+    staleTime: 5 * 60 * 1000, // 5 minutes - only refetch when admin updates
+    gcTime: 10 * 60 * 1000, // 10 minutes cache
+    refetchOnWindowFocus: false, // Don't refetch on window focus
+    refetchOnMount: true, // Only refetch when component mounts
+    // NO refetchInterval - only update when admin triggers invalidation
   })
+
+  // Fetch cart data when login state changes
+  useEffect(() => {
+    if (isLoggedIn()) {
+      refetchCart()
+    }
+  }, [isLoggedIn, refetchCart])
 
   // Search suggestions query dengan API endpoint yang lebih efisien
   const { data: searchSuggestions = [], isLoading: isSearchLoading } = useQuery(
@@ -72,15 +83,13 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
           if (!response.ok) {
             const errorText = await response.text()
             console.error('Search API error:', response.status, errorText)
-            throw new Error(`Search failed: ${response.status}`)
+            return []
           }
 
           const data = await response.json()
-          console.log('Search API response:', data)
-          return data.products || []
+          return data && data.products ? data.products : []
         } catch (error) {
           console.error('Search error:', error)
-          // Return empty array instead of throwing to prevent error boundary
           return []
         }
       },
@@ -93,27 +102,50 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
   )
 
   // --- Badge Calculation ---
-  const validItems = (cartData || []).filter((item) => {
-    const quantity = item?.quantity
-    const product = item?.product
-    return (
-      quantity && product && product.minOrder && quantity >= product.minOrder
-    )
-  })
+  let validItems = []
+  let calculatedBadgeCount = 0
 
-  const calculatedBadgeCount = validItems.reduce((totalUnits, item) => {
-    const { quantity, product } = item
-    const { minOrder, multiOrder } = product
-    const effectiveMultiOrder = multiOrder > 0 ? multiOrder : 1
-    let itemConvertedUnits = 1
-    const remainingQuantity = quantity - minOrder
-    itemConvertedUnits += Math.floor(remainingQuantity / effectiveMultiOrder)
-    return totalUnits + itemConvertedUnits
-  }, 0)
+  try {
+    // Make sure cartData is an array before trying to filter it
+    if (cartData && Array.isArray(cartData)) {
+      validItems = cartData.filter((item) => {
+        return (
+          item &&
+          item.quantity &&
+          item.product &&
+          item.product.minOrder &&
+          item.quantity >= item.product.minOrder
+        )
+      })
+
+      calculatedBadgeCount = validItems.reduce((totalUnits, item) => {
+        const quantity = item.quantity
+        const minOrder = item.product.minOrder
+        const multiOrder = item.product.multiOrder || 1
+        const effectiveMultiOrder = multiOrder > 0 ? multiOrder : 1
+
+        let itemConvertedUnits = 1
+        const remainingQuantity = quantity - minOrder
+        itemConvertedUnits += Math.floor(
+          remainingQuantity / effectiveMultiOrder
+        )
+
+        return totalUnits + itemConvertedUnits
+      }, 0)
+    }
+  } catch (error) {
+    console.error('Error calculating badge count:', error)
+    calculatedBadgeCount = 0
+  }
   // --- End of Badge Calculation ---
 
   const unreadNotifications =
     notificationsData?.filter((n) => !n.isRead).length || 0
+
+  // Handle client-side mounting
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   // Handle click outside to close suggestions
   useEffect(() => {
@@ -361,7 +393,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
         <Link href='/notifikasi'>
           <Button size='icon' variant='ghost' className='relative'>
             <Bell size={20} className='text-foreground' />
-            {unreadNotifications > 0 && (
+            {mounted && unreadNotifications > 0 && (
               <Badge
                 variant='destructive'
                 className='absolute -top-1 -right-1 h-4 w-6 flex items-center justify-center p-2'>
@@ -374,7 +406,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
           <Link href='/keranjang'>
             <Button size='icon' variant='ghost' className='relative'>
               <ShoppingCart size={20} className='text-foreground' />
-              {calculatedBadgeCount > 0 && (
+              {mounted && calculatedBadgeCount > 0 && (
                 <Badge
                   variant='default'
                   className='absolute -top-1 -right-1 h-5 min-w-[1.25rem] flex items-center justify-center p-1 text-xs'>

@@ -49,6 +49,7 @@ import { cn } from '@/lib/utils'
 import { useQuery } from '@tanstack/react-query'
 import { getWishlist } from '@/app/actions/wishlist'
 import Link from 'next/link'
+import { queryClient } from '@/lib/queryClient'
 
 export interface UserProfile {
   id: string
@@ -116,10 +117,12 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
 
   const handleLogout = async () => {
     try {
+      queryClient.invalidateQueries({
+        queryKey: ['session', 'notifications', 'cart'],
+      })
       await logout()
       toast.success('Berhasil logout')
-      router.push('/login')
-      router.refresh()
+      router.replace('/login')
     } catch (error) {
       console.error('Logout error:', error)
       toast.error('Gagal logout')

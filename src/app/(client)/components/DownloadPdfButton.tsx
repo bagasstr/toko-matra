@@ -2,8 +2,8 @@
 
 import { generatePdfFromHtml } from '@/app/actions/pdfAction'
 import { Button } from '@/components/ui/button'
-import { Download, Printer, Loader2 } from 'lucide-react'
-import React, { useState } from 'react'
+import { Download, Printer, Loader2, RefreshCw, File } from 'lucide-react'
+import React, { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { updateOrderStatus } from '@/app/actions/orderAction'
 import { OrderStatus } from '@/types/order'
@@ -11,6 +11,7 @@ import { useReactToPrint } from 'react-to-print'
 import { pdf } from '@react-pdf/renderer'
 import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
 import { PdfDocument } from '@/components/pdf/PdfDocument'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface ReactToPrintProps {
   content: () => React.ReactInstance | null
@@ -288,6 +289,8 @@ export function PdfCartButton({
 }
 
 export function PdfSJButton({ htmlContent, disabled, orderId }: SJButtonProps) {
+  const queryClient = useQueryClient()
+
   const handleDownload = async () => {
     if (orderId) {
       const updateOrder = await updateOrderStatus(orderId, OrderStatus.SHIPPED)
@@ -295,6 +298,13 @@ export function PdfSJButton({ htmlContent, disabled, orderId }: SJButtonProps) {
         throw new Error(updateOrder.error)
       }
       if (updateOrder.success) {
+        // Invalidate notifications for the user to trigger real-time update
+        if (updateOrder.userId) {
+          queryClient.invalidateQueries({
+            queryKey: ['notifications', updateOrder.userId],
+          })
+        }
+
         const res = await generatePdfFromHtml(htmlContent)
         const blob = new Blob([res], { type: 'application/pdf' })
         const url = window.URL.createObjectURL(blob)

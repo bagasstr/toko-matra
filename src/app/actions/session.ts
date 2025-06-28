@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { prisma } from '../../lib/prisma'
 import { cookies } from 'next/headers'
 import { generateCustomId } from '@/lib/helpper'
+import { cache } from 'react'
 
 export const createSession = async (id: string) => {
   const expires = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days
@@ -37,9 +38,7 @@ export const createSession = async (id: string) => {
   }
 }
 
-export const validateSession = async () => {
-  const start = process.hrtime.bigint()
-
+export const validateSession = cache(async () => {
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('sessionToken')?.value
   if (!sessionToken) {
@@ -97,14 +96,9 @@ export const validateSession = async () => {
     },
   })
 
-  // Log execution time only in development to avoid noisy production logs
-
-  const durationMs = Number(process.hrtime.bigint() - start) / 1_000_000
-  console.info(`validateSession executed in ${durationMs.toFixed(2)}ms`)
-
   // Convert any Decimal objects to plain JavaScript numbers/strings
   return session ? JSON.parse(JSON.stringify(session)) : null
-}
+})
 
 export const destroySession = async () => {
   const getSession = (await cookies()).get('sessionToken')?.value

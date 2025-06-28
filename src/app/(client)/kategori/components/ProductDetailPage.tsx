@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+
 import { Heart, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -18,52 +18,53 @@ import {
 import { RiWhatsappLine } from '@remixicon/react'
 import toRupiah from '@develoka/angka-rupiah-js'
 import { addToCart } from '@/app/actions/cartAction'
-import { validateSession } from '@/app/actions/session'
 import { getWishlist, toggleWishlist } from '@/app/actions/wishlist'
 import { Category, Product } from '../types'
+import { useSessionStore } from '@/hooks/zustandStore'
 
 interface ProductDetailPageProps {
   product: Product | null
-  parentCategory: Category
   loading: boolean
-  allProducts: Product[]
 }
 
 export function ProductDetailPage({
   product: safeProduct,
-  parentCategory,
   loading,
-  allProducts,
 }: ProductDetailPageProps) {
-  const router = useRouter()
   const queryClient = useQueryClient()
   const [quantity, setQuantity] = useState(1)
   const [isBuyingNow, setIsBuyingNow] = useState(false)
   const [selectedImage, setSelectedImage] = useState(0)
-  const [isReadMore, setIsReadMore] = useState(false)
   const [isInfoOpen, setIsInfoOpen] = useState(false)
-  const [isWishlistMarked, setIsWishlistMarked] = useState(false)
-  const [cartMessage, setCartMessage] = useState<{
-    type: 'success' | 'error'
-    message: string
-  } | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [session, setSession] = useState<any>(null)
-  const [wishlist, setWishlist] = useState<any[]>([])
 
-  useEffect(() => {
-    const fetchSession = async () => {
-      const userSession = await validateSession()
-      setSession(userSession)
-    }
-    fetchSession()
-  }, [])
+  // Use Zustand session store
+  const {
+    session,
+    isLoading: sessionLoading,
+    isLoggedIn,
+    getUserId,
+  } = useSessionStore()
+
+  // Wishlist query - only fetch when product and user session exist
+  const { data: wishlistData = [] } = useQuery({
+    queryKey: ['wishlist', getUserId()],
+    queryFn: () => getWishlist(getUserId()),
+    enabled: !!safeProduct?.id && isLoggedIn(),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+  })
 
   const { mutate: addToCartMutation, isPending: isAddingToCart } = useMutation({
     mutationFn: addToCart,
     onSuccess: (result) => {
       if (result.success) {
-        queryClient.invalidateQueries({ queryKey: ['cart'] })
+        queryClient.invalidateQueries({
+          queryKey: ['cart'],
+        })
         toast.success('Produk ditambahkan ke keranjang')
       } else {
         toast.error(result.error || 'Gagal memproses permintaan')
@@ -74,17 +75,32 @@ export function ProductDetailPage({
     },
   })
 
-  // Wishlist check moved up to ensure consistent hook order
-  useEffect(() => {
-    const fetchWishlist = async () => {
-      if (!safeProduct) return
+  const { mutate: toggleWishlistMutation, isPending: isTogglingWishlist } =
+    useMutation({
+      mutationFn: toggleWishlist,
+      onSuccess: (result) => {
+        if (result.success) {
+          queryClient.invalidateQueries({
+            queryKey: ['wishlist', getUserId()],
+          })
+          toast.success(
+            isWishlistMarked
+              ? 'Dihapus dari wishlist'
+              : 'Ditambahkan ke wishlist'
+          )
+        } else {
+          toast.error(result.message)
+        }
+      },
+      onError: (error) => {
+        toast.error('Terjadi kesalahan saat menambahkan ke wishlist')
+      },
+    })
 
-      const res = await getWishlist(session?.user?.id)
-      console.log('Wishlist:', res)
-      setIsWishlistMarked(res.some((item) => item.productId === safeProduct.id))
-    }
-    fetchWishlist()
-  }, [safeProduct?.id, session?.user?.id])
+  // Check if product is in wishlist
+  const isWishlistMarked = wishlistData.some(
+    (item) => item.productId === safeProduct?.id
+  )
 
   // Validate product data
   if (loading || !safeProduct) {
@@ -112,43 +128,31 @@ export function ProductDetailPage({
   }
 
   const handleBuyNow = () => {
-    if (!safeProduct || !session?.user?.id) {
+    if (!safeProduct || !getUserId()) {
       toast.error('Silakan login terlebih dahulu')
       return
     }
     const actualQuantity = calculateActualQuantity(quantity)
     addToCartMutation({
-      userId: session.user.id,
+      userId: getUserId(),
       productId: safeProduct.id,
       quantity: actualQuantity,
     })
   }
 
-  const handleAddToWishlist = async () => {
-    if (!safeProduct) return
-
-    try {
-      const result = await toggleWishlist(safeProduct.id)
-      if (result.success) {
-        setIsWishlistMarked(!isWishlistMarked)
-        router.refresh()
-      } else {
-        toast.error(result.message)
-      }
-    } catch (error) {
-      setIsWishlistMarked(false)
-      toast.error('Terjadi kesalahan saat menambahkan ke wishlist')
-    }
+  const handleAddToWishlist = () => {
+    if (!safeProduct?.id) return
+    toggleWishlistMutation(safeProduct.id)
   }
 
   const handleAddToCart = () => {
-    if (!safeProduct || !session?.user?.id) {
+    if (!safeProduct || !getUserId()) {
       toast.error('Silakan login terlebih dahulu')
       return
     }
     const actualQuantity = calculateActualQuantity(quantity)
     addToCartMutation({
-      userId: session.user.id,
+      userId: getUserId(),
       productId: safeProduct.id,
       quantity: actualQuantity,
     })
@@ -239,7 +243,8 @@ export function ProductDetailPage({
                   type='button'
                   variant='outline'
                   size='icon'
-                  onClick={handleAddToWishlist}>
+                  onClick={handleAddToWishlist}
+                  disabled={isTogglingWishlist}>
                   {isWishlistMarked ? (
                     <Heart fill='red' color='red' size={20} />
                   ) : (

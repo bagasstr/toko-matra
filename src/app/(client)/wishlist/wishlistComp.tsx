@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import OptimizedImage from '@/components/OptimizedImage'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { RiArrowLeftLine, RiDeleteBinLine } from '@remixicon/react'
 import { removeFromWishlist } from '@/app/actions/wishlist'
@@ -66,13 +66,12 @@ const WishlistComp = ({
                     : `/produk/${item.product.slug}`
                 }
                 className='flex items-center gap-4 flex-1 min-w-0'>
-                <OptimizedImage
+                <Image
                   src={item.product.images[0]}
                   alt={item.product.name}
                   width={72}
                   height={72}
                   className='rounded object-contain border bg-gray-50 w-20 h-20'
-                  priority={false}
                 />
                 <div className='flex-1 min-w-0'>
                   <div className='font-medium text-gray-900 text-base truncate mb-1'>

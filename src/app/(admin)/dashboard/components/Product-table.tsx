@@ -141,12 +141,16 @@ export default function ProductsTable() {
   async function fetchProducts() {
     try {
       const result = await getAllProducts()
-      if (result.success) {
-        setProducts(result.products)
+      if (result.success && result.products) {
+        setProducts(Array.isArray(result.products) ? result.products : [])
       } else {
+        console.error('Failed to fetch products:', result.error)
+        setProducts([])
         toast.error('Gagal mengambil data produk')
       }
     } catch (error) {
+      console.error('Error fetching products:', error)
+      setProducts([])
       toast.error('Terjadi kesalahan saat mengambil data produk')
     } finally {
       setLoading(false)
@@ -162,23 +166,29 @@ export default function ProductsTable() {
     }
   }
 
-  const filteredAndSortedProducts = products
+  const filteredAndSortedProducts = (products || [])
     .filter((product) => {
+      if (!product) return false
+
       const matchesSearch =
         debouncedSearchTerm === '' ||
-        product.name
-          .toLowerCase()
-          .includes(debouncedSearchTerm.toLowerCase()) ||
-        product.category?.name
-          .toLowerCase()
-          .includes(debouncedSearchTerm.toLowerCase()) ||
-        product.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
+        (product.name &&
+          product.name
+            .toLowerCase()
+            .includes(debouncedSearchTerm.toLowerCase())) ||
+        (product.category?.name &&
+          product.category.name
+            .toLowerCase()
+            .includes(debouncedSearchTerm.toLowerCase())) ||
+        (product.sku &&
+          product.sku.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
 
       const matchesStatus =
         statusFilter === 'all' ||
         (statusFilter === 'active' && product.isActive) ||
         (statusFilter === 'inactive' && !product.isActive) ||
-        (statusFilter === 'out-of-stock' && product?.stock === 0) ||
+        (statusFilter === 'out-of-stock' &&
+          (product?.stock === 0 || product?.stock === null)) ||
         (statusFilter === 'low-stock' &&
           product?.stock <= 10 &&
           product?.stock > 0)
@@ -186,13 +196,15 @@ export default function ProductsTable() {
       return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
+      if (!a || !b) return 0
+
       let comparison = 0
       switch (sortField) {
         case 'sku':
-          comparison = a.sku.localeCompare(b.sku)
+          comparison = (a.sku || '').localeCompare(b.sku || '')
           break
         case 'name':
-          comparison = a.name.localeCompare(b.name)
+          comparison = (a.name || '').localeCompare(b.name || '')
           break
         case 'category':
           comparison = (a.category?.name || '').localeCompare(
@@ -200,7 +212,7 @@ export default function ProductsTable() {
           )
           break
         case 'price':
-          comparison = a.price - b.price
+          comparison = (a.price || 0) - (b.price || 0)
           break
         case 'stock':
           comparison = (a?.stock || 0) - (b?.stock || 0)
@@ -212,8 +224,12 @@ export default function ProductsTable() {
     })
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredAndSortedProducts.length / itemsPerPage)
-  const paginatedProducts = filteredAndSortedProducts.slice(
+  const safeFilteredProducts = filteredAndSortedProducts || []
+  const totalPages = Math.max(
+    1,
+    Math.ceil(safeFilteredProducts.length / itemsPerPage)
+  )
+  const paginatedProducts = safeFilteredProducts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   )
@@ -280,7 +296,9 @@ export default function ProductsTable() {
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedProducts(
-        filteredAndSortedProducts.map((product) => product.id)
+        (filteredAndSortedProducts || [])
+          .filter((product) => product && product.id)
+          .map((product) => product.id)
       )
     } else {
       setSelectedProducts([])
@@ -358,9 +376,9 @@ export default function ProductsTable() {
                   <TableHead className='flex items-center justify-center'>
                     <Checkbox
                       checked={
-                        filteredAndSortedProducts.length > 0 &&
+                        (filteredAndSortedProducts || []).length > 0 &&
                         selectedProducts.length ===
-                          filteredAndSortedProducts.length
+                          (filteredAndSortedProducts || []).length
                       }
                       onCheckedChange={handleSelectAll}
                       aria-label='Select all'

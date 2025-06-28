@@ -148,9 +148,7 @@ function CategoryPage() {
       ) : (
         <ProductDetailPage
           product={safeCurrentProduct as unknown as Product}
-          parentCategory={parentCategory as Category}
           loading={loading}
-          allProducts={allProducts}
         />
       )}
 

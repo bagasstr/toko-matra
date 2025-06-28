@@ -1,5 +1,4 @@
 import React from 'react'
-import OptimizedImage from '@/components/OptimizedImage'
 import Link from 'next/link'
 
 const MaterialsOffer = () => {
