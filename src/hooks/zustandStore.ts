@@ -283,10 +283,9 @@ export const useCartStore = create<CartStore>()((set, get) => ({
   },
 
   fetchCart: async () => {
-    const { session } = useSessionStore()
     set({ loading: true, error: null })
     try {
-      const result = await getCartItems(session?.user?.id)
+      const result = await getCartItems()
       if (result.success) {
         set({
           items: result.data,
@@ -299,18 +298,7 @@ export const useCartStore = create<CartStore>()((set, get) => ({
   },
 
   getCartItems: async () => {
-    const { session } = useSessionStore()
-    try {
-      const result = await getCartItems(session?.user?.id)
-      if (result.success) {
-        set({
-          items: result.data,
-          loading: false,
-        })
-      }
-    } catch (error) {
-      set({ error: 'Gagal memuat keranjang', loading: false })
-    }
+    return await getCartItems()
   },
 
   getUniqueProductCount: () => {

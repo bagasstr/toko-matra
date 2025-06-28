@@ -183,9 +183,9 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
   const router = useRouter()
   const queryClient = useQueryClient()
   const [cartData, setCartData] = useState(initialCartData)
-  const { session, isLoggedIn } = useSessionStore()
+  const { session, isLoggedIn, getUserId } = useSessionStore()
   const cart = cartData?.data || []
-  const { items: cartItems, fetchCart, getCartItems } = useCartStore()
+  const { items: cartItems, getCartItems } = useCartStore()
   const [mounted, setMounted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [selectedItems, setSelectedItems] = useState<string[]>([])
@@ -254,8 +254,8 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
   )
 
   const { data: fetchedCartData, isLoading: loadingCart } = useQuery({
-    queryKey: ['cart'],
-    queryFn: getCartItems,
+    queryKey: ['cart', session?.user?.id],
+    queryFn: () => getCartItems(),
     initialData: initialCartData,
     refetchOnWindowFocus: false,
     // staleTime: 30000,
@@ -304,12 +304,30 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
   // Sync database cart with state if state is empty
   useEffect(() => {
     const syncCartWithState = async () => {
-      if (cartItems.length === 0 && cart.length > 0) {
-        await fetchCart()
+      try {
+        if (cartItems.length === 0 && cart.length > 0 && isLoggedIn) {
+          // Use getCartItems instead of fetchCart to avoid the hook error
+          const cartData = await getCartItems()
+          if (cartData.success) {
+            queryClient.setQueryData(['cart'], cartData.data)
+          }
+        }
+      } catch (error) {
+        console.error('Error syncing cart:', error)
       }
     }
-    syncCartWithState()
-  }, [cartItems.length, cart.length, fetchCart])
+
+    if (mounted) {
+      syncCartWithState()
+    }
+  }, [
+    cartItems.length,
+    cart.length,
+    mounted,
+    isLoggedIn,
+    getCartItems,
+    queryClient,
+  ])
 
   // Optimized handlers with useCallback
   const handleCheckout = useCallback(async () => {
@@ -327,7 +345,7 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
         return
       }
 
-      await fetchCart()
+      await getCartItems()
       const latestCartData = await getCartItems()
       if (!latestCartData.success) {
         alert('Gagal memuat data keranjang')
@@ -351,7 +369,7 @@ const CartClient = memo(({ initialCartData, removeItem }: CartClientProps) => {
     } finally {
       setIsUpdating(false)
     }
-  }, [isUpdating, selectedItems, router, fetchCart, getCartItems])
+  }, [isUpdating, selectedItems, router, getCartItems])
 
   const handleSelectItem = useCallback((itemId: string) => {
     setSelectedItems((prev) =>

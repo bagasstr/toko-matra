@@ -26,7 +26,7 @@ const MobileNavbar = ({ userId }: MobileNavbarProps) => {
     queryKey: ['cart', userId],
     queryFn: async () => {
       if (!userId) return []
-      const response = await getCartItems(userId)
+      const response = await getCartItems()
       return response.success ? response.data || [] : []
     },
     enabled: !!userId,

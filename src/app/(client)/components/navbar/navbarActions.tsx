@@ -35,7 +35,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
     queryKey: ['cart', userId],
     queryFn: async () => {
       if (!userId) return []
-      const response = await getCartItems(userId)
+      const response = await getCartItems()
       return response.success ? response.data || [] : []
     }, // 2 minutes - cart doesn't change that often
     enabled: !!userId,
@@ -83,15 +83,13 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
           if (!response.ok) {
             const errorText = await response.text()
             console.error('Search API error:', response.status, errorText)
-            throw new Error(`Search failed: ${response.status}`)
+            return []
           }
 
           const data = await response.json()
-          console.log('Search API response:', data)
-          return data.products || []
+          return data && data.products ? data.products : []
         } catch (error) {
           console.error('Search error:', error)
-          // Return empty array instead of throwing to prevent error boundary
           return []
         }
       },
@@ -104,23 +102,41 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
   )
 
   // --- Badge Calculation ---
-  const validItems = (cartData || []).filter((item) => {
-    const quantity = item?.quantity
-    const product = item?.product
-    return (
-      quantity && product && product.minOrder && quantity >= product.minOrder
-    )
-  })
+  let validItems = []
+  let calculatedBadgeCount = 0
 
-  const calculatedBadgeCount = validItems.reduce((totalUnits, item) => {
-    const { quantity, product } = item
-    const { minOrder, multiOrder } = product
-    const effectiveMultiOrder = multiOrder > 0 ? multiOrder : 1
-    let itemConvertedUnits = 1
-    const remainingQuantity = quantity - minOrder
-    itemConvertedUnits += Math.floor(remainingQuantity / effectiveMultiOrder)
-    return totalUnits + itemConvertedUnits
-  }, 0)
+  try {
+    // Make sure cartData is an array before trying to filter it
+    if (cartData && Array.isArray(cartData)) {
+      validItems = cartData.filter((item) => {
+        return (
+          item &&
+          item.quantity &&
+          item.product &&
+          item.product.minOrder &&
+          item.quantity >= item.product.minOrder
+        )
+      })
+
+      calculatedBadgeCount = validItems.reduce((totalUnits, item) => {
+        const quantity = item.quantity
+        const minOrder = item.product.minOrder
+        const multiOrder = item.product.multiOrder || 1
+        const effectiveMultiOrder = multiOrder > 0 ? multiOrder : 1
+
+        let itemConvertedUnits = 1
+        const remainingQuantity = quantity - minOrder
+        itemConvertedUnits += Math.floor(
+          remainingQuantity / effectiveMultiOrder
+        )
+
+        return totalUnits + itemConvertedUnits
+      }, 0)
+    }
+  } catch (error) {
+    console.error('Error calculating badge count:', error)
+    calculatedBadgeCount = 0
+  }
   // --- End of Badge Calculation ---
 
   const unreadNotifications =

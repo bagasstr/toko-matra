@@ -14,7 +14,7 @@ export default async function PaymentPage({
     redirect('/login')
   }
 
-  const cartData = await getCartItems(session?.user?.id)
+  const cartData = await getCartItems()
 
   // Await searchParams before using its properties
   const resolvedSearchParams = await searchParams
