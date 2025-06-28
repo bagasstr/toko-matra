@@ -42,15 +42,31 @@ export function useOrderData(orderId: string) {
   return useQuery<OrderData, Error>({
     queryKey: ['orderDetails', orderId],
     queryFn: async () => {
-      const paymentRes = await getPaymentByOrderId(orderId)
+      try {
+        const paymentRes = await getPaymentByOrderId(orderId)
 
-      if (!paymentRes.success || !paymentRes.data) {
-        throw new Error(paymentRes.message || 'Gagal memuat detail pembayaran')
-      }
+        if (!paymentRes.success || !paymentRes.data) {
+          throw new Error(
+            paymentRes.message || 'Gagal memuat detail pembayaran'
+          )
+        }
 
-      return {
-        payment: paymentRes.data,
-        transaction: null, // Webhook Midtrans akan update status di database
+        // Validate payment data structure
+        if (!paymentRes.data.order) {
+          throw new Error('Data pesanan tidak lengkap')
+        }
+
+        return {
+          payment: paymentRes.data,
+          transaction: null, // Webhook Midtrans akan update status di database
+        }
+      } catch (error) {
+        console.error('Error fetching order data:', error)
+        throw new Error(
+          error instanceof Error
+            ? error.message
+            : 'Terjadi kesalahan saat memuat data pesanan'
+        )
       }
     },
     // Optimized refetch logic - webhook akan menghandle update otomatis
@@ -73,5 +89,8 @@ export function useOrderData(orderId: string) {
     staleTime: 30000, // 30 seconds
     // Cache for 5 minutes
     gcTime: 5 * 60 * 1000,
+    // Add retry with exponential backoff for transient errors
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
   })
 }
