@@ -286,14 +286,27 @@ export const useCartStore = create<CartStore>()((set, get) => ({
     set({ loading: true, error: null })
     try {
       const result = await getCartItems()
-      if (result.success) {
+      if (result && result.success && Array.isArray(result.data)) {
         set({
           items: result.data,
           loading: false,
         })
+      } else {
+        // Handle case where result is not as expected
+        set({
+          items: [],
+          loading: false,
+          error: 'Invalid cart data format',
+        })
       }
     } catch (error) {
-      set({ error: 'Gagal memuat keranjang', loading: false })
+      console.error('Error fetching cart:', error)
+      set({
+        error:
+          error instanceof Error ? error.message : 'Gagal memuat keranjang',
+        loading: false,
+        items: [], // Reset items on error to prevent stale data
+      })
     }
   },
 

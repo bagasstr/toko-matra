@@ -43,6 +43,11 @@ export function useOrderData(orderId: string) {
     queryKey: ['orderDetails', orderId],
     queryFn: async () => {
       try {
+        // Validate orderId before making the request
+        if (!orderId) {
+          throw new Error('ID pesanan tidak valid')
+        }
+
         const paymentRes = await getPaymentByOrderId(orderId)
 
         if (!paymentRes.success || !paymentRes.data) {
@@ -69,6 +74,8 @@ export function useOrderData(orderId: string) {
         )
       }
     },
+    // Skip the query if orderId is empty
+    enabled: !!orderId,
     // Optimized refetch logic - webhook akan menghandle update otomatis
     refetchInterval: (query) => {
       // Stop refetching if payment is success, failed, or cancelled

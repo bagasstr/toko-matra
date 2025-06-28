@@ -50,7 +50,7 @@ export default function OrderPage() {
     isLoading,
     error,
     refetch,
-  } = useOrderData(param.id.toString())
+  } = useOrderData(param.id ? param.id.toString() : '')
 
   // Memoize derived values to prevent unnecessary re-renders
   const paymentStatus = useMemo(
@@ -112,29 +112,34 @@ export default function OrderPage() {
     if (!orderData?.payment) return
 
     const { payment } = orderData
-    if (payment.status !== 'SUCCESS') return
+    if (!payment || payment.status !== 'SUCCESS' || !payment.order?.id) return
 
     try {
       // Clear cart items that have been purchased
       await clearCartAfterOrder(payment.order.id)
-      // Refresh cart data in the store
-      await fetchCart()
+
+      // Safely call fetchCart if it exists
+      if (typeof fetchCart === 'function') {
+        await fetchCart()
+      }
 
       // Create notifications
-      await Promise.all([
-        createNotification(
-          payment.order.userId,
-          'Pembayaran Terverifikasi',
-          'Pembayaran kamu sudah kami terima. Terima kasih!',
-          false
-        ),
-        createNotification(
-          payment.order.userId,
-          'Pesanan Dikonfirmasi',
-          `Pesanan #${payment.order.id} telah dikonfirmasi dan sedang diproses.`,
-          false
-        ),
-      ])
+      if (payment.order.userId) {
+        await Promise.all([
+          createNotification(
+            payment.order.userId,
+            'Pembayaran Terverifikasi',
+            'Pembayaran kamu sudah kami terima. Terima kasih!',
+            false
+          ),
+          createNotification(
+            payment.order.userId,
+            'Pesanan Dikonfirmasi',
+            `Pesanan #${payment.order.id} telah dikonfirmasi dan sedang diproses.`,
+            false
+          ),
+        ])
+      }
 
       // Redirect to success page with transaction ID
       const transactionId = payment.transactionId
