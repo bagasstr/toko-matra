@@ -25,6 +25,22 @@ interface PaymentInfoProps {
 
 export const PaymentInfo = memo(
   ({ payment, transaction }: PaymentInfoProps) => {
+    // Safely check if payment exists
+    if (!payment) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Informasi Pembayaran</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='text-center text-gray-500'>
+              Data pembayaran tidak tersedia
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
     return (
       <Card>
         <CardHeader>
@@ -94,6 +110,7 @@ export const PaymentInfo = memo(
             </div>
 
             {payment.status === 'PENDING' &&
+              payment.order?.createdAt &&
               (() => {
                 // Try to get expiry time from different sources
                 const expiryTime =
@@ -126,7 +143,7 @@ export const PaymentInfo = memo(
               })()}
           </div>
 
-          {payment.status === 'PENDING' && (
+          {payment.status === 'PENDING' && payment.transactionId && (
             <div className='pt-4 border-t'>
               <ButtonCancelTrx
                 transactionId={

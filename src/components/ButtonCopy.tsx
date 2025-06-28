@@ -42,6 +42,10 @@ interface ButtonCancelTrxProps {
 export function ButtonCancelTrx({ transactionId }: ButtonCancelTrxProps) {
   const [isLoading, setIsLoading] = useState(false)
 
+  if (!transactionId) {
+    return null
+  }
+
   const handleCancel = async () => {
     try {
       setIsLoading(true)
