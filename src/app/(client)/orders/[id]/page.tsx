@@ -181,6 +181,23 @@ export default function OrderPage() {
   }
 
   const { payment, transaction } = orderData
+
+  // Check if payment.order exists before accessing it
+  if (!payment || !payment.order) {
+    return (
+      <div className='flex min-h-[400px] items-center justify-center'>
+        <div className='text-center'>
+          <div className='mb-4'>
+            <AlertCircle className='mx-auto h-8 w-8 text-destructive' />
+          </div>
+          <p className='text-gray-600'>
+            Data pesanan tidak lengkap. Silakan coba lagi nanti.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   const order = payment.order
 
   return (
