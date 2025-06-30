@@ -1,14 +1,15 @@
 'use client'
 
-import React from 'react'
+import React, { lazy, Suspense } from 'react'
 import { Bell } from 'lucide-react'
 import { getNotifications } from '@/app/actions/notificationAction'
 import NotificationItem from './components/NotificationItem'
-import NotificationBadge from './components/NotificationBadge'
 import { useEffect, useState } from 'react'
 import { validateSession } from '@/app/actions/session'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import Loading from './loading'
 
+const NotificationItems = lazy(() => import('./components/NotificationItem'))
 interface Notification {
   id: string
   title: string
@@ -42,11 +43,7 @@ const NotificationsPage = () => {
   }, [])
 
   // TanStack Query for notifications
-  const {
-    data: notifications = [],
-    isLoading,
-    refetch,
-  } = useQuery({
+  const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications', userId],
     queryFn: async () => {
       if (!userId) throw new Error('User ID not available')
@@ -72,7 +69,9 @@ const NotificationsPage = () => {
     )
   }
 
-  const unreadCount = notifications?.filter((n) => !n.isRead).length || 0
+  if (isLoading || !notifications.length) {
+    return <Loading />
+  }
 
   return (
     <div className='max-w-2xl mx-auto py-10 px-4'>
@@ -81,24 +80,18 @@ const NotificationsPage = () => {
           <Bell /> Notifikasi
         </h1>
       </div>
-      {!notifications || notifications.length === 0 ? (
-        <div className='text-gray-400 text-center py-10'>
-          Tidak ada notifikasi.
-        </div>
-      ) : (
-        <div className='space-y-4'>
-          {notifications.map((notif) => (
-            <NotificationItem
-              key={notif.id}
-              id={notif.id}
-              title={notif.title}
-              message={notif.message}
-              createdAt={notif.createdAt}
-              isRead={notif.isRead}
-            />
-          ))}
-        </div>
-      )}
+      <div className='space-y-4'>
+        {notifications.map((notif) => (
+          <NotificationItem
+            key={notif.id}
+            id={notif.id}
+            title={notif.title}
+            message={notif.message}
+            createdAt={notif.createdAt}
+            isRead={notif.isRead}
+          />
+        ))}
+      </div>
     </div>
   )
 }
