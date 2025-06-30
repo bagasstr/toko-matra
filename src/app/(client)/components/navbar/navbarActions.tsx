@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useSessionStore } from '@/hooks/zustandStore'
+import Image from 'next/image'
 
 interface NavbarActionsProps {
   userId?: string
@@ -328,7 +329,7 @@ export function NavbarActions({ userId }: NavbarActionsProps) {
                       )}>
                       <div className='w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 relative'>
                         {product.images?.[0]?.url ? (
-                          <img
+                          <Image
                             src={product.images[0].url}
                             alt={product.name}
                             className='w-full h-full object-cover'

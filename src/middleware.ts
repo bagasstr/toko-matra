@@ -69,6 +69,13 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/dashboard/:path*',
+    '/wishlist/:path*',
+    '/notifikasi/:path*',
+    '/orders/:path*',
+    '/login-admin',
+    '/keranjang/:path*',
+
+    // '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 }
