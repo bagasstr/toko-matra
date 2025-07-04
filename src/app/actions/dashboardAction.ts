@@ -52,7 +52,7 @@ export async function getDashboardStats() {
           SUM(oi.quantity) as "totalSold",
           p.name as "productName"
         FROM "order_items" oi
-        JOIN "products" p ON oi."productId" = p.id
+        JOIN "products" p ON oi."productId" = p."id_product"
         WHERE oi."createdAt" >= ${firstDay}
         GROUP BY oi."productId", p.name
         ORDER BY "totalSold" DESC
