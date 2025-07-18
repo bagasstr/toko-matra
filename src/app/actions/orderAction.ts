@@ -68,11 +68,13 @@ export async function processCheckoutAndCreateOrder(
             id: session.user.id,
           },
         },
+        notes: formData.notes,
         address: {
           connect: {
             id: formData.addressId,
           },
         },
+
         status: OrderStatus.PENDING,
         totalAmount: totalAmount,
         subtotalAmount: subtotal,
@@ -104,7 +106,17 @@ export async function processCheckoutAndCreateOrder(
             id: crypto.randomUUID(),
             status: 'PENDING',
             deliveryDate: new Date(),
+            notes: formData.notes,
             deliveryNumber: generateCustomId('DEL'),
+            items: {
+              create: items.map((item, index) => ({
+                id: generateCustomId('shp-itm'),
+                productId: item.productId,
+                quantity: item.quantity,
+                notes: formData.notes,
+                unit: cartResult.data[index]?.product?.unit || 'pcs', // Get unit from cart data
+              })),
+            },
           },
         },
         createdAt: new Date(),
@@ -118,6 +130,15 @@ export async function processCheckoutAndCreateOrder(
         },
         payment: true,
         address: true,
+        shipment: {
+          include: {
+            items: {
+              include: {
+                product: true,
+              },
+            },
+          },
+        },
         user: {
           select: {
             profile: true,

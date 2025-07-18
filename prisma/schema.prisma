@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 // =========================
@@ -246,6 +246,7 @@ model Order {
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   address        Address     @relation(fields: [addressId], references: [id], onDelete: Cascade)
   items          OrderItem[]
+  notes          String?     @db.VarChar(255)
   payment        Payment[]
   shipment       Shipment[]
   // faktur         Faktur[]

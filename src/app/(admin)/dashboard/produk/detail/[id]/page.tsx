@@ -82,17 +82,77 @@ export default function ProductDetailPage() {
   }
 
   if (loading) {
-    return <div>Loading...</div>
+    return (
+      <div className='max-w-4xl mx-auto py-8 px-4'>
+        <div className='animate-pulse'>
+          {/* Header skeleton */}
+          <div className='flex items-center justify-between mb-6'>
+            <div className='h-10 w-24 bg-gray-200 rounded' />
+            <div className='h-10 w-32 bg-gray-200 rounded' />
+          </div>
+
+          {/* Image carousel skeleton */}
+          <div className='mb-6'>
+            <div className='bg-white rounded-lg border p-6'>
+              <div className='h-6 w-32 bg-gray-200 rounded mb-4' />
+              <div className='w-full pt-[31.25%] bg-gray-200 rounded-lg relative' />
+            </div>
+          </div>
+
+          {/* Product info grid skeleton */}
+          <div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+            {/* Basic info card */}
+            <div className='bg-white rounded-lg border p-6'>
+              <div className='h-6 w-40 bg-gray-200 rounded mb-4' />
+              <div className='space-y-3'>
+                <div className='h-8 w-3/4 bg-gray-200 rounded' />
+                <div className='h-4 w-1/2 bg-gray-200 rounded' />
+                <div className='h-4 w-2/3 bg-gray-200 rounded' />
+                <div className='h-6 w-1/3 bg-gray-200 rounded' />
+              </div>
+            </div>
+
+            {/* Price and stock card */}
+            <div className='bg-white rounded-lg border p-6'>
+              <div className='h-6 w-32 bg-gray-200 rounded mb-4' />
+              <div className='space-y-3'>
+                <div className='h-8 w-2/3 bg-gray-200 rounded' />
+                <div className='h-4 w-1/2 bg-gray-200 rounded' />
+                <div className='h-6 w-1/3 bg-gray-200 rounded' />
+              </div>
+            </div>
+
+            {/* Description card */}
+            <div className='bg-white rounded-lg border p-6'>
+              <div className='h-6 w-24 bg-gray-200 rounded mb-4' />
+              <div className='space-y-2'>
+                <div className='h-4 w-full bg-gray-200 rounded' />
+                <div className='h-4 w-full bg-gray-200 rounded' />
+                <div className='h-4 w-3/4 bg-gray-200 rounded' />
+              </div>
+            </div>
+
+            {/* Categories card */}
+            <div className='bg-white rounded-lg border p-6'>
+              <div className='h-6 w-24 bg-gray-200 rounded mb-4' />
+              <div className='flex flex-wrap gap-2'>
+                <div className='h-6 w-20 bg-gray-200 rounded-full' />
+                <div className='h-6 w-16 bg-gray-200 rounded-full' />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!product) {
     return <div>Produk tidak ditemukan</div>
   }
 
-  const stockStatus = getStockStatus(
-    product.inventory?.stock || 0,
-    product.isActive
-  )
+  const stockStatus = getStockStatus(product?.stock || 0, product?.isActive)
+
+  console.log(product)
 
   return (
     <div className='max-w-4xl mx-auto py-8 px-4'>

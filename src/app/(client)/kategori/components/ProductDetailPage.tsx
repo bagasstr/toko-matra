@@ -123,10 +123,10 @@ export function ProductDetailPage({
   }
 
   const handleBuyNow = () => {
-    if (!safeProduct || !userId) {
-      toast.error('Silakan login terlebih dahulu')
-      return
-    }
+    // if (!safeProduct || !userId) {
+    //   toast.error('Silakan login terlebih dahulu')
+    //   return
+    // }
     const actualQuantity = calculateActualQuantity(quantity)
     addToCartMutation({
       userId: userId,
@@ -141,10 +141,10 @@ export function ProductDetailPage({
   }
 
   const handleAddToCart = () => {
-    if (!safeProduct || !userId) {
-      toast.error('Silakan login terlebih dahulu')
-      return
-    }
+    // if (!safeProduct || !userId) {
+    //   toast.error('Silakan login terlebih dahulu')
+    //   return
+    // }
     const actualQuantity = calculateActualQuantity(quantity)
     addToCartMutation({
       userId: userId,

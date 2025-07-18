@@ -66,6 +66,7 @@ export const validateSession = cache(async () => {
               dateOfBirth: true,
               bio: true,
               companyName: true,
+              taxId: true,
             },
           },
           address: {

@@ -87,7 +87,7 @@ const AllProducts = memo(() => {
           </h2>
           {!isLoading && displayProducts.length > 0 && (
             <Link
-              href='/kategori'
+              href='/semua-produk'
               className='text-blue-600 hover:text-blue-800 text-sm font-medium transition-colors'>
               Lihat Semua
             </Link>

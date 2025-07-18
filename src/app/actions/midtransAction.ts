@@ -677,6 +677,7 @@ export async function getPaymentByOrderId(
         rawResponse: true,
         order: {
           select: {
+            notes: true,
             id: true,
             status: true,
             totalAmount: true,
@@ -823,6 +824,56 @@ export async function approveMidtransTransaction(
     return {
       success: false,
       message: 'Gagal menyetujui transaksi',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    }
+  }
+}
+
+// Function untuk refresh payment status berdasarkan order ID
+export async function refreshPaymentStatus(
+  orderId: string
+): Promise<PaymentResponse> {
+  try {
+    const session = await validateSession()
+    if (!session?.user) {
+      return {
+        success: false,
+        message: 'User tidak terautentikasi',
+      }
+    }
+
+    // Cari payment berdasarkan order ID
+    const payment = await prisma.payment.findFirst({
+      where: {
+        order: { id: orderId },
+        transactionId: { not: null },
+      },
+      include: { order: true },
+    })
+
+    if (!payment || !payment.transactionId) {
+      return {
+        success: false,
+        message: 'Transaksi tidak ditemukan atau belum memiliki transaction ID',
+      }
+    }
+
+    // Gunakan checkMidtransTransaction untuk refresh status
+    const result = await checkMidtransTransaction(payment.transactionId)
+
+    if (result.success) {
+      // Revalidate paths yang relevan
+      revalidatePath(`/orders/${orderId}`)
+      revalidatePath('/orders')
+      revalidatePath('/dashboard/pesanan')
+    }
+
+    return result
+  } catch (error) {
+    console.error('Error refreshing payment status:', error)
+    return {
+      success: false,
+      message: 'Gagal memperbarui status pembayaran',
       error: error instanceof Error ? error.message : 'Unknown error',
     }
   }

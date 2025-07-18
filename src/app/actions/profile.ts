@@ -29,7 +29,7 @@ interface ProfileData {
 
 async function saveImage(base64Image: string, userId: string): Promise<string> {
   try {
-   const filename = generateFileName('avatar.jpg', `profile-${userId}-`)
+    const filename = generateFileName('avatar.jpg', `profile-${userId}-`)
     const path = `profiles/${filename}`
 
     // Upload to Supabase Storage
@@ -46,7 +46,6 @@ async function saveImage(base64Image: string, userId: string): Promise<string> {
     }
 
     return url || ''
-
   } catch (error) {
     console.error('Error saving image:', error)
     throw new Error('Failed to save image')
@@ -70,25 +69,6 @@ export async function updateProfile(userId: string, data: ProfileData) {
       },
     })
 
-    // Check if phone number is already taken by another user
-    if (data.phoneNumber) {
-      const existingUser = await prisma.profile.findFirst({
-        where: {
-          phoneNumber: data.phoneNumber,
-          id: {
-            not: userId,
-          },
-        },
-      })
-
-      if (existingUser) {
-        return {
-          success: false,
-          error: 'Nomor telepon sudah digunakan',
-        }
-      }
-    }
-
     let imageUrl = data.imageUrl
 
     // If there's a new image (base64), save it
@@ -99,7 +79,7 @@ export async function updateProfile(userId: string, data: ProfileData) {
     // Update or create profile
     const profile = await prisma.profile.upsert({
       where: {
-        id: userId,
+        userId: userId,
       },
       update: {
         fullName: data.fullName,
@@ -113,7 +93,7 @@ export async function updateProfile(userId: string, data: ProfileData) {
         imageUrl: imageUrl,
       },
       create: {
-        id: userId,
+        id: uuidv4(), // Generate unique ID for profile
         userId: session.user.id, // Use the authenticated user's ID
         fullName: data.fullName,
         userName: data.userName,
@@ -131,8 +111,20 @@ export async function updateProfile(userId: string, data: ProfileData) {
       success: true,
       data: profile,
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Update profile error:', error)
+
+    // Handle unique constraint violation for phone number
+    if (
+      error?.code === 'P2002' &&
+      error?.meta?.target?.includes('phoneNumber')
+    ) {
+      return {
+        success: false,
+        error: 'Nomor telepon sudah digunakan oleh pengguna lain',
+      }
+    }
+
     return {
       success: false,
       error: 'Failed to update profile',
@@ -183,7 +175,6 @@ export async function uploadProfileImage(formData: FormData) {
       return { success: false, error: 'No file provided' }
     }
 
-
     // Generate unique filename for Supabase
     const filename = generateFileName(file.name, 'profile-')
     const path = `profiles/${filename}`
@@ -197,7 +188,6 @@ export async function uploadProfileImage(formData: FormData) {
     }
 
     return { success: true, url }
-
   } catch (error) {
     console.error('Error uploading profile image:', error)
     return { success: false, error: 'Gagal mengupload gambar profile' }

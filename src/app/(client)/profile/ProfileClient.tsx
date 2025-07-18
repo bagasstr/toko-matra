@@ -313,26 +313,81 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                   </div>
                 )}
 
-                <div className='flex items-center gap-2 text-sm text-gray-600'>
-                  <svg
-                    xmlns='http://www.w3.org/2000/svg'
-                    className='h-4 w-4 text-gray-400'
-                    fill='none'
-                    viewBox='0 0 24 24'
-                    stroke='currentColor'>
-                    <path
-                      strokeLinecap='round'
-                      strokeLinejoin='round'
-                      strokeWidth={2}
-                      d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
-                    />
-                  </svg>
-                  <span>
-                    Bergabung sejak{' '}
-                    {new Date(user.emailVerified || '').toLocaleDateString(
-                      'id-ID'
-                    )}
-                  </span>
+                {/* Bio Section */}
+                {user.profile?.bio && (
+                  <div className='border-t pt-3 mt-3'>
+                    <div className='flex items-start gap-2 text-sm text-gray-600'>
+                      <svg
+                        xmlns='http://www.w3.org/2000/svg'
+                        className='h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0'
+                        fill='none'
+                        viewBox='0 0 24 24'
+                        stroke='currentColor'>
+                        <path
+                          strokeLinecap='round'
+                          strokeLinejoin='round'
+                          strokeWidth={2}
+                          d='M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z'
+                        />
+                      </svg>
+                      <div>
+                        <p className='font-medium text-gray-700 mb-1'>Bio</p>
+                        <p className='text-gray-600 italic'>
+                          "{user.profile.bio}"
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Business Info Section */}
+                {(user.profile?.companyName || user.profile?.taxId) && (
+                  <div className='border-t pt-3 mt-3'>
+                    <div className='space-y-3'>
+                      <div className='flex items-center gap-2 text-sm font-medium text-gray-700'>
+                        <Building2 className='h-4 w-4 text-gray-400' />
+                        <span>Info Bisnis</span>
+                      </div>
+
+                      {user.profile.companyName && (
+                        <div className='flex items-center gap-2 text-sm text-gray-600 ml-6'>
+                          <Building2 className='h-3.5 w-3.5 text-gray-400' />
+                          <span>{user.profile.companyName}</span>
+                        </div>
+                      )}
+
+                      {user.profile.taxId && (
+                        <div className='flex items-center gap-2 text-sm text-gray-600 ml-6'>
+                          <Receipt className='h-3.5 w-3.5 text-gray-400' />
+                          <span>{user.profile.taxId}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className='border-t pt-3 mt-3'>
+                  <div className='flex items-center gap-2 text-sm text-gray-600'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      className='h-4 w-4 text-gray-400'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                      stroke='currentColor'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z'
+                      />
+                    </svg>
+                    <span>
+                      Bergabung sejak{' '}
+                      {new Date(user.emailVerified || '').toLocaleDateString(
+                        'id-ID'
+                      )}
+                    </span>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -366,61 +421,6 @@ const ProfileClient = ({ user }: ProfileClientProps) => {
                 </div>
               </CardContent>
             </Card>
-
-            {/* Bio */}
-            {user.profile?.bio && (
-              <Card className='shadow-sm'>
-                <CardHeader className='pb-2'>
-                  <CardTitle className='text-lg font-medium flex items-center gap-2'>
-                    <svg
-                      xmlns='http://www.w3.org/2000/svg'
-                      className='h-4 w-4 text-blue-600'
-                      fill='none'
-                      viewBox='0 0 24 24'
-                      stroke='currentColor'>
-                      <path
-                        strokeLinecap='round'
-                        strokeLinejoin='round'
-                        strokeWidth={2}
-                        d='M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z'
-                      />
-                    </svg>
-                    Bio
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='pt-2'>
-                  <p className='text-sm text-gray-600 italic'>
-                    "{user.profile.bio}"
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Business Info */}
-            {(user.profile?.companyName || user.profile?.taxId) && (
-              <Card className='shadow-sm'>
-                <CardHeader className='pb-2'>
-                  <CardTitle className='text-lg font-medium flex items-center gap-2'>
-                    <Building2 className='h-4 w-4 text-blue-600' />
-                    Info Bisnis
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className='space-y-4 pt-2'>
-                  {user.profile.companyName && (
-                    <div className='flex items-center gap-2 text-sm text-gray-600'>
-                      <Building2 className='h-4 w-4 text-gray-400' />
-                      <span>{user.profile.companyName}</span>
-                    </div>
-                  )}
-                  {user.profile.taxId && (
-                    <div className='flex items-center gap-2 text-sm text-gray-600'>
-                      <Receipt className='h-4 w-4 text-gray-400' />
-                      <span>{user.profile.taxId}</span>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
 
           {/* Address */}
