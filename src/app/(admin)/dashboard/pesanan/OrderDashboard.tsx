@@ -412,11 +412,6 @@ export default function OrderDashboard({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          <button className='flex items-center gap-2 px-3 py-2 border rounded-md w-full sm:w-auto'>
-            <Download className='h-4 w-4' />
-            <span>Export</span>
-          </button>
         </div>
       </div>
 
