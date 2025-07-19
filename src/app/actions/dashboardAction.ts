@@ -90,14 +90,24 @@ export async function getBestSellingProducts() {
       }
     }
 
-    type BestProductRaw = { productId: string; totalSold: number }
+    type BestProductRaw = { productId: string; totalsold: bigint }
     const bestProducts: BestProductRaw[] = await prisma.$queryRaw`\
-      SELECT "productId", SUM(quantity) as totalSold\
+      SELECT "productId", SUM(quantity)::INTEGER as totalsold\
       FROM "order_items"\
       GROUP BY "productId"\
-      ORDER BY totalSold DESC\
+      ORDER BY totalsold DESC\
       LIMIT 5\
     `
+
+    console.log('Raw best products from DB:', bestProducts)
+
+    if (!bestProducts || bestProducts.length === 0) {
+      console.log('No order items found in database')
+      return {
+        success: true,
+        data: [],
+      }
+    }
 
     const productsWithDetails = (
       await Promise.all(
@@ -108,14 +118,21 @@ export async function getBestSellingProducts() {
               name: true,
               price: true,
               stock: true,
+              unit: true,
             },
           })
           if (!product) return null
+          const totalSoldNumber = Number(item.totalsold) || 0
+          console.log(
+            `Product: ${product.name}, totalSold raw: ${item.totalsold}, converted: ${totalSoldNumber}`
+          )
+
           return {
             name: product.name,
             price: product.price,
             stock: product.stock,
-            totalSold: Number(item.totalSold),
+            totalSold: totalSoldNumber,
+            unit: product.unit,
           }
         })
       )
@@ -127,8 +144,11 @@ export async function getBestSellingProducts() {
         price: number
         stock: number
         totalSold: number
+        unit: string
       } => !!p
     )
+
+    console.log('Final products with details:', productsWithDetails)
 
     return {
       success: true,
@@ -237,6 +257,11 @@ export async function getSalesData() {
 
         return {
           date: date.toLocaleDateString('id-ID', { weekday: 'short' }),
+          fullDate: date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          }),
           sales: totalSales,
         }
       })

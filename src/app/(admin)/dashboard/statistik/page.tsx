@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import * as XLSX from 'xlsx'
+import StatistikSkeleton from './components/StatistikSkeleton'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   getDashboardStats,
@@ -26,6 +28,8 @@ import {
 import { Button } from '@/components/ui/button'
 
 export default function StatistikPage() {
+  const [isLoading, setIsLoading] = useState(true)
+
   const [dashboardStats, setDashboardStats] = useState<{
     newOrders: number
     totalCustomers: number
@@ -38,6 +42,7 @@ export default function StatistikPage() {
       name: string
       totalSold: number
       price: number
+      unit: string
       stock: number
     }[]
   >([])
@@ -47,81 +52,131 @@ export default function StatistikPage() {
   const [salesData, setSalesData] = useState<
     {
       date: string
+      fullDate: string
       sales: number
     }[]
   >([])
 
   useEffect(() => {
     async function fetchData() {
-      const statsResponse = await getDashboardStats()
-      const bestProductsResponse = await getBestSellingProducts()
-      const salesDataResponse = await getSalesData()
-      const productSoldDetailsResponse = await getProductSoldDetails()
-      if (statsResponse.success) {
-        setDashboardStats(statsResponse.data)
-      }
+      try {
+        setIsLoading(true)
 
-      if (bestProductsResponse.success) {
-        // Ensure totalSold is calculated based on completed order items
-        const processedProducts = bestProductsResponse.data.map((product) => ({
-          ...product,
-          totalSold: Number(product.totalSold) || 0,
-        }))
-        setBestSellingProducts(processedProducts)
-      }
+        const [
+          statsResponse,
+          bestProductsResponse,
+          salesDataResponse,
+          productSoldDetailsResponse,
+        ] = await Promise.all([
+          getDashboardStats(),
+          getBestSellingProducts(),
+          getSalesData(),
+          getProductSoldDetails(),
+        ])
 
-      if (salesDataResponse.success) {
-        setSalesData(salesDataResponse.data)
-      }
+        if (statsResponse.success) {
+          setDashboardStats(statsResponse.data)
+        }
 
-      if (productSoldDetailsResponse.success) {
-        setProductSoldDetails(productSoldDetailsResponse.data)
+        if (bestProductsResponse.success) {
+          // Ensure totalSold is calculated based on completed order items
+          const processedProducts = bestProductsResponse.data.map(
+            (product) => ({
+              ...product,
+              totalSold: Number(product.totalSold) || 0,
+            })
+          )
+          console.log('Best selling products data:', processedProducts)
+          setBestSellingProducts(processedProducts)
+        }
+
+        if (salesDataResponse.success) {
+          setSalesData(salesDataResponse.data)
+        }
+
+        if (productSoldDetailsResponse.success) {
+          setProductSoldDetails(productSoldDetailsResponse.data)
+        }
+      } catch (error) {
+        console.error('Error fetching statistics data:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
 
     fetchData()
   }, [])
 
-  const exportSalesToCSV = () => {
-    const csvContent = [
-      '"Tanggal";"Penjualan"',
-      ...salesData.map((item) => `"${item.date}";"${item.sales}"`),
-    ].join('\n')
+  const exportSalesToExcel = () => {
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new()
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'penjualan_mingguan.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Prepare data for Excel
+    const data = [
+      ['Tanggal', 'Penjualan'],
+      ...salesData.map((item) => [
+        item.fullDate, // Tanggal lengkap untuk Excel
+        item.sales.toLocaleString(),
+      ]),
+    ]
+
+    // Create worksheet from data
+    const worksheet = XLSX.utils.aoa_to_sheet(data)
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 15 }, // Tanggal column width
+      { wch: 15 }, // Penjualan column width
+    ]
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Penjualan Mingguan')
+
+    // Export to Excel file
+    XLSX.writeFile(workbook, 'penjualan_mingguan.xlsx')
   }
 
-  const exportBestProductsToCSV = () => {
-    const csvContent = [
-      '"Nama Produk";"Total Terjual";"Harga";"Stok"',
-      ...bestSellingProducts.map(
-        (product) =>
-          `"${product.name
-            .replace(/"/g, '""')
-            .replace(/\\r?\\n|\\r/g, ' ')}";` +
-          `"${product.totalSold}";` +
-          `"${product.price}";` +
-          `"${product.stock}"`
-      ),
-    ].join('\n')
+  const exportBestProductsToExcel = () => {
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new()
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'produk_terlaris.csv')
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    // Debug: Log the data being exported
+    console.log('Exporting best selling products:', bestSellingProducts)
+
+    // Prepare data for Excel
+    const data = [
+      ['Nama Produk', 'Total Terjual', 'Harga', 'Stok'],
+      ...bestSellingProducts.map((product) => [
+        product.name || 'N/A',
+        `${product.totalSold} ${product.unit}` || 0,
+        `${product.price.toLocaleString()}` || 0,
+        product.stock || 0,
+      ]),
+    ]
+
+    console.log('Excel data array:', data)
+
+    // Create worksheet from data
+    const worksheet = XLSX.utils.aoa_to_sheet(data)
+
+    // Set column widths
+    worksheet['!cols'] = [
+      { wch: 30 }, // Nama Produk column width
+      { wch: 15 }, // Total Terjual column width
+      { wch: 15 }, // Harga column width
+      { wch: 10 }, // Stok column width
+    ]
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Produk Terlaris')
+
+    // Export to Excel file
+    XLSX.writeFile(workbook, 'produk_terlaris.xlsx')
+  }
+
+  // Show skeleton while loading
+  if (isLoading) {
+    return <StatistikSkeleton />
   }
 
   return (
@@ -198,8 +253,13 @@ export default function StatistikPage() {
         <Card>
           <CardHeader className='flex justify-between items-center'>
             <CardTitle>Penjualan Mingguan</CardTitle>
-            <Button variant='outline' size='sm' onClick={exportSalesToCSV}>
-              <Download className='h-4 w-4 mr-2' /> Export CSV
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={exportSalesToExcel}
+              disabled={isLoading || salesData.length === 0}>
+              <Download className='h-4 w-4 mr-2' />
+              Export Excel
             </Button>
           </CardHeader>
           <CardContent>
@@ -225,8 +285,9 @@ export default function StatistikPage() {
             <Button
               variant='outline'
               size='sm'
-              onClick={exportBestProductsToCSV}>
-              <Download className='h-4 w-4 mr-2' /> Export CSV
+              onClick={exportBestProductsToExcel}
+              disabled={isLoading || bestSellingProducts.length === 0}>
+              <Download className='h-4 w-4 mr-2' /> Export Excel
             </Button>
           </CardHeader>
           <CardContent>
