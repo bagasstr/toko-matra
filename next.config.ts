@@ -23,7 +23,7 @@ const nextConfig: NextConfig = {
   // output: 'standalone',
   images: {
     // unoptimized: false, // Enable Next.js optimization untuk performa
-    domains: ['localhost', 'DESKTOP-02S3AEE'],
+    domains: ['localhost', 'toko.matrakosala.com', 'toko-matra.vercel.app'],
     remotePatterns: [
       {
         protocol: 'http',
@@ -32,9 +32,8 @@ const nextConfig: NextConfig = {
         pathname: '/api/images/**',
       },
       {
-        protocol: 'http',
-        hostname: 'DESKTOP-02S3AEE',
-        port: '3000',
+        protocol: 'https',
+        hostname: 'toko-matra.vercel.app',
         pathname: '/api/images/**',
       },
       {
@@ -44,11 +43,6 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'toko.matrakosala.com',
-        pathname: '/api/images/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'toko-matra-k4ms5ei2w-bagasstrs-projects.vercel.app',
         pathname: '/api/images/**',
       },
       {

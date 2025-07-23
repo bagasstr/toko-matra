@@ -147,6 +147,21 @@ export default async function OrderDetailPage({
                     </div>
                   </div>
                 </div>
+
+                {/* Notes Section */}
+                {order.notes && (
+                  <div className='border-t pt-4'>
+                    <div className='space-y-2'>
+                      <span className='text-sm font-medium text-gray-500'>
+                        Catatan Pesanan:
+                      </span>
+                      <div className='p-3 bg-gray-50 rounded-lg border'>
+                        <p className='text-sm text-gray-700'>{order.notes}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className='w-full flex justify-end'>
                   <PdfFakturButton
                     items={order.items.map((item: any) => ({
@@ -212,6 +227,18 @@ export default async function OrderDetailPage({
                             'id-ID'
                           )}
                         </p>
+
+                        {/* Find matching shipment item notes */}
+                        {order.shipment?.[0]?.notes && (
+                          <div className='mt-2 p-2 bg-gray-50 rounded text-xs'>
+                            <span className='font-medium text-gray-600'>
+                              Catatan:{' '}
+                            </span>
+                            <span className='text-gray-700'>
+                              {order.shipment[0].notes}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -230,18 +257,49 @@ export default async function OrderDetailPage({
               <CardContent className='space-y-4'>
                 <div className='space-y-2'>
                   <h3 className='font-medium text-gray-900'>
-                    {order.shipment?.map((shipment: any) => shipment.status)}
+                    Status: {order.shipment?.[0]?.status || 'Belum dikirim'}
                   </h3>
-                  <p className='text-sm text-gray-600'>
-                    {order.address.address}
-                  </p>
-                  <p className='text-sm text-gray-600'>
-                    {order.address.city}, {order.address.province}{' '}
-                    {order.address.postalCode}
-                  </p>
-                  <p className='text-sm text-gray-600'>
-                    {order.user.profile.phoneNumber}
-                  </p>
+                  {order.shipment?.[0]?.deliveryNumber && (
+                    <p className='text-sm text-gray-600'>
+                      <span className='font-medium'>No. Resi:</span>{' '}
+                      {order.shipment[0].deliveryNumber}
+                    </p>
+                  )}
+                  <div className='pt-2'>
+                    <p className='text-sm font-medium text-gray-700 mb-1'>
+                      Alamat Pengiriman:
+                    </p>
+                    <p className='text-sm text-gray-600'>
+                      {order.address.recipientName && (
+                        <span className='font-medium'>
+                          {order.address.recipientName}
+                          <br />
+                        </span>
+                      )}
+                      {order.address.address}
+                    </p>
+                    <p className='text-sm text-gray-600'>
+                      {order.address.city}, {order.address.province}{' '}
+                      {order.address.postalCode}
+                    </p>
+                    <p className='text-sm text-gray-600'>
+                      {order.user.profile.phoneNumber}
+                    </p>
+                  </div>
+
+                  {/* Shipment Notes */}
+                  {order.shipment?.[0]?.notes && (
+                    <div className='pt-3 border-t'>
+                      <span className='text-sm font-medium text-gray-700'>
+                        Catatan Pengiriman:
+                      </span>
+                      <div className='mt-1 p-2 bg-blue-50 rounded border border-blue-200'>
+                        <p className='text-sm text-blue-800'>
+                          {order.shipment[0].notes}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

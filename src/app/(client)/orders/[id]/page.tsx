@@ -21,6 +21,7 @@ import { clearCartAfterOrder } from '@/app/actions/cartAction'
 import { useCartStore } from '@/hooks/zustandStore'
 import { cn } from '@/lib/utils'
 import { createNotification } from '@/app/actions/notificationAction'
+import { refreshPaymentStatus } from '@/app/actions/midtransAction'
 
 // Optimized components
 import {
@@ -29,6 +30,7 @@ import {
   PaymentInfo,
   OrderSummary,
   ShippingAddress,
+  WebhookAlert,
 } from './components'
 import { useOrderData, type OrderData } from './hooks/useOrderData'
 
@@ -94,18 +96,38 @@ export default function OrderPage() {
 
   // Optimize refresh function with useCallback
   const handleForceRefresh = useCallback(async () => {
+    if (!orderData?.payment?.order?.id) return
+
     setIsRefreshing(true)
     try {
-      // Hanya refresh query data - webhook Midtrans akan update status otomatis
-      await refetch()
-      toast.success('Data berhasil diperbarui')
+      // Manual sync dengan Midtrans API jika webhook tidak bekerja
+      const syncResult = await refreshPaymentStatus(orderData.payment.order.id)
+
+      if (syncResult.success) {
+        // Refresh query data setelah sync berhasil
+        await refetch()
+        toast.success('Status pembayaran berhasil diperbarui')
+      } else {
+        // Jika sync gagal, coba refresh data saja
+        await refetch()
+        toast.warning(
+          'Data diperbarui, namun sync dengan Midtrans gagal: ' +
+            syncResult.message
+        )
+      }
     } catch (error) {
       console.error('Error refreshing data:', error)
-      toast.error('Gagal memperbarui data. Silakan coba lagi.')
+      // Fallback ke refresh data biasa
+      try {
+        await refetch()
+        toast.info('Data diperbarui, namun tidak dapat sync dengan Midtrans')
+      } catch (fallbackError) {
+        toast.error('Gagal memperbarui data. Silakan coba lagi.')
+      }
     } finally {
       setIsRefreshing(false)
     }
-  }, [refetch])
+  }, [orderData?.payment?.order?.id, refetch])
 
   // Optimize success payment handler
   const handleSuccessPayment = useCallback(async () => {
@@ -215,8 +237,28 @@ export default function OrderPage() {
             <h1 className='text-2xl sm:text-3xl font-bold text-gray-900'>
               Detail Pesanan
             </h1>
+            <Button
+              onClick={handleForceRefresh}
+              disabled={isRefreshing}
+              variant='outline'
+              size='sm'
+              className='flex items-center gap-2'>
+              {isRefreshing ? (
+                <Loader2 className='w-4 h-4 animate-spin' />
+              ) : (
+                <RefreshCw className='w-4 h-4' />
+              )}
+              {isRefreshing ? 'Memperbarui...' : 'Perbarui Status'}
+            </Button>
           </div>
         </div>
+
+        {/* Webhook Alert - tampilkan jika webhook tidak bekerja */}
+        <WebhookAlert
+          paymentStatus={payment.status}
+          orderCreatedAt={order.createdAt}
+          onRefresh={handleForceRefresh}
+        />
 
         {/* Order Status */}
         <Card className='mb-6'>
@@ -336,7 +378,12 @@ export default function OrderPage() {
           {/* Right Column - Payment Information */}
           <div className='lg:col-span-1'>
             <div className='sticky top-6'>
-              <PaymentInfo payment={payment} transaction={transaction} />
+              <PaymentInfo
+                payment={payment}
+                transaction={transaction}
+                onRefresh={handleForceRefresh}
+                isRefreshing={isRefreshing}
+              />
             </div>
           </div>
         </div>

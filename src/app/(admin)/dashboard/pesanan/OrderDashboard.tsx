@@ -412,11 +412,6 @@ export default function OrderDashboard({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-
-          <button className='flex items-center gap-2 px-3 py-2 border rounded-md w-full sm:w-auto'>
-            <Download className='h-4 w-4' />
-            <span>Export</span>
-          </button>
         </div>
       </div>
 
@@ -641,7 +636,24 @@ export default function OrderDashboard({
                                 <TableBody>
                                   {order.items.map((item: any, idx: number) => (
                                     <TableRow key={idx}>
-                                      <TableCell>{item.product.name}</TableCell>
+                                      <TableCell>
+                                        <div>
+                                          <div className='font-medium'>
+                                            {item.product.name}
+                                          </div>
+                                          {/* Find matching shipment item notes */}
+                                          {order.shipment?.[0]?.notes && (
+                                            <div className='mt-2 p-2 bg-gray-50 rounded text-xs'>
+                                              <span className='font-medium text-gray-600'>
+                                                Catatan:{' '}
+                                              </span>
+                                              <span className='text-gray-700'>
+                                                {order.shipment[0].notes}
+                                              </span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </TableCell>
                                       <TableCell className='text-right'>
                                         {item.quantity}
                                       </TableCell>

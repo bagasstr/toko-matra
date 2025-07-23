@@ -1,15 +1,13 @@
 'use client'
 
-import React, { lazy, Suspense } from 'react'
-import { Bell } from 'lucide-react'
+import React from 'react'
+import { Bell, InboxIcon } from 'lucide-react'
 import { getNotifications } from '@/app/actions/notificationAction'
 import NotificationItem from './components/NotificationItem'
-import { useEffect, useState } from 'react'
-import { validateSession } from '@/app/actions/session'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSessionStore } from '@/hooks/zustandStore'
+import { useQuery } from '@tanstack/react-query'
 import Loading from './loading'
 
-const NotificationItems = lazy(() => import('./components/NotificationItem'))
 interface Notification {
   id: string
   title: string
@@ -19,58 +17,79 @@ interface Notification {
 }
 
 const NotificationsPage = () => {
-  const queryClient = useQueryClient()
-  const [error, setError] = useState<string | null>(null)
-  const [userId, setUserId] = useState<string | null>(null)
+  // Use optimized session store instead of manual session handling
+  const {
+    userId,
+    isLoggedIn,
+    isLoading: sessionLoading,
+    isInitialized,
+    initializeSession,
+  } = useSessionStore()
 
-  // Get user ID on component mount
-  useEffect(() => {
-    const getUserId = async () => {
-      try {
-        const session = await validateSession()
-        if (session?.user?.id) {
-          setUserId(session.user.id)
-        } else {
-          setError('User not authenticated')
-        }
-      } catch (err) {
-        setError('Failed to authenticate user')
-        console.error('Error getting user ID:', err)
-      }
-    }
-
-    getUserId()
-  }, [])
+  // Initialize session on component mount
+  React.useEffect(() => {
+    initializeSession()
+  }, [initializeSession])
 
   // TanStack Query for notifications
-  const { data: notifications = [], isLoading } = useQuery({
+  const {
+    data: notifications = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ['notifications', userId],
     queryFn: async () => {
       if (!userId) throw new Error('User ID not available')
       const result = await getNotifications(userId)
-      if (result.success && result.data) {
-        return result.data
+      if (result.success) {
+        return result.data || []
       } else {
         throw new Error(result.error || 'Failed to fetch notifications')
       }
     },
-    enabled: !!userId,
+    enabled: !!userId && isLoggedIn && isInitialized,
     refetchOnWindowFocus: false,
     refetchOnMount: true,
-    // staleTime: 30000,
+    staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 5 * 60 * 1000, // 5 minutes
+    retry: 1, // Only retry once to avoid long loading
   })
 
-  if (error) {
+  // Handle session loading - include both loading state and initialization state
+  if (sessionLoading || !isInitialized) {
+    return <Loading />
+  }
+
+  // Handle not logged in
+  if (!isLoggedIn) {
     return (
       <div className='max-w-2xl mx-auto py-10 px-4'>
-        <div className='text-red-500 text-center py-10'>{error}</div>
+        <div className='text-center py-10'>
+          <p className='text-gray-500 mb-4'>
+            Silakan login untuk melihat notifikasi
+          </p>
+          <a href='/login' className='text-blue-600 hover:underline'>
+            Login sekarang
+          </a>
+        </div>
       </div>
     )
   }
 
-  if (isLoading || !notifications.length) {
+  // Handle query loading
+  if (isLoading) {
     return <Loading />
+  }
+
+  // Handle error
+  if (error) {
+    return (
+      <div className='max-w-2xl mx-auto py-10 px-4'>
+        <div className='text-red-500 text-center py-10'>
+          {error instanceof Error ? error.message : 'Terjadi kesalahan'}
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -80,18 +99,34 @@ const NotificationsPage = () => {
           <Bell /> Notifikasi
         </h1>
       </div>
-      <div className='space-y-4'>
-        {notifications.map((notif) => (
-          <NotificationItem
-            key={notif.id}
-            id={notif.id}
-            title={notif.title}
-            message={notif.message}
-            createdAt={notif.createdAt}
-            isRead={notif.isRead}
-          />
-        ))}
-      </div>
+
+      {notifications.length === 0 ? (
+        // Empty state - no more loading spinner!
+        <div className='text-center py-16'>
+          <InboxIcon className='mx-auto h-16 w-16 text-gray-300 mb-4' />
+          <h3 className='text-lg font-medium text-gray-900 mb-2'>
+            Tidak ada notifikasi
+          </h3>
+          <p className='text-gray-500'>
+            Notifikasi akan muncul di sini ketika ada update pesanan atau
+            informasi penting lainnya.
+          </p>
+        </div>
+      ) : (
+        // Show notifications
+        <div className='space-y-4'>
+          {notifications.map((notif) => (
+            <NotificationItem
+              key={notif.id}
+              id={notif.id}
+              title={notif.title}
+              message={notif.message}
+              createdAt={notif.createdAt}
+              isRead={notif.isRead}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

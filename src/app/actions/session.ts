@@ -5,6 +5,8 @@ import { prisma } from '../../lib/prisma'
 import { cookies } from 'next/headers'
 import { generateCustomId } from '@/lib/helpper'
 import { cache } from 'react'
+import { unstable_cache } from 'next/cache'
+import { CACHE_KEYS, CACHE_DURATIONS } from '@/lib/cache'
 
 export const createSession = async (id: string) => {
   const expires = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000) // 2 days
@@ -38,6 +40,68 @@ export const createSession = async (id: string) => {
   }
 }
 
+// Optimized session validation with reduced query complexity
+const getCachedSessionData = unstable_cache(
+  async (sessionToken: string) => {
+    const session = await prisma.session.findUnique({
+      where: { sessionToken },
+      select: {
+        user: {
+          select: {
+            id: true,
+            role: true,
+            email: true,
+            emailVerified: true,
+            typeUser: true,
+            profile: {
+              select: {
+                id: true,
+                fullName: true,
+                userName: true,
+                imageUrl: true,
+                phoneNumber: true,
+                gender: true,
+                dateOfBirth: true,
+                bio: true,
+                companyName: true,
+                taxId: true,
+              },
+            },
+            // Only load primary address for better performance
+            address: {
+              where: { isPrimary: true },
+              select: {
+                id: true,
+                labelAddress: true,
+                address: true,
+                city: true,
+                province: true,
+                district: true,
+                village: true,
+                postalCode: true,
+                isPrimary: true,
+                isActive: true,
+                recipientName: true,
+              },
+              take: 1,
+            },
+            _count: {
+              select: {
+                order: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // Convert any Decimal objects to plain JavaScript numbers/strings
+    return session ? JSON.parse(JSON.stringify(session)) : null
+  },
+  [CACHE_KEYS.SESSION_DATA],
+  { revalidate: CACHE_DURATIONS.SHORT }
+)
+
 export const validateSession = cache(async () => {
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get('sessionToken')?.value
@@ -45,59 +109,7 @@ export const validateSession = cache(async () => {
     return null
   }
 
-  const session = await prisma.session.findUnique({
-    where: { sessionToken },
-    select: {
-      user: {
-        select: {
-          id: true,
-          role: true,
-          email: true,
-          emailVerified: true,
-          typeUser: true,
-          profile: {
-            select: {
-              id: true,
-              fullName: true,
-              userName: true,
-              imageUrl: true,
-              phoneNumber: true,
-              gender: true,
-              dateOfBirth: true,
-              bio: true,
-              companyName: true,
-            },
-          },
-          address: {
-            select: {
-              id: true,
-              labelAddress: true,
-              address: true,
-              city: true,
-              province: true,
-              district: true,
-              village: true,
-              postalCode: true,
-              isPrimary: true,
-              isActive: true,
-              recipientName: true,
-            },
-            orderBy: {
-              createdAt: 'desc',
-            },
-          },
-          _count: {
-            select: {
-              order: true,
-            },
-          },
-        },
-      },
-    },
-  })
-
-  // Convert any Decimal objects to plain JavaScript numbers/strings
-  return session ? JSON.parse(JSON.stringify(session)) : null
+  return await getCachedSessionData(sessionToken)
 })
 
 export const destroySession = async () => {

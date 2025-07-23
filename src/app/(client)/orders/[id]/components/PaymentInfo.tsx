@@ -1,8 +1,10 @@
 import { memo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { ButtonCopy, ButtonCancelTrx } from '@/components/ButtonCopy'
 import { cn } from '@/lib/utils'
 import { CountdownTimer } from './CountdownTimer'
+import { RefreshCw, Loader2 } from 'lucide-react'
 
 interface PaymentData {
   id: string
@@ -21,10 +23,17 @@ interface PaymentData {
 interface PaymentInfoProps {
   payment: PaymentData
   transaction?: any
+  onRefresh?: () => Promise<void>
+  isRefreshing?: boolean
 }
 
 export const PaymentInfo = memo(
-  ({ payment, transaction }: PaymentInfoProps) => {
+  ({
+    payment,
+    transaction,
+    onRefresh,
+    isRefreshing = false,
+  }: PaymentInfoProps) => {
     // Safely check if payment exists
     if (!payment) {
       return (
@@ -138,6 +147,28 @@ export const PaymentInfo = memo(
                     <div className='text-xs text-red-600 mt-2 opacity-80'>
                       Status akan terupdate otomatis setelah pembayaran
                     </div>
+                    {onRefresh && (
+                      <div className='mt-3 pt-2 border-t border-red-200'>
+                        <Button
+                          onClick={onRefresh}
+                          disabled={isRefreshing}
+                          variant='outline'
+                          size='sm'
+                          className='w-full flex items-center gap-2 text-red-700 border-red-300 hover:bg-red-50'>
+                          {isRefreshing ? (
+                            <Loader2 className='w-4 h-4 animate-spin' />
+                          ) : (
+                            <RefreshCw className='w-4 h-4' />
+                          )}
+                          {isRefreshing
+                            ? 'Memeriksa...'
+                            : 'Periksa Status Pembayaran'}
+                        </Button>
+                        <div className='text-xs text-red-600 mt-1 text-center opacity-70'>
+                          Gunakan jika status tidak update otomatis
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })()}
