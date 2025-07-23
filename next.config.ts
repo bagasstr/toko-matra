@@ -23,7 +23,12 @@ const nextConfig: NextConfig = {
   // output: 'standalone',
   images: {
     // unoptimized: false, // Enable Next.js optimization untuk performa
-    domains: ['localhost', 'DESKTOP-02S3AEE'],
+    domains: [
+      'localhost',
+      'DESKTOP-02S3AEE',
+      'toko.matrakosala.com',
+      'toko-matra.vercel.app',
+    ],
     remotePatterns: [
       {
         protocol: 'http',
@@ -35,6 +40,11 @@ const nextConfig: NextConfig = {
         protocol: 'http',
         hostname: 'DESKTOP-02S3AEE',
         port: '3000',
+        pathname: '/api/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'toko-matra.vercel.app',
         pathname: '/api/images/**',
       },
       {
