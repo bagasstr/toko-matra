@@ -21,6 +21,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 // import { formatRupiah } from '@/lib/helpper'
 import { getSafeUserData } from '@/app/actions/login'
+import { getUserAddresses } from '@/app/actions/addressAction'
+import { estimateShipping } from '@/lib/shipping'
 
 // Dynamic import untuk menghindari SSR error
 const PdfCartButton = dynamic(
@@ -196,6 +198,7 @@ const CartClient = memo(
     const [customerInfo, setCustomerInfo] = useState<any>(null)
     const [isUpdating, setIsUpdating] = useState(false)
     const [logoBase64, setLogoBase64] = useState<string>('')
+    const [addresses, setAddresses] = useState<any[]>([])
 
     // Memoized calculations
     const selectedProduct = useMemo(
@@ -214,9 +217,35 @@ const CartClient = memo(
       return calculateSubtotal() * 0.11
     }, [calculateSubtotal])
 
+    const activeAddress = useMemo(() => {
+      if (!addresses?.length) return null
+      return (
+        addresses.find((a: any) => a.isActive) ||
+        addresses.find((a: any) => a.isPrimary) ||
+        addresses[0]
+      )
+    }, [addresses])
+
+    const calculateShipping = useCallback(() => {
+      if (!selectedProduct.length || !activeAddress) return 0
+      const { shippingCost } = estimateShipping({
+        items: selectedProduct.map((item: any) => ({
+          weight: Number(item.product?.weight) || 1,
+          quantity: Number(item.quantity) || 0,
+        })),
+        address: {
+          city: activeAddress.city,
+          district: activeAddress.district,
+          province: activeAddress.province,
+        },
+        subtotal: calculateSubtotal(),
+      })
+      return shippingCost
+    }, [selectedProduct, activeAddress, calculateSubtotal])
+
     const calculateTotal = useCallback(() => {
-      return calculateSubtotal() + calculatePPN()
-    }, [calculateSubtotal, calculatePPN])
+      return calculateSubtotal() + calculatePPN() + calculateShipping()
+    }, [calculateSubtotal, calculatePPN, calculateShipping])
 
     const calculateTotalWeight = useCallback(() => {
       return selectedProduct.reduce(
@@ -257,6 +286,16 @@ const CartClient = memo(
       [calculateTotal]
     )
 
+    const formattedShipping = useMemo(
+      () =>
+        new Intl.NumberFormat('id-ID', {
+          style: 'currency',
+          currency: 'IDR',
+          minimumFractionDigits: 0,
+        }).format(calculateShipping()),
+      [calculateShipping]
+    )
+
     const { data: fetchedCartData, isLoading: loadingCart } = useQuery({
       queryKey: ['cart', validate?.user?.id],
       queryFn: () => getCartItems(),
@@ -278,6 +317,19 @@ const CartClient = memo(
       }
       loadLogo()
       setMounted(true)
+    }, [])
+
+    // Fetch user addresses for shipping estimation
+    useEffect(() => {
+      const fetchAddresses = async () => {
+        try {
+          const res = await getUserAddresses()
+          if (res?.success && Array.isArray(res.data)) setAddresses(res.data)
+        } catch (e) {
+          console.error('Failed to fetch addresses:', e)
+        }
+      }
+      fetchAddresses()
     }, [])
 
     useEffect(() => {
@@ -533,6 +585,15 @@ const CartClient = memo(
                   <div className='flex justify-between'>
                     <span>PPN (11%)</span>
                     <span>{formattedPPN}</span>
+                  </div>
+                  <div className='flex justify-between'>
+                    <span>
+                      Ongkir{' '}
+                      {activeAddress
+                        ? `(estimasi)`
+                        : '(pilih alamat di pembayaran)'}
+                    </span>
+                    <span>{formattedShipping}</span>
                   </div>
                   <div className='flex justify-between'>
                     <span>Total Berat</span>

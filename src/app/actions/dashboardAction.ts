@@ -14,33 +14,39 @@ const getCachedDashboardStats = cache(async () => {
   firstDay.setHours(0, 0, 0, 0)
 
   // Parallel execution of all queries for better performance
-  const [newOrders, totalCustomers, lowStockProducts, bestSellingProduct] =
-    await Promise.all([
-      // Get new orders in last 7 days
-      prisma.order.count({
-        where: {
-          createdAt: { gte: sevenDaysAgo },
-          status: 'CONFIRMED',
-        },
-      }),
+  const [
+    newOrders,
+    totalCustomers,
+    lowStockProducts,
+    bestSellingProduct,
+    monthlyRevenue,
+    monthlyProfit,
+  ] = await Promise.all([
+    // Get new orders in last 7 days
+    prisma.order.count({
+      where: {
+        createdAt: { gte: sevenDaysAgo },
+        status: 'CONFIRMED',
+      },
+    }),
 
-      // Get total customers
-      prisma.user.count({
-        where: { role: 'CUSTOMER' },
-      }),
+    // Get total customers
+    prisma.user.count({
+      where: { role: 'CUSTOMER' },
+    }),
 
-      // Get low stock products (less than 10)
-      prisma.product.count({
-        where: {
-          stock: { lte: 10 },
-          isActive: true,
-        },
-      }),
+    // Get low stock products (less than 10)
+    prisma.product.count({
+      where: {
+        stock: { lte: 10 },
+        isActive: true,
+      },
+    }),
 
-      // Get best selling product this month with product name in one query
-      prisma.$queryRaw<
-        { productId: string; totalSold: bigint; productName: string }[]
-      >`
+    // Get best selling product this month with product name in one query
+    prisma.$queryRaw<
+      { productId: string; totalSold: bigint; productName: string }[]
+    >`
         SELECT 
           oi."productId",
           SUM(oi.quantity) as "totalSold",
@@ -52,13 +58,32 @@ const getCachedDashboardStats = cache(async () => {
         ORDER BY "totalSold" DESC
         LIMIT 1
       `,
-    ])
+
+    // Monthly revenue (confirmed orders this month)
+    prisma.$queryRaw<{ totalRevenue: bigint }[]>`
+        SELECT COALESCE(SUM(o."totalAmount"), 0)::BIGINT as "totalRevenue"
+        FROM "orders" o
+        WHERE DATE_TRUNC('month', o."createdAt") = DATE_TRUNC('month', NOW())
+          AND o.status IN ('CONFIRMED','SHIPPED','DELIVERED')
+      `,
+
+    // Monthly profit = sum((order_item.price - order_item.costPrice) * qty)
+    prisma.$queryRaw<{ totalProfit: bigint }[]>`
+        SELECT COALESCE(SUM((oi.price - oi."costPrice") * oi.quantity), 0)::BIGINT as "totalProfit"
+        FROM "order_items" oi
+        JOIN "orders" o ON oi."orderId" = o."id_order"
+        WHERE DATE_TRUNC('month', oi."createdAt") = DATE_TRUNC('month', NOW())
+          AND o.status IN ('CONFIRMED','SHIPPED','DELIVERED')
+      `,
+  ])
 
   return {
     newOrders,
     totalCustomers,
     lowStockProducts,
     bestSellingProduct: bestSellingProduct[0]?.productName || 'Tidak ada',
+    monthlyRevenue: Number((monthlyRevenue as any)?.[0]?.totalRevenue ?? 0),
+    monthlyProfit: Number((monthlyProfit as any)?.[0]?.totalProfit ?? 0),
   }
 })
 
@@ -70,6 +95,7 @@ const getCachedBestSellingProducts = cache(async () => {
     totalsold: bigint
     name: string
     price: bigint
+    costPrice: bigint
     stock: bigint
     unit: string
   }
@@ -80,12 +106,13 @@ const getCachedBestSellingProducts = cache(async () => {
         SUM(oi.quantity)::INTEGER as totalsold,
         p.name,
         p.price,
+        p."costPrice",
         p.stock,
         p.unit
       FROM "order_items" oi
       JOIN "products" p ON oi."productId" = p."id_product"
       WHERE p."isActive" = true
-      GROUP BY oi."productId", p.name, p.price, p.stock, p.unit
+      GROUP BY oi."productId", p.name, p.price, p."costPrice", p.stock, p.unit
       ORDER BY totalsold DESC
       LIMIT 5`
 
@@ -96,6 +123,7 @@ const getCachedBestSellingProducts = cache(async () => {
   return bestProducts.map((item) => ({
     name: item.name,
     price: Number(item.price),
+    costPrice: Number(item.costPrice) || 0,
     stock: Number(item.stock),
     totalSold: Number(item.totalsold) || 0,
     unit: item.unit || 'pcs',

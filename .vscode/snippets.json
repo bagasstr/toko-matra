@@ -1,0 +1,14 @@
+{
+  "typescriptreact": {
+    "abbreviations": {
+      "// Wrap Utilities": "",
+      "div": "div[className={cn(\"${1}\")}]",
+      "w-section": "section.${1:section-name}>div.container",
+      "w-card": "div.card>div.card-body",
+      "w-modal": "div.modal.fade[tabindex=-1]>div.modal-dialog>div.modal-content>div.modal-header>h5.modal-title+button.btn-close[data-bs-dismiss=modal]^div.modal-body^div.modal-footer>button.btn.btn-secondary[data-bs-dismiss=modal]{Close}+button.btn.btn-primary{Save}",
+      "w-conditional": "{${1:condition} && (|>$0|)}",
+      "w-map": "{${1:items}.map((${2:item}, ${3:index}) => (|>$0|))}",
+      "w-fragment": "<>|>$0|</>"
+    }
+  }
+}

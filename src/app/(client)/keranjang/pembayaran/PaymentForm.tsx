@@ -24,6 +24,7 @@ import { getUserAddresses } from '../../../actions/addressAction'
 import { useRouter } from 'next/navigation'
 import { generateProformaPDF } from '@/lib/pdfProInvFormatter'
 import { getPaymentByOrderId } from '@/app/actions/midtransAction'
+import { estimateShipping } from '@/lib/shipping'
 import dynamic from 'next/dynamic'
 
 // Dynamic import untuk menghindari SSR error
@@ -120,8 +121,26 @@ const PaymentForm = ({
     0
   )
 
-  const total = subtotal + subtotal * 0.11
   const ppn = subtotal * 0.11
+
+  // Estimate shipping based on selected address and cart weight
+  const selectedAddress = addresses.find(
+    (addr) => addr.id === selectedAddressId
+  )
+  const { shippingCost } = estimateShipping({
+    items: cartItems.map((item: any) => ({
+      weight: Number(item.product.weight) || 1,
+      quantity: Number(item.quantity) || 0,
+    })),
+    address: {
+      city: selectedAddress?.city,
+      district: selectedAddress?.district,
+      province: selectedAddress?.province,
+    },
+    subtotal,
+  })
+
+  const total = subtotal + ppn + shippingCost
 
   // Customer data
   const customerName = customerProfile?.fullName || ''
@@ -235,14 +254,25 @@ const PaymentForm = ({
               country_code: 'IDN',
             },
           },
-          itemDetails: resultPayment.data.order.items.map((item) => ({
-            id: item.product.name, // Use product name as ID since product.id might not be available
-            price: item.price,
-            quantity: item.quantity,
-            name: item.product.name,
-            merchant_name: 'Toko Matra',
-            url: 'https://tokomatra.com',
-          })),
+          itemDetails: [
+            ...resultPayment.data.order.items.map((item) => ({
+              id: item.product.name, // Use product name as ID since product.id might not be available
+              price: item.price,
+              quantity: item.quantity,
+              name: item.product.name,
+              merchant_name: 'Toko Matra',
+              url: 'https://tokomatra.com',
+            })),
+            // Explicit shipping line for clarity in Midtrans invoice
+            {
+              id: 'ONGKIR',
+              price: Math.max(0, Math.round(shippingCost)),
+              quantity: 1,
+              name: 'Biaya Pengiriman',
+              merchant_name: 'Toko Matra',
+              url: 'https://tokomatra.com',
+            },
+          ],
         }),
       })
 
@@ -314,9 +344,6 @@ const PaymentForm = ({
   // Siapkan data invoice
   const invoiceNumber = 'PI-' + Date.now() // Bisa diganti dengan nomor invoice dari backend
   const invoiceDate = new Date().toLocaleDateString('id-ID')
-  const selectedAddress = addresses.find(
-    (addr) => addr.id === selectedAddressId
-  )
   const customerLabelAddress = selectedAddress
     ? `${selectedAddress.labelAddress}`
     : '-'
@@ -370,7 +397,7 @@ const PaymentForm = ({
                   href={{
                     pathname: '/profile',
                     query: {
-                      user: customerProfile?.id,
+                      user: cookies?.user?.id,
                     },
                   }}>
                   <Button>
@@ -418,7 +445,13 @@ const PaymentForm = ({
                   </div>
                 ))}
 
-                <Link href='/profile/addresses/new'>
+                <Link
+                  href={{
+                    pathname: '/profile',
+                    query: {
+                      user: cookies?.user?.id,
+                    },
+                  }}>
                   <Button variant='outline' className='w-full mt-2'>
                     <MapPin className='w-4 h-4 mr-2' />
                     Tambah Alamat Baru
@@ -491,6 +524,12 @@ const PaymentForm = ({
                   <span className='text-gray-600'>PPN (11%)</span>
                   <span className='font-medium'>
                     Rp {(subtotal * 0.11).toLocaleString('id-ID')}
+                  </span>
+                </div>
+                <div className='flex justify-between'>
+                  <span className='text-gray-600'>Ongkir</span>
+                  <span className='font-medium'>
+                    Rp {shippingCost.toLocaleString('id-ID')}
                   </span>
                 </div>
                 <div className='flex justify-between'>

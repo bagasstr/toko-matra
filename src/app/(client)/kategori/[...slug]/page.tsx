@@ -45,40 +45,46 @@ function CategoryPage() {
     enabled: categories.length > 0,
   })
 
-  // Filter products based on category slugs
+  const slugs = params.slug as string[]
+
+  // Determine current product slug for both 2-segment and 3-segment routes
+  const maybeProductSlug = useMemo(() => {
+    if (slugs.length === 3) return slugs[2]
+    if (slugs.length === 2) return slugs[1]
+    return null
+  }, [slugs])
+
+  // Current product if URL points to a product slug (supports 2 or 3 segments)
+  const currentProduct = useMemo(() => {
+    if (!allProducts || !maybeProductSlug) return null
+    return allProducts.find((p) => p.slug === maybeProductSlug) || null
+  }, [allProducts, maybeProductSlug])
+
+  // Filter products based on category slugs (skip when in product detail)
   const filteredProducts = useMemo(() => {
     if (!allProducts || !categories.length) return []
+    if (currentProduct) return allProducts
 
-    // If product detail page, return all products
-    if (params.slug[2]) return allProducts
-
-    let slugs: string[] = []
-    if (params.slug[1]) {
-      const parentCat = findCategoryBySlug(categories, params.slug[0])
-      const subCat = parentCat?.children?.find(
-        (cat) => cat.slug === params.slug[1]
-      )
-      slugs = getAllCategorySlugs(subCat)
-    } else if (params.slug[0]) {
-      const parentCat = findCategoryBySlug(categories, params.slug[0])
-      slugs = getAllCategorySlugs(parentCat)
+    let selectedSlugs: string[] = []
+    if (slugs[1]) {
+      const parentCat = findCategoryBySlug(categories, slugs[0])
+      const subCat = parentCat?.children?.find((cat) => cat.slug === slugs[1])
+      selectedSlugs = getAllCategorySlugs(subCat)
+    } else if (slugs[0]) {
+      const parentCat = findCategoryBySlug(categories, slugs[0])
+      selectedSlugs = getAllCategorySlugs(parentCat)
     }
 
-    if (slugs.length > 0) {
+    if (selectedSlugs.length > 0) {
       return allProducts.filter((product) =>
-        slugs.includes(product.category?.slug || '')
+        selectedSlugs.includes(product.category?.slug || '')
       )
     }
     return allProducts
-  }, [allProducts, categories, params.slug])
+  }, [allProducts, categories, slugs, currentProduct])
 
   // Find the current parent category by slug from params
-  const parentCategory = findCategoryBySlug(categories, params.slug[0]) || null
-
-  // Find the current product if we're in product detail view
-  const currentProduct = params.slug[2]
-    ? filteredProducts?.find((p) => p.slug === params.slug[2]) || null
-    : null
+  const parentCategory = findCategoryBySlug(categories, slugs[0]) || null
 
   // Ensure currentProduct is properly structured
   const safeCurrentProduct = currentProduct
@@ -125,11 +131,13 @@ function CategoryPage() {
   return (
     <div className=''>
       <Breadcrumb
-        slugs={params.slug as string[]}
-        isProductDetail={(params.slug as string[]).length === 3}
+        slugs={slugs}
+        isProductDetail={
+          slugs.length === 3 || (slugs.length === 2 && !!currentProduct)
+        }
       />
 
-      {params.slug.length === 1 ? (
+      {slugs.length === 1 && (parentCategory?.children?.length || 0) > 0 ? (
         <Suspense fallback={<div>Loading...</div>}>
           <SubCategoryPage
             parentCategory={parentCategory as Category}
@@ -137,7 +145,7 @@ function CategoryPage() {
             loading={loading}
           />
         </Suspense>
-      ) : params.slug.length === 2 ? (
+      ) : slugs.length === 1 || (slugs.length === 2 && !currentProduct) ? (
         <Suspense fallback={<div>Loading...</div>}>
           <ProductPage
             products={filteredProducts}
@@ -146,6 +154,7 @@ function CategoryPage() {
           />
         </Suspense>
       ) : (
+        // Product detail page
         <ProductDetailPage
           product={safeCurrentProduct as unknown as Product}
           loading={loading}

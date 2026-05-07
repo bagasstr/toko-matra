@@ -24,6 +24,7 @@ export async function createProduct(data: {
   description?: string
   images: string[]
   price: number
+  costPrice?: number
   unit: string
   weight?: number
   dimensions?: string
@@ -72,6 +73,7 @@ export async function createProduct(data: {
         label: data.label,
         images: data.images,
         price: data.price,
+        costPrice: data.costPrice ?? 0,
         category: {
           connect: {
             id: data.categoryId,
@@ -302,6 +304,7 @@ export async function updateProduct(id: string, data: any) {
         label: data.label,
         images: data.images,
         price: data.price,
+        costPrice: data.costPrice ?? existingProduct.costPrice ?? 0,
         unit: data.unit,
         weight: data.weight,
         dimensions: data.dimensions,

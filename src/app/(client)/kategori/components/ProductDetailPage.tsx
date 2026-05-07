@@ -414,7 +414,7 @@ export function ProductDetailPage({
               Baca Selengkapnya
             </Button>
             <Link
-              href='https://wa.me/6281234567890'
+              href={`https://wa.me/6285697093044?text=Halo, saya ingin bertanya tentang produk ${safeProduct.name}`}
               className='text-muted-foreground lg:hidden'>
               <Button variant='outline' className='text-sm w-full mt-4'>
                 <RiWhatsappLine size={20} className='mr-1' /> Hubungi CS untuk
@@ -580,7 +580,7 @@ export function ProductDetailPage({
                 </Button>
               </div>
               <Link
-                href='https://wa.me/6281234567890'
+                href={`https://wa.me/6285697093044?text=Halo, saya ingin bertanya tentang produk ${safeProduct.name}`}
                 className='hidden lg:block mt-2'>
                 <Button variant='ghost' className='text-sm w-full'>
                   <RiWhatsappLine size={20} className='mr-2' /> Hubungi CS untuk

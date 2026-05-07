@@ -76,6 +76,7 @@ function TableSkeleton() {
               <TableHead>Nama Produk</TableHead>
               <TableHead>Kategori</TableHead>
               <TableHead>Harga</TableHead>
+              <TableHead>Harga Beli</TableHead>
               <TableHead>Stok</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className='text-right'>Aksi</TableHead>
@@ -95,6 +96,9 @@ function TableSkeleton() {
                 </TableCell>
                 <TableCell>
                   <Skeleton className='h-4 w-32' />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className='h-4 w-24' />
                 </TableCell>
                 <TableCell>
                   <Skeleton className='h-4 w-24' />
@@ -213,6 +217,9 @@ export default function ProductsTable() {
           break
         case 'price':
           comparison = (a.price || 0) - (b.price || 0)
+          break
+        case 'costPrice':
+          comparison = (a.costPrice || 0) - (b.costPrice || 0)
           break
         case 'stock':
           comparison = (a?.stock || 0) - (b?.stock || 0)
@@ -369,7 +376,7 @@ export default function ProductsTable() {
       </div>
       <div className='rounded-md border'>
         <div className='overflow-x-auto'>
-          <div className='min-w-[1000px]'>
+          <div className='min-w-[1200px]'>
             <Table>
               <TableHeader>
                 <TableRow className=''>
@@ -418,6 +425,15 @@ export default function ProductsTable() {
                       onClick={() => handleSort('price')}
                       className=' h-8 data-[state=open]:bg-accent'>
                       Harga
+                      <ArrowUpDown className='ml-2 h-4 w-4' />
+                    </Button>
+                  </TableHead>
+                  <TableHead className='text-center'>
+                    <Button
+                      variant='ghost'
+                      onClick={() => handleSort('costPrice')}
+                      className=' h-8 data-[state=open]:bg-accent'>
+                      Harga Beli
                       <ArrowUpDown className='ml-2 h-4 w-4' />
                     </Button>
                   </TableHead>
@@ -483,6 +499,9 @@ export default function ProductsTable() {
                       </TableCell>
                       <TableCell className='whitespace-nowrap text-center'>
                         {formatPrice(product.price)}
+                      </TableCell>
+                      <TableCell className='whitespace-nowrap text-center'>
+                        {formatPrice(product.costPrice || 0)}
                       </TableCell>
                       <TableCell className='text-center'>
                         {product.stock || 0}

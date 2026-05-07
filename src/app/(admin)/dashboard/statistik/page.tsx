@@ -46,6 +46,7 @@ export default function StatistikPage() {
     totalCustomers: number
     lowStockProducts: number
     bestSellingProduct: string
+    monthlyProfit: number
   } | null>(null)
 
   const [bestSellingProducts, setBestSellingProducts] = useState<
@@ -53,6 +54,7 @@ export default function StatistikPage() {
       name: string
       totalSold: number
       price: number
+      costPrice: number
       unit: string
       stock: number
     }[]
@@ -250,7 +252,7 @@ export default function StatistikPage() {
         </ExportModal>
       </div>
 
-      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4'>
+      <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4'>
         <Card>
           <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
             <CardTitle className='text-sm font-medium'>Pesanan Baru</CardTitle>
@@ -314,6 +316,21 @@ export default function StatistikPage() {
             <p className='text-xs text-muted-foreground'>Bulan ini</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className='flex flex-row items-center justify-between space-y-0 pb-2'>
+            <CardTitle className='text-sm font-medium'>
+              Total Keuntungan
+            </CardTitle>
+            <TrendingUp className='h-4 w-4 text-muted-foreground' />
+          </CardHeader>
+          <CardContent>
+            <div className='text-2xl font-bold text-green-600'>
+              Rp {formatCurrency(dashboardStats?.monthlyProfit || 0)}
+            </div>
+            <p className='text-xs text-muted-foreground'>Bulan ini</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
@@ -361,22 +378,47 @@ export default function StatistikPage() {
           </CardHeader>
           <CardContent>
             <div className='space-y-4'>
-              {bestSellingProducts.map((product, index) => (
-                <div key={index} className='flex justify-between items-center'>
-                  <div>
-                    <div className='font-medium'>{product.name}</div>
-                    <div className='text-sm text-muted-foreground'>
-                      Terjual: {product.totalSold} {product.unit}
+              {bestSellingProducts.map((product, index) => {
+                const profit = product.price - product.costPrice
+                const profitPerUnit = profit
+                const totalProfit = profit * product.totalSold
+
+                return (
+                  <div
+                    key={index}
+                    className='flex justify-between items-center'>
+                    <div>
+                      <div className='font-medium'>{product.name}</div>
+                      <div className='text-sm text-muted-foreground'>
+                        Terjual: {product.totalSold} {product.unit}
+                      </div>
+                    </div>
+                    <div className='text-right'>
+                      <div className='flex flex-col items-end gap-1'>
+                        <div>Rp {formatCurrency(product.price)}</div>
+                        <div className='text-xs text-muted-foreground'>
+                          Beli: Rp {formatCurrency(product.costPrice)}
+                        </div>
+                        <div
+                          className={`text-xs font-medium ${
+                            profit >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          Untung: Rp {formatCurrency(profit)}/unit
+                        </div>
+                        <div
+                          className={`text-xs font-medium ${
+                            totalProfit >= 0 ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                          Total: Rp {formatCurrency(totalProfit)}
+                        </div>
+                      </div>
+                      <div className='text-sm text-muted-foreground mt-1'>
+                        Stok: {product.stock}
+                      </div>
                     </div>
                   </div>
-                  <div className='text-right'>
-                    <div>Rp {formatCurrency(product.price)}</div>
-                    <div className='text-sm text-muted-foreground'>
-                      Stok: {product.stock}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

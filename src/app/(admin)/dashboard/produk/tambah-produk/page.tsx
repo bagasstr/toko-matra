@@ -223,6 +223,7 @@ export default function Page() {
       description: '',
       images: [],
       price: '',
+      costPrice: '',
       label: '',
       unit: '',
       weight: '',
@@ -346,6 +347,7 @@ export default function Page() {
         description: values.description || undefined,
         images: uploadResult.urls,
         price: Number(values.price),
+        costPrice: Number(values.costPrice),
         unit: values.unit,
         weight: values.weight ? Number(values.weight) : undefined,
         dimensions: values.dimensions || undefined,
@@ -516,6 +518,17 @@ export default function Page() {
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name='costPrice'
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Harga Beli</FormLabel>
+                  <Input {...field} type='text' placeholder='Harga beli' />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className='grid grid-cols-2 gap-4 items-start'>
               <FormField
                 control={form.control}

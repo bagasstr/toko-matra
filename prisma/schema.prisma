@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // =========================
@@ -29,8 +29,6 @@ model User {
   order         Order[]
   account       Account[]
   notification  Notification[]
-  // proformaInvoices ProformaInvoice[]
-  // faktur           Faktur[]
   wishlist      Wishlist[]
 
   @@map("users")
@@ -162,6 +160,7 @@ model Product {
   label        String?        @db.VarChar(50) // ready stock | suplier
   images       String[]       @db.Text // Array URL gambar
   price        Int
+  costPrice    Int            @default(0)
   unit         String         @db.VarChar(20) // Satuan: kg, m, m2, dll
   stock        Int            @default(0)
   minOrder     Int            @default(0)
@@ -180,8 +179,6 @@ model Product {
   brandId      String?        @db.VarChar(36)
   User         User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId       String?        @db.VarChar(36)
-  // fakturItem          FakturItem[]
-  // proformaInvoiceItem ProformaInvoiceItem[]
   shipmentItem ShipmentItem[]
   wishlist     Wishlist[]
 
@@ -249,7 +246,6 @@ model Order {
   notes          String?     @db.VarChar(255)
   payment        Payment[]
   shipment       Shipment[]
-  // faktur         Faktur[]
 
   @@map("orders")
 }
@@ -262,6 +258,7 @@ model OrderItem {
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   quantity  Int
   price     Int
+  costPrice Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -320,6 +317,16 @@ model ShipmentItem {
   updatedAt  DateTime @updatedAt
 
   @@map("shipment_items")
+}
+
+model Wishlist {
+  id        String  @id @map("id_wishlist") @db.VarChar(36)
+  userId    String  @db.VarChar(36)
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String  @unique @db.VarChar(36)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("wishlists")
 }
 
 // untuk role user
@@ -439,13 +446,3 @@ enum TransactionStatus {
 
 //   @@map("proforma_invoice_items")
 // }
-
-model Wishlist {
-  id        String  @id @map("id_wishlist") @db.VarChar(36)
-  userId    String  @db.VarChar(36)
-  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  productId String  @unique @db.VarChar(36)
-  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("wishlists")
-}

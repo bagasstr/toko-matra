@@ -66,6 +66,7 @@ export async function getCartItems() {
             id: true,
             name: true,
             price: true,
+            costPrice: true,
             images: true,
             stock: true,
             unit: true,
@@ -111,105 +112,126 @@ export async function addToCart(
       itemQuantity = productIdOrItem.quantity
     }
 
-    // Check if product exists and has sufficient stock
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-    })
+    // Use transaction to ensure data consistency
+    const result = await prisma.$transaction(async (tx) => {
+      // Check if product exists and has sufficient stock
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+      })
 
-    if (!product) {
-      return { success: false, error: 'Product not found' }
-    }
+      if (!product) {
+        throw new Error('Product not found')
+      }
 
-    if (product.stock < itemQuantity) {
-      return { success: false, error: 'Insufficient stock' }
-    }
+      if (product.stock < itemQuantity) {
+        throw new Error('Insufficient stock')
+      }
 
-    // Get or create user's cart
-    let cart = await prisma.cart.findFirst({
-      where: {
-        userId: session.user.id,
-      },
-    })
-
-    if (!cart) {
-      cart = await prisma.cart.create({
-        data: {
-          id: generateCartId(),
+      // Get or create user's cart
+      let cart = await tx.cart.findFirst({
+        where: {
           userId: session.user.id,
         },
       })
-    }
 
-    // Check if item already exists in cart
-    const existingItem = await prisma.cartItem.findFirst({
-      where: {
-        cartId: cart.id,
-        productId: productId,
-      },
-    })
-
-    if (existingItem) {
-      // Update existing item
-      const newQuantity = existingItem.quantity + itemQuantity
-      if (product.stock < newQuantity) {
-        return {
-          success: false,
-          error: 'Insufficient stock for updated quantity',
-        }
+      if (!cart) {
+        cart = await tx.cart.create({
+          data: {
+            id: generateCartId(),
+            userId: session.user.id,
+          },
+        })
       }
 
-      const updatedItem = await prisma.cartItem.update({
-        where: { id: existingItem.id },
-        data: { quantity: newQuantity },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              images: true,
-              stock: true,
-              unit: true,
-              weight: true,
-            },
-          },
-        },
-      })
-
-      revalidateTag('cart')
-      revalidatePath('/keranjang')
-      return { success: true, data: updatedItem }
-    } else {
-      // Create new item
-      const newItem = await prisma.cartItem.create({
-        data: {
-          id: generateCartItemId(),
+      // Check if item already exists in cart
+      const existingItem = await tx.cartItem.findFirst({
+        where: {
           cartId: cart.id,
           productId: productId,
-          quantity: itemQuantity,
-        },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-              price: true,
-              images: true,
-              stock: true,
-              unit: true,
-              weight: true,
-            },
-          },
         },
       })
 
-      revalidateTag('cart')
-      revalidatePath('/keranjang')
-      return { success: true, data: newItem }
-    }
+      if (existingItem) {
+        // Update existing item
+        const newQuantity = existingItem.quantity + itemQuantity
+
+        // Check if we have enough stock (considering what's already reserved)
+        const availableStock = product.stock + existingItem.quantity // Add back what's already reserved
+        if (availableStock < newQuantity) {
+          throw new Error('Insufficient stock for updated quantity')
+        }
+
+        // Update cart item
+        const updatedItem = await tx.cartItem.update({
+          where: { id: existingItem.id },
+          data: { quantity: newQuantity },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                images: true,
+                stock: true,
+                unit: true,
+                weight: true,
+              },
+            },
+          },
+        })
+
+        // Update product stock (reduce by the additional quantity)
+        await tx.product.update({
+          where: { id: productId },
+          data: { stock: availableStock - newQuantity },
+        })
+
+        return updatedItem
+      } else {
+        // Create new item
+        const newItem = await tx.cartItem.create({
+          data: {
+            id: generateCartItemId(),
+            cartId: cart.id,
+            productId: productId,
+            quantity: itemQuantity,
+          },
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                price: true,
+                images: true,
+                stock: true,
+                unit: true,
+                weight: true,
+              },
+            },
+          },
+        })
+
+        // Reduce product stock
+        await tx.product.update({
+          where: { id: productId },
+          data: { stock: product.stock - itemQuantity },
+        })
+
+        return newItem
+      }
+    })
+
+    revalidateTag('cart')
+    revalidatePath('/keranjang')
+    revalidatePath('/produk')
+    return { success: true, data: result }
   } catch (error) {
     console.error('Error adding to cart:', error)
-    return { success: false, error: 'Failed to add item to cart' }
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to add item to cart',
+    }
   }
 }
 
@@ -226,56 +248,92 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
       return { success: false, error: 'Invalid quantity parameter' }
     }
 
-    // Get user's cart
-    const cart = await prisma.cart.findFirst({
-      where: {
-        userId: session.user.id,
-      },
-    })
-
-    if (!cart) {
-      return { success: false, error: 'Cart not found' }
-    }
-
-    // Get the cart item and product
-    const cartItem = await prisma.cartItem.findFirst({
-      where: {
-        id: itemId,
-        cartId: cart.id,
-      },
-      include: {
-        product: true,
-      },
-    })
-
-    if (!cartItem) {
-      return { success: false, error: 'Cart item not found' }
-    }
-
-    if (quantity <= 0) {
-      // Remove item if quantity is 0 or negative
-      await prisma.cartItem.delete({
-        where: { id: itemId },
+    // Use transaction to ensure data consistency
+    await prisma.$transaction(async (tx) => {
+      // Get user's cart
+      const cart = await tx.cart.findFirst({
+        where: {
+          userId: session.user.id,
+        },
       })
-    } else {
-      // Check stock availability
-      if (cartItem.product.stock < quantity) {
-        return { success: false, error: 'Insufficient stock' }
+
+      if (!cart) {
+        throw new Error('Cart not found')
       }
 
-      // Update quantity
-      await prisma.cartItem.update({
-        where: { id: itemId },
-        data: { quantity: quantity },
+      // Get the cart item and product
+      const cartItem = await tx.cartItem.findFirst({
+        where: {
+          id: itemId,
+          cartId: cart.id,
+        },
+        include: {
+          product: true,
+        },
       })
-    }
+
+      if (!cartItem) {
+        throw new Error('Cart item not found')
+      }
+
+      const currentQuantity = cartItem.quantity
+      const quantityDifference = quantity - currentQuantity
+
+      if (quantity <= 0) {
+        // Remove item if quantity is 0 or negative
+        await tx.cartItem.delete({
+          where: { id: itemId },
+        })
+
+        // Return the stock that was reserved
+        await tx.product.update({
+          where: { id: cartItem.productId },
+          data: { stock: cartItem.product.stock + currentQuantity },
+        })
+      } else {
+        // Check if we need to reduce or increase stock
+        if (quantityDifference > 0) {
+          // Increasing quantity - check if we have enough stock
+          // Add back what's already reserved to get available stock
+          const availableStock = cartItem.product.stock + currentQuantity
+          if (availableStock < quantity) {
+            throw new Error('Insufficient stock')
+          }
+
+          // Update stock (reduce by the new total quantity)
+          await tx.product.update({
+            where: { id: cartItem.productId },
+            data: { stock: availableStock - quantity },
+          })
+        } else if (quantityDifference < 0) {
+          // Decreasing quantity - return stock
+          // Add back what's already reserved to get available stock
+          const availableStock = cartItem.product.stock + currentQuantity
+          await tx.product.update({
+            where: { id: cartItem.productId },
+            data: { stock: availableStock - quantity },
+          })
+        }
+
+        // Update cart item quantity
+        await tx.cartItem.update({
+          where: { id: itemId },
+          data: { quantity: quantity },
+        })
+      }
+    })
 
     revalidateTag('cart')
     revalidatePath('/keranjang')
+    revalidatePath('/produk')
     return { success: true }
   } catch (error) {
     console.error('Error updating cart item quantity:', error)
-    return { success: false, error: 'Failed to update cart item' }
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Failed to update cart item',
+    }
   }
 }
 
@@ -286,30 +344,59 @@ export async function removeFromCart(itemId: string) {
       return { success: false, error: 'User not authenticated' }
     }
 
-    // Get user's cart
-    const cart = await prisma.cart.findFirst({
-      where: {
-        userId: session.user.id,
-      },
-    })
+    // Use transaction to ensure data consistency
+    await prisma.$transaction(async (tx) => {
+      // Get user's cart
+      const cart = await tx.cart.findFirst({
+        where: {
+          userId: session.user.id,
+        },
+      })
 
-    if (!cart) {
-      return { success: false, error: 'Cart not found' }
-    }
+      if (!cart) {
+        throw new Error('Cart not found')
+      }
 
-    await prisma.cartItem.deleteMany({
-      where: {
-        id: itemId,
-        cartId: cart.id,
-      },
+      // Get the cart item and product to know the quantity
+      const cartItem = await tx.cartItem.findFirst({
+        where: {
+          id: itemId,
+          cartId: cart.id,
+        },
+        include: {
+          product: true,
+        },
+      })
+
+      if (!cartItem) {
+        throw new Error('Cart item not found')
+      }
+
+      // Delete the cart item
+      await tx.cartItem.delete({
+        where: { id: itemId },
+      })
+
+      // Return the stock that was reserved
+      await tx.product.update({
+        where: { id: cartItem.productId },
+        data: { stock: cartItem.product.stock + cartItem.quantity },
+      })
     })
 
     revalidateTag('cart')
     revalidatePath('/keranjang')
+    revalidatePath('/produk')
     return { success: true }
   } catch (error) {
     console.error('Error removing from cart:', error)
-    return { success: false, error: 'Failed to remove item from cart' }
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to remove item from cart',
+    }
   }
 }
 
@@ -320,29 +407,52 @@ export async function clearCart() {
       return { success: false, error: 'User not authenticated' }
     }
 
-    // Get user's cart
-    const cart = await prisma.cart.findFirst({
-      where: {
-        userId: session.user.id,
-      },
-    })
+    // Use transaction to ensure data consistency
+    await prisma.$transaction(async (tx) => {
+      // Get user's cart with all items
+      const cart = await tx.cart.findFirst({
+        where: {
+          userId: session.user.id,
+        },
+        include: {
+          items: {
+            include: {
+              product: true,
+            },
+          },
+        },
+      })
 
-    if (!cart) {
-      return { success: true } // Cart doesn't exist, nothing to clear
-    }
+      if (!cart) {
+        return // Cart doesn't exist, nothing to clear
+      }
 
-    await prisma.cartItem.deleteMany({
-      where: {
-        cartId: cart.id,
-      },
+      // Return stock for all items in cart
+      for (const item of cart.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: item.product.stock + item.quantity },
+        })
+      }
+
+      // Delete all cart items
+      await tx.cartItem.deleteMany({
+        where: {
+          cartId: cart.id,
+        },
+      })
     })
 
     revalidateTag('cart')
     revalidatePath('/keranjang')
+    revalidatePath('/produk')
     return { success: true }
   } catch (error) {
     console.error('Error clearing cart:', error)
-    return { success: false, error: 'Failed to clear cart' }
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to clear cart',
+    }
   }
 }
 

@@ -37,8 +37,8 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
   isInitialized: false,
 
   initializeSession: async () => {
-    if (get().isInitialized) {
-      // Skip initialization if already done
+    // Only skip if already initialized AND logged in
+    if (get().isInitialized && get().isLoggedIn) {
       return
     }
 
@@ -53,7 +53,7 @@ export const useSessionStore = create<SessionStore>()((set, get) => ({
         isInitialized: true,
       })
     } catch (error) {
-      console.error('Session validation failed')
+      console.error('Session validation failed', error)
       set({
         isLoggedIn: false,
         userId: null,

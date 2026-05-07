@@ -1,10 +1,9 @@
-import { useEffect } from 'react'
-import { useAuthStore } from '@/hooks/zustandStore'
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { UserNav } from './components/User-nav'
 import DashboardNav from './components/Dashboard-nav'
 import { cn } from '@/lib/utils'
 import { validateSession } from '@/app/actions/session'
+import { redirect } from 'next/navigation'
 
 export default async function HomeLayout({
   children,
@@ -12,6 +11,12 @@ export default async function HomeLayout({
   children: React.ReactNode
 }>) {
   const session = await validateSession()
+
+  // Protection: Only SUPER_ADMIN allowed
+  if (!session || session.user.role !== 'SUPER_ADMIN') {
+    redirect('/')
+  }
+
   return (
     <SidebarProvider className={cn('')}>
       <DashboardNav />

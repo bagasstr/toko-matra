@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -69,19 +69,14 @@ const EditProfileForm = ({ user, onSuccess }: EditProfileFormProps) => {
     user.profile?.imageUrl
   )
   const router = useRouter()
+
+  if (!user.profile) {
+    return <div></div>
+  }
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      fullName: user.profile?.fullName || '',
-      userName: user.profile?.userName || '',
-      phoneNumber: user.profile?.phoneNumber || '',
-      gender: user.profile?.gender || 'other',
-      dateOfBirth: user.profile?.dateOfBirth,
-      bio: user.profile?.bio || '',
-      companyName: user.profile?.companyName || '',
-      taxId: user.profile?.taxId || '',
-      imageUrl: user.profile?.imageUrl || '',
-    },
+    defaultValues: {},
+    mode: 'onChange',
   })
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {

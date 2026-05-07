@@ -49,6 +49,20 @@ export const createProductSchema = z.object({
       })
     }
   }),
+  costPrice: z.string().superRefine((val, ctx) => {
+    if (val === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Harga beli harus diisi',
+      })
+    }
+    if (isNaN(Number(val))) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Harga beli harus berupa angka',
+      })
+    }
+  }),
   unit: z.string().min(1, 'Satuan harus diisi'),
   weight: z.string().optional(),
   dimensions: z.string().optional(),
