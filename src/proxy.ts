@@ -5,7 +5,7 @@ import { stat } from 'fs/promises'
 import { join } from 'path'
 
 // middleware.ts
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname
 
   // Check if the request is for the dashboard
