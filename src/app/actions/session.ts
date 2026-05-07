@@ -109,7 +109,60 @@ export const validateSession = cache(async () => {
     return null
   }
 
-  return await getCachedSessionData(sessionToken)
+  // Get fresh session data from database instead of cache
+  // to ensure real-time accuracy after login/logout
+  const session = await prisma.session.findUnique({
+    where: { sessionToken },
+    select: {
+      user: {
+        select: {
+          id: true,
+          role: true,
+          email: true,
+          emailVerified: true,
+          typeUser: true,
+          profile: {
+            select: {
+              id: true,
+              fullName: true,
+              userName: true,
+              imageUrl: true,
+              phoneNumber: true,
+              gender: true,
+              dateOfBirth: true,
+              bio: true,
+              companyName: true,
+              taxId: true,
+            },
+          },
+          address: {
+            where: { isPrimary: true },
+            select: {
+              id: true,
+              labelAddress: true,
+              address: true,
+              city: true,
+              province: true,
+              district: true,
+              village: true,
+              postalCode: true,
+              isPrimary: true,
+              isActive: true,
+              recipientName: true,
+            },
+            take: 1,
+          },
+          _count: {
+            select: {
+              order: true,
+            },
+          },
+        },
+      },
+    },
+  })
+
+  return session ? JSON.parse(JSON.stringify(session)) : null
 })
 
 export const destroySession = async () => {

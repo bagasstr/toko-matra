@@ -114,6 +114,24 @@ async function DashboardStats() {
           info='bulan ini'
           iconBg='bg-purple-100 text-purple-600'
         />
+        <DashboardCard
+          title='Pendapatan Bulan Ini'
+          value={`Rp ${Number(stats?.monthlyRevenue || 0).toLocaleString(
+            'id-ID'
+          )}`}
+          icon={<CreditCard className='h-5 w-5' />}
+          info='konfirmasi/terkirim'
+          iconBg='bg-indigo-100 text-indigo-600'
+        />
+        <DashboardCard
+          title='Keuntungan Bulan Ini'
+          value={`Rp ${Number(stats?.monthlyProfit || 0).toLocaleString(
+            'id-ID'
+          )}`}
+          icon={<Package className='h-5 w-5' />}
+          info='(penjualan - harga beli)'
+          iconBg='bg-emerald-100 text-emerald-600'
+        />
       </div>
     </>
   )

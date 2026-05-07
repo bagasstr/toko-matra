@@ -6,6 +6,7 @@ import { validateSession } from './session'
 import { getCartItems } from './cartAction'
 import { revalidatePath } from 'next/cache'
 import { OrderStatus, IOrder } from '@/types/order'
+import { estimateShipping } from '@/lib/shipping'
 import {
   sendOrderConfirmedNotification,
   sendOrderShippedNotification,
@@ -51,13 +52,35 @@ export async function processCheckoutAndCreateOrder(
       productId: item.productId,
       quantity: item.quantity,
       price: Number(item.product.price),
+      costPrice: Number((item.product as any).costPrice ?? 0),
     }))
 
     const subtotal = items.reduce(
       (total, item) => total + item.price * item.quantity,
       0
     )
-    const totalAmount = subtotal + subtotal * 0.11
+    // Fetch address for shipping calc
+    const address = await prisma.address.findUnique({
+      where: { id: formData.addressId },
+      select: { city: true, district: true, province: true },
+    })
+
+    const { shippingCost } = estimateShipping({
+      items: cartResult.data.map((ci: any) => ({
+        weight: ci.product?.weight ?? 1,
+        quantity: ci.quantity,
+      })),
+      address: {
+        city: address?.city,
+        district: address?.district,
+        province: address?.province,
+      },
+      subtotal,
+      // freeShippingThreshold: 1000000, // enable when needed
+    })
+
+    const tax = Math.round(subtotal * 0.11)
+    const totalAmount = subtotal + tax + shippingCost
 
     // Create order
     const orderResult = await prisma.order.create({
@@ -76,7 +99,7 @@ export async function processCheckoutAndCreateOrder(
         },
 
         status: OrderStatus.PENDING,
-        totalAmount: totalAmount,
+        totalAmount,
         subtotalAmount: subtotal,
         items: {
           create: items.map((item) => ({
@@ -88,6 +111,7 @@ export async function processCheckoutAndCreateOrder(
             },
             quantity: item.quantity,
             price: item.price,
+            costPrice: item.costPrice,
           })),
         },
         payment: {

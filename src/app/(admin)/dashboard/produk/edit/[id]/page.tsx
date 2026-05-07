@@ -261,6 +261,7 @@ export default function Page() {
       description: '',
       images: [],
       price: '',
+      costPrice: '',
       unit: '',
       weight: '',
       dimensions: '',
@@ -319,6 +320,7 @@ export default function Page() {
           description: product.description || '',
           images: product.images,
           price: product.price.toString(),
+          costPrice: (product as any).costPrice?.toString?.() || '0',
           unit: product.unit,
           weight: product.weight?.toString() || '',
           dimensions: product.dimensions || '',
@@ -597,6 +599,17 @@ export default function Page() {
               )}
             />
           </div>
+          <FormField
+            control={form.control}
+            name='costPrice'
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Harga Beli</FormLabel>
+                <Input {...field} type='text' placeholder='Harga beli' />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <div className='grid grid-cols-2 gap-4'>
             <FormField
               control={form.control}

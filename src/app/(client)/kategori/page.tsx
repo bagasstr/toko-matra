@@ -46,8 +46,23 @@ const Breadcrumb = ({ searchQuery = '' }) => {
   )
 }
 
-const CategoryCard = ({ category }) => {
-  const allSlugs = [...(category.children?.map((child) => child.slug) || [])]
+const CategoryCard = ({
+  category,
+  products,
+}: {
+  category: any
+  products: any[]
+}) => {
+  const subCategoryCount = category?.children?.length || 0
+  const productCount = useMemo(() => {
+    if (!products?.length) return 0
+    return products.filter(
+      (p) =>
+        p?.isActive &&
+        (p?.category?.parentId === category?.id ||
+          p?.category?.id === category?.id)
+    ).length
+  }, [products, category?.id])
 
   return (
     <Link
@@ -68,7 +83,11 @@ const CategoryCard = ({ category }) => {
       <div className='font-semibold text-lg mb-1 group-hover:text-primary transition'>
         {category.name}
       </div>
-      <Badge>{allSlugs.length} kategori</Badge>
+      <Badge>
+        {subCategoryCount > 0
+          ? `${subCategoryCount} kategori`
+          : `${productCount} produk`}
+      </Badge>
     </Link>
   )
 }
@@ -251,7 +270,7 @@ const CategoryPageContent = () => {
           ) : (
             <div className='grid grid-cols-2 md:grid-cols-3 gap-6'>
               {categories.map((cat) => (
-                <CategoryCard key={cat.id} category={cat} />
+                <CategoryCard key={cat.id} category={cat} products={products} />
               ))}
             </div>
           )}
