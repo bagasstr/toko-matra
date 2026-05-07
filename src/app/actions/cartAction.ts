@@ -221,7 +221,7 @@ export async function addToCart(
       }
     })
 
-    revalidateTag('cart')
+    ;(revalidateTag as any)('cart')
     revalidatePath('/keranjang')
     revalidatePath('/produk')
     return { success: true, data: result }
@@ -323,7 +323,7 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
       }
     })
 
-    revalidateTag('cart')
+    ;(revalidateTag as any)('cart')
     revalidatePath('/keranjang')
     revalidatePath('/produk')
     return { success: true }
@@ -384,7 +384,7 @@ export async function removeFromCart(itemId: string) {
       })
     })
 
-    revalidateTag('cart')
+    ;(revalidateTag as any)('cart')
     revalidatePath('/keranjang')
     revalidatePath('/produk')
     return { success: true }
@@ -443,7 +443,7 @@ export async function clearCart() {
       })
     })
 
-    revalidateTag('cart')
+    ;(revalidateTag as any)('cart')
     revalidatePath('/keranjang')
     revalidatePath('/produk')
     return { success: true }
@@ -511,7 +511,7 @@ export async function clearCartAfterOrder(orderId: string) {
       },
     })
 
-    revalidateTag('cart')
+    ;(revalidateTag as any)('cart')
     revalidatePath('/keranjang')
     return { success: true }
   } catch (error) {

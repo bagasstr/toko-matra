@@ -3,14 +3,12 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import {
-  redirect,
   usePathname,
   useRouter,
   useSearchParams,
 } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft, Search } from 'lucide-react'
-import { headers } from 'next/headers'
 import { getTreeCategories } from '@/app/actions/categoryAction'
 import { getAllProducts } from '@/app/actions/productAction'
 import { Badge } from '@/components/ui/badge'

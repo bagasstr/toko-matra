@@ -1,19 +1,21 @@
-import { existsSync } from 'fs'
-import type { NextConfig } from 'next'
-import dotenv from 'dotenv'
-import path from 'path'
+import { existsSync } from 'fs';
+import dotenv from 'dotenv';
+import path from 'path';
 
-const __dirname = path.resolve()
-const envFile = `.env || 'development'}`
-const envPath = path.join(__dirname, envFile)
+const __dirname = path.resolve();
+const envFile = '.env';
+const envPath = path.join(__dirname, envFile);
+
 if (existsSync(envPath)) {
-  dotenv.config({ path: envPath })
-} else {
-  console.error(`.env`)
+  dotenv.config({ path: envPath });
 }
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   /* config options here */
+
+  // Silence Turbopack/Webpack conflict error
+  turbopack: {},
 
   // Enable removing console logs in production for better performance
   compiler: {
@@ -22,8 +24,6 @@ const nextConfig: NextConfig = {
 
   // output: 'standalone',
   images: {
-    // unoptimized: false, // Enable Next.js optimization untuk performa
-    domains: ['localhost', 'toko.matrakosala.com', 'toko-matra.vercel.app'],
     remotePatterns: [
       {
         protocol: 'http',
@@ -53,6 +53,19 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: '*.supabase.co',
       },
+      // Added from domains
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: 'toko.matrakosala.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'toko-matra.vercel.app',
+      },
     ],
     // Add image caching for better performance
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 days
@@ -72,24 +85,10 @@ const nextConfig: NextConfig = {
       'react-chartjs-2',
       'chart.js',
     ],
-    turbo: {
-      rules: {
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
-      },
-    },
   },
 
   // Set runtime to be server-side for routes that use cookies
   reactStrictMode: true,
-  // Set dynamic rendering for the app
-  // This is important for routes that use cookies
-  serverRuntimeConfig: {
-    // Runtime config for pages using cookies
-    cookieSecret: process.env.COOKIE_SECRET || 'your-cookie-secret',
-  },
   // Disable static optimization for dynamic routes
   // staticPageGenerationTimeout: 120,
   // Enable dynamic imports
@@ -98,7 +97,7 @@ const nextConfig: NextConfig = {
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
-      }
+      };
     }
 
     // Production optimizations
@@ -139,11 +138,11 @@ const nextConfig: NextConfig = {
             },
           },
         },
-      }
+      };
 
       // Tree shaking optimization
-      config.optimization.usedExports = true
-      config.optimization.sideEffects = false
+      config.optimization.usedExports = true;
+      config.optimization.sideEffects = false;
     }
 
     // Suppress Supabase realtime warnings
@@ -153,9 +152,9 @@ const nextConfig: NextConfig = {
         message:
           /Critical dependency: the request of a dependency is an expression/,
       },
-    ]
+    ];
 
-    return config
+    return config;
   },
 
   // Enable gzip compression
@@ -199,8 +198,8 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-    ]
+    ];
   },
-}
+};
 
-export default nextConfig
+export default nextConfig;
